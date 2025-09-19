@@ -71,7 +71,8 @@ import axios from "axios";
 
 // Central Axios instance
 //const api = axios.create({ baseURL: "/api" });
-const api = axios.create({ baseURL: "http://localhost:4000/api" });
+const api = axios.create({ baseURL: "https://user-chat-9luh.onrender.com/api" });
+
 // Chat-settings helpers
 export const blockUser = (userId, peerId) => api.post(`/block/${userId}/${peerId}`);
 export const unblockUser = (userId, peerId) => api.post(`/unblock/${userId}/${peerId}`);
@@ -118,4 +119,5 @@ export const findUser = value =>
     : { params: { username: value.toLowerCase() } });
 
 export default api;
+
 
