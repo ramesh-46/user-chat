@@ -1653,13 +1653,15 @@ useEffect(() => {
 
       const sender = m.sender.toString();
       const receiver = m.receiver.toString();
-
-      if ((sender === peerId && receiver === userId) || (sender === userId && receiver === peerId)) {
-         notificationAudio.current.play().catch(err => console.log(err));
-        setMsgs((prev) => {
-          if (!prev.some((msg) => msg._id === m._id)) {
-            return [...prev, m];
-          }
+  // Only play sound if message is from peer to current user
+  if (sender === peerId && receiver === userId) {
+     notificationAudio.current.play().catch(err => console.log(err));
+  }
+     if ((sender === peerId && receiver === userId) || (sender === userId && receiver === peerId)) {
+    setMsgs((prev) => {
+      if (!prev.some((msg) => msg._id === m._id)) {
+        return [...prev, m];
+      }
           return prev;
         });
       }
@@ -2094,6 +2096,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
