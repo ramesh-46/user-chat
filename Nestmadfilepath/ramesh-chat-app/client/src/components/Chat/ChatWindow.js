@@ -1730,7 +1730,7 @@ export default function ChatWindow({ peer, socket, onBack = () => {} }) {
     }
   };
 
-  const fileURL = (p) => `http://localhost:4000${p}`;
+  const fileURL = (p) => `https://bpbackend.onrender.com${p}`;
 
   const handleLongPress = (id) => {
     setMsgs((prev) =>
@@ -2073,3 +2073,4 @@ const S = {
     textAlign: "center",
   },
 };
+
