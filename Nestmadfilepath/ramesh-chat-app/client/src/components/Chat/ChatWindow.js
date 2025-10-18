@@ -1566,6 +1566,7 @@ import CallUI from "../Call/CallButton";
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+const notificationAudio = useRef(new Audio("/ping.mp3")); // put ping.mp3 in public folder
 
 dayjs.extend(relativeTime);
 
@@ -1589,7 +1590,7 @@ export default function ChatWindow({ peer, socket, onBack = () => {} }) {
   const [showBlockDialog, setShowBlockDialog] = useState(false);
   const bottom = useRef();
   const isMobile = useIsMobile();
-
+ const notificationAudio = useRef(new Audio("/ping.mp3"));
   const userId = user?._id?.toString();
   const peerId = peer?._id?.toString();
 
@@ -1654,6 +1655,7 @@ useEffect(() => {
       const receiver = m.receiver.toString();
 
       if ((sender === peerId && receiver === userId) || (sender === userId && receiver === peerId)) {
+         notificationAudio.current.play().catch(err => console.log(err));
         setMsgs((prev) => {
           if (!prev.some((msg) => msg._id === m._id)) {
             return [...prev, m];
@@ -2092,6 +2094,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
