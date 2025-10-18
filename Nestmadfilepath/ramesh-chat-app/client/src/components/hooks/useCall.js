@@ -190,7 +190,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { io } from "socket.io-client";
 
 export function useCall(userId) {
-  const socket = useRef(io("https://bpbackend.onrender.com"));
+  const socket = useRef(io("https://blackpearlbackend.onrender.com"));
   const pc = useRef(null);
   const localStream = useRef(null);
   const remoteStream = useRef(null);
@@ -363,4 +363,5 @@ export function useCall(userId) {
     callState,
   };
 }
+
 
