@@ -217,12 +217,15 @@ export default function ChatList({ current, onPick, socket }) {
   const [peers, setPeers] = useState([]);
   const isMobile = useIsMobile();
 
+  // Unread state stored in localStorage
+  const [unread, setUnread] = useState(() => {
+    return JSON.parse(localStorage.getItem("unreadMessages") || "{}");
+  });
+
   const load = async () => {
     try {
       const res = await fetchChatList(user._id);
-      // Initialize unreadCount if not provided
-      const users = res.data.users.map(u => ({ ...u, unreadCount: u.unreadCount || 0 }));
-      setPeers(users);
+      setPeers(res.data.users);
     } catch (e) {
       console.error("Chat list fetch failed:", e);
     }
@@ -235,25 +238,33 @@ export default function ChatList({ current, onPick, socket }) {
     return () => socket.off("refreshConversations", load);
   }, [socket]);
 
-  // Listen for new messages and update unread count
-  useEffect(() => {
-    const onNewMessage = (message) => {
-      if (message.sender !== user._id && message.receiver === user._id && (!current || current._id !== message.sender)) {
-        setPeers(prevPeers =>
-          prevPeers.map(p =>
-            p._id === message.sender
-              ? { ...p, unreadCount: (p.unreadCount || 0) + 1 }
-              : p
-          )
-        );
-      }
-    };
-    socket.on("receiveMessage", onNewMessage);
-    return () => socket.off("receiveMessage", onNewMessage);
-  }, [socket, user._id, current]);
-
   /* hide list when a chat is selected on mobile */
   const hidden = isMobile && current;
+
+  // Handle chat selection
+  const handlePick = (p) => {
+    // Remove unread for this peer
+    const copy = { ...unread };
+    delete copy[p._id];
+    setUnread(copy);
+    localStorage.setItem("unreadMessages", JSON.stringify(copy));
+    onPick(p);
+  };
+
+  // Listen for incoming messages from socket
+  useEffect(() => {
+    const newMsgHandler = (m) => {
+      if (m.receiver === user._id) {
+        setUnread((prev) => {
+          const copy = { ...prev, [m.sender]: true };
+          localStorage.setItem("unreadMessages", JSON.stringify(copy));
+          return copy;
+        });
+      }
+    };
+    socket.on("receiveMessage", newMsgHandler);
+    return () => socket.off("receiveMessage", newMsgHandler);
+  }, [socket, user._id]);
 
   return (
     <div
@@ -266,19 +277,24 @@ export default function ChatList({ current, onPick, socket }) {
       {peers.length === 0 && (
         <div style={S.empty}>No chats yet – use the search bar ↑</div>
       )}
+
       {peers.map((p) => {
         const selected = current?._id === p._id;
+        const hasUnread = unread[p._id]; // check if unread
+
         return (
           <motion.div
             key={p._id}
             style={{
               ...S.item,
               background: selected ? SELECT_BG : "transparent",
-              position: "relative", // <-- Added for badge positioning
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
             }}
-            whileHover={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
+            whileHover={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}  // shadow
             whileTap={{ scale: 0.97 }}
-            onClick={() => onPick(p)}
+            onClick={() => handlePick(p)}
           >
             <div
               style={{
@@ -289,23 +305,24 @@ export default function ChatList({ current, onPick, socket }) {
               {p.mobile || p.username}
             </div>
             {p.lastText && <div style={S.snip}>{p.lastText}</div>}
-            {/* Unread message badge */}
-            {p.unreadCount > 0 && (
+
+            {/* Notification balloon */}
+            {hasUnread && !selected && (
               <div style={{
-                position: "absolute",
-                right: 10,
-                top: 10,
-                background: "green",
-                color: "white",
+                minWidth: 18,
+                height: 18,
                 borderRadius: "50%",
-                width: 20,
-                height: 20,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
+                backgroundColor: "red",
+                color: "white",
                 fontSize: 12,
+                fontWeight: "bold",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "0 5px",
+                marginLeft: 8,
               }}>
-                {p.unreadCount}
+                !
               </div>
             )}
           </motion.div>
