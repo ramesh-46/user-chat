@@ -74,7 +74,7 @@ import axios from "axios";
 
 // const api = axios.create({ baseURL: "https://user-chat-9luh.onrender.com/api" });
 
-const api = axios.create({ baseURL: "https://blackpearlbackend.onrender.com/api" });
+const api = axios.create({ baseURL: "https://bpbackend.onrender.com/api" });
 
 // Chat-settings helpers
 export const blockUser = (userId, peerId) => api.post(`/block/${userId}/${peerId}`);
@@ -110,7 +110,7 @@ export const recoverEmail = uname => api.get("/auth/recover/email", { params: { 
 
 export const updateProfile = (userId, data) => api.put(`/profile/${userId}`, data);
 
-const BASE = "http://localhost:4000/api";
+const BASE = https://blackpearlbackend.onrender.com/api";
 
 export const fetchGroups = async userId =>
   await axios.get(`${BASE}/groups/${userId}`);
@@ -122,6 +122,7 @@ export const findUser = value =>
     : { params: { username: value.toLowerCase() } });
 
 export default api;
+
 
 
 
