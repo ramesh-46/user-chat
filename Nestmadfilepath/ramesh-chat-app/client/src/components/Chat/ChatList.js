@@ -191,6 +191,7 @@
 // };
 
 
+
 import React, { useEffect, useState, useContext } from "react";
 import { fetchChatList } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -241,6 +242,13 @@ export default function ChatList({ current, onPick, socket }) {
   /* hide list when a chat is selected on mobile */
   const hidden = isMobile && current;
 
+  // Request notification permission once
+  useEffect(() => {
+    if (Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
   // Handle chat selection
   const handlePick = (p) => {
     // Remove unread for this peer
@@ -255,13 +263,28 @@ export default function ChatList({ current, onPick, socket }) {
   useEffect(() => {
     const newMsgHandler = (m) => {
       if (m.receiver === user._id) {
+        // Update unread state
         setUnread((prev) => {
           const copy = { ...prev, [m.sender]: true };
           localStorage.setItem("unreadMessages", JSON.stringify(copy));
           return copy;
         });
+
+        // Show browser/mobile notification
+        if (Notification.permission === "granted") {
+          new Notification(`New message from ${m.senderName || "User"}`, {
+            body: m.text || "Sent a message",
+            icon: "/favicon.ico", // optional icon
+          });
+
+          // Optional: sound/vibration
+          const audio = new Audio("/ping.mp3");
+          audio.play();
+          navigator.vibrate?.(200);
+        }
       }
     };
+
     socket.on("receiveMessage", newMsgHandler);
     return () => socket.off("receiveMessage", newMsgHandler);
   }, [socket, user._id]);
@@ -292,7 +315,7 @@ export default function ChatList({ current, onPick, socket }) {
               justifyContent: "space-between",
               alignItems: "center",
             }}
-            whileHover={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}  // shadow
+            whileHover={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
             whileTap={{ scale: 0.97 }}
             onClick={() => handlePick(p)}
           >
