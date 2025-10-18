@@ -129,7 +129,7 @@
 import axios from "axios";
 
 // Central Axios instance
-const api = axios.create({ baseURL: "https://bpbackend.onrender.com/api" });
+const api = axios.create({ baseURL: "https://blackpearlbackend.onrender.com/api" });
 
 // Chat-settings helpers
 export const blockUser = (userId, peerId) => api.post(`/block/${userId}/${peerId}`);
@@ -172,5 +172,6 @@ export const findUser = value =>
     : { params: { username: value.toLowerCase() } });
 
 export default api;
+
 
 
