@@ -1593,24 +1593,43 @@ export default function ChatWindow({ peer, socket, onBack = () => {} }) {
   const userId = user?._id?.toString();
   const peerId = peer?._id?.toString();
 
-  useEffect(() => {
-    if (!userId || !peerId) return;
+  // useEffect(() => {
+  //   if (!userId || !peerId) return;
 
-    console.log(`[Socket] User ${userId} joining room`);
-    socket.emit("join", userId);
+  //   console.log(`[Socket] User ${userId} joining room`);
+  //   socket.emit("join", userId);
 
-    const fetchInitialMessages = async () => {
-      try {
-        const res = await fetchMessages(userId, peerId);
-        setMsgs(res.data.messages);
-      } catch (err) {
-        console.error("Failed to load messages:", err);
-      }
-    };
+  //   const fetchInitialMessages = async () => {
+  //     try {
+  //       const res = await fetchMessages(userId, peerId);
+  //       setMsgs(res.data.messages);
+  //     } catch (err) {
+  //       console.error("Failed to load messages:", err);
+  //     }
+  //   };
 
-    fetchInitialMessages();
-  }, [peerId, userId, socket]);
+  //   fetchInitialMessages();
+  // }, [peerId, userId, socket]);
+useEffect(() => {
+  if (!userId) return;
 
+  console.log(`[Socket] User ${userId} joining room`);
+  socket.emit("join", userId);
+
+  const fetchInitialMessages = async () => {
+    if (!peerId) return;
+    try {
+      const res = await fetchMessages(userId, peerId);
+      setMsgs(res.data.messages);
+    } catch (err) {
+      console.error("Failed to load messages:", err);
+    }
+  };
+
+  fetchInitialMessages();
+}, [userId, peerId, socket]); // keep peerId only for fetching messages
+
+  
   useEffect(() => {
     const checkBlockStatus = async () => {
       try {
@@ -2073,5 +2092,6 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
