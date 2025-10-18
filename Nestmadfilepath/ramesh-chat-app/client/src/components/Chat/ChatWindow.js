@@ -1654,10 +1654,14 @@ useEffect(() => {
       const sender = m.sender.toString();
       const receiver = m.receiver.toString();
   // Only play sound if message is from peer to current user
+
+  // Play sound only for messages from peer to you
   if (sender === peerId && receiver === userId) {
-     notificationAudio.current.play().catch(err => console.log(err));
+    notificationAudio.current.play().catch(err => console.log(err));
   }
-     if ((sender === peerId && receiver === userId) || (sender === userId && receiver === peerId)) {
+
+  // Update chat for all relevant messages (sent & received)
+  if ((sender === peerId && receiver === userId) || (sender === userId && receiver === peerId)) {
     setMsgs((prev) => {
       if (!prev.some((msg) => msg._id === m._id)) {
         return [...prev, m];
@@ -2096,6 +2100,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
