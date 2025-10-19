@@ -1630,74 +1630,74 @@ useEffect(() => {
   }, [userId, peerId]);
 
 
- // useEffect(() => {
+ useEffect(() => {
   
- //  const SOUND_INTERVAL = 1200; // 1.2 seconds gap between sounds
+  const SOUND_INTERVAL = 1200; // 1.2 seconds gap between sounds
 
- //  const recv = (m) => {
- //    if (!m || !m.sender || !m.receiver) return;
+  const recv = (m) => {
+    if (!m || !m.sender || !m.receiver) return;
 
- //    const sender = m.sender?._id?.toString() || m.sender.toString();
- //    const receiver = m.receiver?._id?.toString() || m.receiver.toString();
+    const sender = m.sender?._id?.toString() || m.sender.toString();
+    const receiver = m.receiver?._id?.toString() || m.receiver.toString();
 
- //    // 🔊 Throttled sound playback — only one ping every 1.2s
- //    if (receiver === userId && sender === peerId) {
- //      const now = Date.now();
- //      if (now - lastSoundTime.current > SOUND_INTERVAL) {
- //        notificationAudio.current.play().catch(err => console.log(err));
- //        lastSoundTime.current = now;
- //      }
- //    }
+    // 🔊 Throttled sound playback — only one ping every 1.2s
+    if (receiver === userId && sender === peerId) {
+      const now = Date.now();
+      if (now - lastSoundTime.current > SOUND_INTERVAL) {
+        notificationAudio.current.play().catch(err => console.log(err));
+        lastSoundTime.current = now;
+      }
+    }
 
- //    // 💬 Add message if it’s between you and your peer
- //    if (
- //      (sender === userId && receiver === peerId) ||
- //      (sender === peerId && receiver === userId)
- //    ) {
- //      setMsgs((prev) => {
- //        if (!prev.some((msg) => msg._id === m._id)) {
- //          return [...prev, m];
- //        }
- //        return prev;
- //      });
- //    }
- //  };
+    // 💬 Add message if it’s between you and your peer
+    if (
+      (sender === userId && receiver === peerId) ||
+      (sender === peerId && receiver === userId)
+    ) {
+      setMsgs((prev) => {
+        if (!prev.some((msg) => msg._id === m._id)) {
+          return [...prev, m];
+        }
+        return prev;
+      });
+    }
+  };
 
- //  const typingH = (id) => {
- //    if (id === peerId) {
- //      setTyping(true);
- //      setTimeout(() => setTyping(false), 1500);
- //    }
- //  };
+  const typingH = (id) => {
+    if (id === peerId) {
+      setTyping(true);
+      setTimeout(() => setTyping(false), 1500);
+    }
+  };
 
- //  // const onlineH = (id) => {
- //  //   if (id === peerId) {
- //  //     setOnline(true);
- //  //     setLast(null);
- //  //   }
- //  // };
+  const onlineH = (id) => {
+    if (id === peerId) {
+      setOnline(true);
+      setLast(null);
+    }
+  };
 
- //  // const offlineH = (id) => {
- //  //   if (id === peerId) {
- //  //     setOnline(false);
- //  //     setLast(new Date());
- //  //   }
- //  // };
+  const offlineH = (id) => {
+    if (id === peerId) {
+      setOnline(false);
+      setLast(new Date());
+    }
+  };
 
  
   
-//   socket.on("receiveMessage", recv);
-//   socket.on("peerTyping", typingH);
-//   socket.on("userOnline", onlineH);
-//   socket.on("userOffline", offlineH);
+  socket.on("receiveMessage", recv);
+  socket.on("peerTyping", typingH);
+  socket.on("userOnline", onlineH);
+  socket.on("userOffline", offlineH);
 
-//   return () => {
-//     socket.off("receiveMessage", recv);
-//     socket.off("peerTyping", typingH);
-//     socket.off("userOnline", onlineH);
-//     socket.off("userOffline", offlineH);
-//   };
-// }, [socket, userId, peerId, isUserBlocked]);
+  return () => {
+    socket.off("receiveMessage", recv);
+    socket.off("peerTyping", typingH);
+    socket.off("userOnline", onlineH);
+    socket.off("userOffline", offlineH);
+  };
+}, [socket, userId, peerId, isUserBlocked]);
 // useEffect(() => {
 //   const onlineH = (id) => {
 //     if (id === peerId) {
@@ -1723,53 +1723,53 @@ useEffect(() => {
 //     socket.off("userOffline", offlineH);
 //   };
 // }, [peerId]);
-useEffect(() => {
-  const SOUND_INTERVAL = 1200; // 1.2 seconds gap between sounds
+// useEffect(() => {
+//   const SOUND_INTERVAL = 1200; // 1.2 seconds gap between sounds
 
-  const recv = (m) => {
-    if (!m || !m.sender || !m.receiver) return;
+//   const recv = (m) => {
+//     if (!m || !m.sender || !m.receiver) return;
 
-    const sender = m.sender?._id?.toString() || m.sender.toString();
-    const receiver = m.receiver?._id?.toString() || m.receiver.toString();
+//     const sender = m.sender?._id?.toString() || m.sender.toString();
+//     const receiver = m.receiver?._id?.toString() || m.receiver.toString();
 
-    if (receiver === userId && sender === peerId) {
-      const now = Date.now();
-      if (now - lastSoundTime.current > SOUND_INTERVAL) {
-        notificationAudio.current.play().catch(err => console.log(err));
-        lastSoundTime.current = now;
-      }
-    }
+//     if (receiver === userId && sender === peerId) {
+//       const now = Date.now();
+//       if (now - lastSoundTime.current > SOUND_INTERVAL) {
+//         notificationAudio.current.play().catch(err => console.log(err));
+//         lastSoundTime.current = now;
+//       }
+//     }
 
-    if (
-      (sender === userId && receiver === peerId) ||
-      (sender === peerId && receiver === userId)
-    ) {
-      setMsgs((prev) => {
-        if (!prev.some((msg) => msg._id === m._id)) {
-          return [...prev, m];
-        }
-        return prev;
-      });
-    }
-  };
+//     if (
+//       (sender === userId && receiver === peerId) ||
+//       (sender === peerId && receiver === userId)
+//     ) {
+//       setMsgs((prev) => {
+//         if (!prev.some((msg) => msg._id === m._id)) {
+//           return [...prev, m];
+//         }
+//         return prev;
+//       });
+//     }
+//   };
 
-  const typingH = (id) => {
-    if (id === peerId) {
-      setTyping(true);
-      setTimeout(() => setTyping(false), 1500);
-    }
-  };
+//   const typingH = (id) => {
+//     if (id === peerId) {
+//       setTyping(true);
+//       setTimeout(() => setTyping(false), 1500);
+//     }
+//   };
 
-  // ✅ Removed the old onlineH/offlineH references here
+//   // ✅ Removed the old onlineH/offlineH references here
 
-  socket.on("receiveMessage", recv);
-  socket.on("peerTyping", typingH);
+//   socket.on("receiveMessage", recv);
+//   socket.on("peerTyping", typingH);
 
-  return () => {
-    socket.off("receiveMessage", recv);
-    socket.off("peerTyping", typingH);
-  };
-}, [socket, userId, peerId, isUserBlocked]);
+//   return () => {
+//     socket.off("receiveMessage", recv);
+//     socket.off("peerTyping", typingH);
+//   };
+// }, [socket, userId, peerId, isUserBlocked]);
 
 // Separate useEffect for online/offline status
 useEffect(() => {
@@ -2197,6 +2197,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
