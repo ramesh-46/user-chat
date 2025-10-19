@@ -1644,66 +1644,134 @@ useEffect(() => {
     if (userId && peerId) checkBlockStatus();
   }, [userId, peerId]);
 
-  useEffect(() => {
-const recv = (m) => {
-  if (!m || !m.sender || !m.receiver) return;
 
-  const sender = m.sender?._id?.toString() || m.sender.toString();
-  const receiver = m.receiver?._id?.toString() || m.receiver.toString();
+ useEffect(() => {
+  const lastSoundTime = useRef(0);
+  const SOUND_INTERVAL = 1200; // 1.2 seconds gap between sounds
 
-  // Play sound only for messages sent to you
-  if (receiver === userId && sender === peerId) {
-    notificationAudio.current.play().catch(err => console.log(err));
-  }
+  const recv = (m) => {
+    if (!m || !m.sender || !m.receiver) return;
 
-  // Add message if it’s between you and your peer
-  if (
-    (sender === userId && receiver === peerId) ||
-    (sender === peerId && receiver === userId)
-  ) {
-    setMsgs((prev) => {
-      if (!prev.some((msg) => msg._id === m._id)) {
-        return [...prev, m];
+    const sender = m.sender?._id?.toString() || m.sender.toString();
+    const receiver = m.receiver?._id?.toString() || m.receiver.toString();
+
+    // 🔊 Throttled sound playback — only one ping every 1.2s
+    if (receiver === userId && sender === peerId) {
+      const now = Date.now();
+      if (now - lastSoundTime.current > SOUND_INTERVAL) {
+        notificationAudio.current.play().catch(err => console.log(err));
+        lastSoundTime.current = now;
       }
-      return prev;
-    });
-  }
-};
+    }
+
+    // 💬 Add message if it’s between you and your peer
+    if (
+      (sender === userId && receiver === peerId) ||
+      (sender === peerId && receiver === userId)
+    ) {
+      setMsgs((prev) => {
+        if (!prev.some((msg) => msg._id === m._id)) {
+          return [...prev, m];
+        }
+        return prev;
+      });
+    }
+  };
+
+  const typingH = (id) => {
+    if (id === peerId) {
+      setTyping(true);
+      setTimeout(() => setTyping(false), 1500);
+    }
+  };
+
+  const onlineH = (id) => {
+    if (id === peerId) {
+      setOnline(true);
+      setLast(null);
+    }
+  };
+
+  const offlineH = (id) => {
+    if (id === peerId) {
+      setOnline(false);
+      setLast(new Date());
+    }
+  };
+
+  socket.on("receiveMessage", recv);
+  socket.on("peerTyping", typingH);
+  socket.on("userOnline", onlineH);
+  socket.on("userOffline", offlineH);
+
+  return () => {
+    socket.off("receiveMessage", recv);
+    socket.off("peerTyping", typingH);
+    socket.off("userOnline", onlineH);
+    socket.off("userOffline", offlineH);
+  };
+}, [socket, userId, peerId, isUserBlocked]);
+
+//   useEffect(() => {
+// const recv = (m) => {
+//   if (!m || !m.sender || !m.receiver) return;
+
+//   const sender = m.sender?._id?.toString() || m.sender.toString();
+//   const receiver = m.receiver?._id?.toString() || m.receiver.toString();
+
+//   // Play sound only for messages sent to you
+//   if (receiver === userId && sender === peerId) {
+//     notificationAudio.current.play().catch(err => console.log(err));
+//   }
+
+//   // Add message if it’s between you and your peer
+//   if (
+//     (sender === userId && receiver === peerId) ||
+//     (sender === peerId && receiver === userId)
+//   ) {
+//     setMsgs((prev) => {
+//       if (!prev.some((msg) => msg._id === m._id)) {
+//         return [...prev, m];
+//       }
+//       return prev;
+//     });
+//   }
+// };
 
 
-    const typingH = (id) => {
-      if (id === peerId) {
-        setTyping(true);
-        setTimeout(() => setTyping(false), 1500);
-      }
-    };
+//     const typingH = (id) => {
+//       if (id === peerId) {
+//         setTyping(true);
+//         setTimeout(() => setTyping(false), 1500);
+//       }
+//     };
 
-    const onlineH = (id) => {
-      if (id === peerId) {
-        setOnline(true);
-        setLast(null);
-      }
-    };
+//     const onlineH = (id) => {
+//       if (id === peerId) {
+//         setOnline(true);
+//         setLast(null);
+//       }
+//     };
 
-    const offlineH = (id) => {
-      if (id === peerId) {
-        setOnline(false);
-        setLast(new Date());
-      }
-    };
+//     const offlineH = (id) => {
+//       if (id === peerId) {
+//         setOnline(false);
+//         setLast(new Date());
+//       }
+//     };
 
-    socket.on("receiveMessage", recv);
-    socket.on("peerTyping", typingH);
-    socket.on("userOnline", onlineH);
-    socket.on("userOffline", offlineH);
+//     socket.on("receiveMessage", recv);
+//     socket.on("peerTyping", typingH);
+//     socket.on("userOnline", onlineH);
+//     socket.on("userOffline", offlineH);
 
-    return () => {
-      socket.off("receiveMessage", recv);
-      socket.off("peerTyping", typingH);
-      socket.off("userOnline", onlineH);
-      socket.off("userOffline", offlineH);
-    };
-  }, [socket, userId, peerId, isUserBlocked]);
+//     return () => {
+//       socket.off("receiveMessage", recv);
+//       socket.off("peerTyping", typingH);
+//       socket.off("userOnline", onlineH);
+//       socket.off("userOffline", offlineH);
+//     };
+//   }, [socket, userId, peerId, isUserBlocked]);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
@@ -2100,6 +2168,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
