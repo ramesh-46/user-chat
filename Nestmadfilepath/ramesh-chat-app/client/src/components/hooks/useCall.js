@@ -184,11 +184,10 @@
 // }
 
 
-
 import { useEffect, useRef, useState, useCallback } from "react";
-import socket from "../../socket"; // use shared socket instead of creating a new one
+import socket from "../../socket"; // use shared socket
 
-export function useCall(userId) {
+export function useCall(userId, isPeerOnline = true) {
   const pc = useRef(null);
   const localStream = useRef(null);
   const remoteStream = useRef(null);
@@ -202,26 +201,19 @@ export function useCall(userId) {
   };
 
   const startLocal = async () => {
-    if (
-      typeof navigator === "undefined" ||
-      !navigator.mediaDevices ||
-      !navigator.mediaDevices.getUserMedia
-    ) {
-      alert("❌ Your browser does not support audio call features. Try Chrome or Firefox over HTTPS.");
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("❌ Your browser does not support audio call. Use Chrome/Firefox over HTTPS.");
       throw new Error("getUserMedia not supported");
     }
 
     try {
       const permissions = await navigator.permissions?.query({ name: "microphone" });
-      if (permissions?.state === "denied") {
-        alert("❌ Microphone permission is blocked. Please enable it from browser settings.");
-        throw new Error("Permission denied");
-      }
+      if (permissions?.state === "denied") throw new Error("Permission denied");
 
       localStream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
       return localStream.current;
     } catch (err) {
-      alert("⚠️ Please allow microphone access in your browser.");
+      alert("⚠️ Allow microphone access in your browser.");
       throw err;
     }
   };
@@ -258,63 +250,54 @@ export function useCall(userId) {
     if (isCaller) {
       const offer = await pc.current.createOffer();
       await pc.current.setLocalDescription(offer);
-      socket.emit("webrtc-offer", {
-        to: remoteId,
-        sdp: pc.current.localDescription,
-      });
+      socket.emit("webrtc-offer", { to: remoteId, sdp: pc.current.localDescription });
     } else {
       const answer = await pc.current.createAnswer();
       await pc.current.setLocalDescription(answer);
-      socket.emit("webrtc-answer", {
-        to: remoteId,
-        sdp: pc.current.localDescription,
-      });
+      socket.emit("webrtc-answer", { to: remoteId, sdp: pc.current.localDescription });
     }
   };
 
   useEffect(() => {
     const s = socket;
 
-    s.emit("register", userId);
-
-    s.on("call", async ({ from }) => {
-      console.log("📞 Incoming call from", from);
+    s.on("call", ({ from }) => {
+      if (!isPeerOnline) return;
       setPeerId(from);
       setCallState("incoming");
     });
 
     s.on("webrtc-offer", async ({ from, sdp }) => {
-      console.log("Offer received from:", from); // debug
+      if (!isPeerOnline) return;
       try {
         setPeerId(from);
         await createPeer(false, from, sdp);
         setCallState("connected");
         s.emit("callAccepted", { to: from });
       } catch (e) {
-        console.error("❌ Offer handling failed:", e);
+        console.error("Offer handling failed:", e);
         cleanUp();
       }
     });
 
     s.on("webrtc-answer", async ({ from, sdp }) => {
-      console.log("Answer received from:", from); // debug
-      if (from !== peerId) return;
+      if (from !== peerId || !isPeerOnline) return;
       try {
         await pc.current.setRemoteDescription(new RTCSessionDescription(sdp));
         setCallState("connected");
         clearTimeout(timeoutRef.current);
       } catch (e) {
-        console.error("❌ Answer error:", e);
+        console.error("Answer error:", e);
         cleanUp();
       }
     });
 
     s.on("webrtc-ice", ({ from, candidate }) => {
-      if (!pc.current || from !== peerId) return;
+      if (!pc.current || from !== peerId || !isPeerOnline) return;
       if (pc.current.signalingState !== "closed") {
         pc.current
           .addIceCandidate(new RTCIceCandidate(candidate))
-          .catch((e) => console.warn("🧊 ICE ignored:", e.message));
+          .catch((e) => console.warn("ICE ignored:", e.message));
       }
     });
 
@@ -329,17 +312,20 @@ export function useCall(userId) {
       s.off("webrtc-ice");
       s.off("callEnded");
     };
-  }, [peerId, userId]);
+  }, [peerId, isPeerOnline]);
 
   const call = useCallback(
     async (targetId) => {
       if (callState !== "idle") return;
+      if (!isPeerOnline) {
+        alert("User is offline. Cannot start a call.");
+        return;
+      }
 
       setPeerId(targetId);
       setCallState("calling");
 
       try {
-        // Emit call first so callee knows to accept
         socket.emit("call", { to: targetId, from: userId });
 
         await createPeer(true, targetId);
@@ -351,12 +337,12 @@ export function useCall(userId) {
           });
         }, 30000);
       } catch (err) {
-        console.error("❌ Call setup failed:", err);
-        alert("Call failed. Please check mic permission or try HTTPS browser.");
+        console.error("Call setup failed:", err);
+        alert("Call failed. Check mic permission or HTTPS browser.");
         cleanUp();
       }
     },
-    [callState, userId, hangup]
+    [callState, userId, hangup, isPeerOnline]
   );
 
   const hangup = useCallback(() => {
