@@ -1889,7 +1889,7 @@ const [onlineUsers, setOnlineUsers] = useState([]);
       <div style={{ ...S.head, background: ACCENT20, color: "var(--textMain)" }}>
         {isMobile && <button style={S.back} onClick={onBack}>←</button>}
         <div style={headLeftStyle}>{peer.mobile || peer.username}</div>
-        // <CallUI peer={peer} />
+  
         <CallUI peer={peer} onlineUsers={onlineUsers} />
 
 
@@ -2197,6 +2197,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
