@@ -1594,7 +1594,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
  const notificationAudio = useRef(new Audio("/ping.mp3"));
   const userId = user?._id?.toString();
   const peerId = peer?._id?.toString();
-
+const lastSoundTime = useRef(0);
   // useEffect(() => {
   //   if (!userId || !peerId) return;
 
@@ -1647,7 +1647,7 @@ useEffect(() => {
 
 
  useEffect(() => {
-  const lastSoundTime = useRef(0);
+  
   const SOUND_INTERVAL = 1200; // 1.2 seconds gap between sounds
 
   const recv = (m) => {
@@ -2169,6 +2169,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
