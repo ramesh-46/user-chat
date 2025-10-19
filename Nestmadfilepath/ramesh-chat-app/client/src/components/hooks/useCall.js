@@ -185,12 +185,10 @@
 
 
 
-
 import { useEffect, useRef, useState, useCallback } from "react";
-import { io } from "socket.io-client";
+import socket from "../../socket"; // use shared socket instead of creating a new one
 
 export function useCall(userId) {
-  const socket = useRef(io("https://blackpearlbackend.onrender.com"));
   const pc = useRef(null);
   const localStream = useRef(null);
   const remoteStream = useRef(null);
@@ -250,7 +248,7 @@ export function useCall(userId) {
 
     pc.current.onicecandidate = ({ candidate }) => {
       if (candidate)
-        socket.current.emit("webrtc-ice", { to: remoteId, candidate });
+        socket.emit("webrtc-ice", { to: remoteId, candidate });
     };
 
     if (remoteOffer) {
@@ -260,14 +258,14 @@ export function useCall(userId) {
     if (isCaller) {
       const offer = await pc.current.createOffer();
       await pc.current.setLocalDescription(offer);
-      socket.current.emit("webrtc-offer", {
+      socket.emit("webrtc-offer", {
         to: remoteId,
         sdp: pc.current.localDescription,
       });
     } else {
       const answer = await pc.current.createAnswer();
       await pc.current.setLocalDescription(answer);
-      socket.current.emit("webrtc-answer", {
+      socket.emit("webrtc-answer", {
         to: remoteId,
         sdp: pc.current.localDescription,
       });
@@ -275,7 +273,7 @@ export function useCall(userId) {
   };
 
   useEffect(() => {
-    const s = socket.current;
+    const s = socket;
 
     s.emit("register", userId);
 
@@ -286,6 +284,7 @@ export function useCall(userId) {
     });
 
     s.on("webrtc-offer", async ({ from, sdp }) => {
+      console.log("Offer received from:", from); // debug
       try {
         setPeerId(from);
         await createPeer(false, from, sdp);
@@ -298,6 +297,7 @@ export function useCall(userId) {
     });
 
     s.on("webrtc-answer", async ({ from, sdp }) => {
+      console.log("Answer received from:", from); // debug
       if (from !== peerId) return;
       try {
         await pc.current.setRemoteDescription(new RTCSessionDescription(sdp));
@@ -323,35 +323,44 @@ export function useCall(userId) {
     });
 
     return () => {
-      s.disconnect();
+      s.off("call");
+      s.off("webrtc-offer");
+      s.off("webrtc-answer");
+      s.off("webrtc-ice");
+      s.off("callEnded");
     };
   }, [peerId, userId]);
 
   const call = useCallback(
     async (targetId) => {
       if (callState !== "idle") return;
+
       setPeerId(targetId);
       setCallState("calling");
 
       try {
+        // Emit call first so callee knows to accept
+        socket.emit("call", { to: targetId, from: userId });
+
         await createPeer(true, targetId);
 
         timeoutRef.current = setTimeout(() => {
-          if (callState === "calling") hangup();
+          setCallState((prev) => {
+            if (prev === "calling") hangup();
+            return prev;
+          });
         }, 30000);
-
-        socket.current.emit("call", { to: targetId, from: userId });
       } catch (err) {
         console.error("❌ Call setup failed:", err);
         alert("Call failed. Please check mic permission or try HTTPS browser.");
         cleanUp();
       }
     },
-    [callState]
+    [callState, userId, hangup]
   );
 
   const hangup = useCallback(() => {
-    socket.current.emit("callEnded", { to: peerId });
+    if (peerId) socket.emit("callEnded", { to: peerId });
     cleanUp();
   }, [peerId]);
 
@@ -363,5 +372,3 @@ export function useCall(userId) {
     callState,
   };
 }
-
-
