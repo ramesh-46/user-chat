@@ -1684,27 +1684,7 @@ useEffect(() => {
   //   }
   // };
 
-  useEffect(() => {
-  const onlineH = (id) => {
-    setOnline(true);
-    setLast(null);
-    setOnlineUsers((prev) => [...new Set([...prev, id])]); // add user if not exists
-  };
-
-  const offlineH = (id) => {
-    setOnline(false);
-    setLast(new Date());
-    setOnlineUsers((prev) => prev.filter((u) => u !== id)); // remove user
-  };
-
-  socket.on("userOnline", onlineH);
-  socket.on("userOffline", offlineH);
-
-  return () => {
-    socket.off("userOnline", onlineH);
-    socket.off("userOffline", offlineH);
-  };
-}, [peerId]);
+ 
   
   socket.on("receiveMessage", recv);
   socket.on("peerTyping", typingH);
@@ -1718,7 +1698,31 @@ useEffect(() => {
     socket.off("userOffline", offlineH);
   };
 }, [socket, userId, peerId, isUserBlocked]);
+useEffect(() => {
+  const onlineH = (id) => {
+    if (id === peerId) {
+      setOnline(true);
+      setLast(null);
+      setOnlineUsers((prev) => [...new Set([...prev, id])]);
+    }
+  };
 
+  const offlineH = (id) => {
+    if (id === peerId) {
+      setOnline(false);
+      setLast(new Date());
+      setOnlineUsers((prev) => prev.filter((u) => u !== id));
+    }
+  };
+
+  socket.on("userOnline", onlineH);
+  socket.on("userOffline", offlineH);
+
+  return () => {
+    socket.off("userOnline", onlineH);
+    socket.off("userOffline", offlineH);
+  };
+}, [peerId]);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
@@ -2119,6 +2123,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
