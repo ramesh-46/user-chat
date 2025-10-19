@@ -184,7 +184,7 @@
 // }
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import socket from "../socket"; // use shared socket from your main socket file
+import socket from "../../socket"; // use shared socket from your main socket file
 
 export function useCall(userId, onlineUsers) {
   const pc = useRef(null);
@@ -343,3 +343,4 @@ export function useCall(userId, onlineUsers) {
     callState,
   };
 }
+
