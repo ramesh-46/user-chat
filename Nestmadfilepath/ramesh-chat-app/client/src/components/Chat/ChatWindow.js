@@ -1595,23 +1595,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   const userId = user?._id?.toString();
   const peerId = peer?._id?.toString();
 const lastSoundTime = useRef(0);
-  // useEffect(() => {
-  //   if (!userId || !peerId) return;
 
-  //   console.log(`[Socket] User ${userId} joining room`);
-  //   socket.emit("join", userId);
-
-  //   const fetchInitialMessages = async () => {
-  //     try {
-  //       const res = await fetchMessages(userId, peerId);
-  //       setMsgs(res.data.messages);
-  //     } catch (err) {
-  //       console.error("Failed to load messages:", err);
-  //     }
-  //   };
-
-  //   fetchInitialMessages();
-  // }, [peerId, userId, socket]);
 useEffect(() => {
   if (!userId) return;
 
@@ -1713,66 +1697,6 @@ useEffect(() => {
   };
 }, [socket, userId, peerId, isUserBlocked]);
 
-//   useEffect(() => {
-// const recv = (m) => {
-//   if (!m || !m.sender || !m.receiver) return;
-
-//   const sender = m.sender?._id?.toString() || m.sender.toString();
-//   const receiver = m.receiver?._id?.toString() || m.receiver.toString();
-
-//   // Play sound only for messages sent to you
-//   if (receiver === userId && sender === peerId) {
-//     notificationAudio.current.play().catch(err => console.log(err));
-//   }
-
-//   // Add message if it’s between you and your peer
-//   if (
-//     (sender === userId && receiver === peerId) ||
-//     (sender === peerId && receiver === userId)
-//   ) {
-//     setMsgs((prev) => {
-//       if (!prev.some((msg) => msg._id === m._id)) {
-//         return [...prev, m];
-//       }
-//       return prev;
-//     });
-//   }
-// };
-
-
-//     const typingH = (id) => {
-//       if (id === peerId) {
-//         setTyping(true);
-//         setTimeout(() => setTyping(false), 1500);
-//       }
-//     };
-
-//     const onlineH = (id) => {
-//       if (id === peerId) {
-//         setOnline(true);
-//         setLast(null);
-//       }
-//     };
-
-//     const offlineH = (id) => {
-//       if (id === peerId) {
-//         setOnline(false);
-//         setLast(new Date());
-//       }
-//     };
-
-//     socket.on("receiveMessage", recv);
-//     socket.on("peerTyping", typingH);
-//     socket.on("userOnline", onlineH);
-//     socket.on("userOffline", offlineH);
-
-//     return () => {
-//       socket.off("receiveMessage", recv);
-//       socket.off("peerTyping", typingH);
-//       socket.off("userOnline", onlineH);
-//       socket.off("userOffline", offlineH);
-//     };
-//   }, [socket, userId, peerId, isUserBlocked]);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
@@ -2169,6 +2093,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
