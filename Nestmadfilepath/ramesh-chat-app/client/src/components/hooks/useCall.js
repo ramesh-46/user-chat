@@ -182,6 +182,9 @@
 //     callState,
 //   };
 // }
+// useCall.js
+import { useEffect, useRef, useState, useCallback } from "react";
+import socket from "../../socket"; // make sure this is your shared socket instance
 
 export function useCall(userId, onlineUsers) {
   const pc = useRef(null);
@@ -196,22 +199,40 @@ export function useCall(userId, onlineUsers) {
     iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
   };
 
+  // Start microphone and local stream
   const startLocal = async () => {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    localStream.current = stream;
-    return stream;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("❌ Browser does not support audio calls. Use Chrome/Firefox over HTTPS.");
+      throw new Error("getUserMedia not supported");
+    }
+
+    try {
+      const permissions = await navigator.permissions?.query({ name: "microphone" });
+      if (permissions?.state === "denied") throw new Error("Permission denied");
+
+      localStream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
+      return localStream.current;
+    } catch (err) {
+      alert("⚠️ Please allow microphone access.");
+      throw err;
+    }
   };
 
+  // Clean up peer connection and state
   const cleanUp = () => {
-    pc.current?.close();
+    try {
+      pc.current?.close();
+    } catch {}
     pc.current = null;
     clearTimeout(timeoutRef.current);
     setCallState("idle");
     setPeerId(null);
   };
 
+  // Create peer connection (caller or receiver)
   const createPeer = async (isCaller, remoteId, remoteOffer = null) => {
     const stream = await startLocal();
+
     pc.current = new RTCPeerConnection(rtcCfg);
     stream.getTracks().forEach((t) => pc.current.addTrack(t, stream));
 
@@ -236,7 +257,7 @@ export function useCall(userId, onlineUsers) {
     }
   };
 
-  // Answer function for incoming calls
+  // Answer incoming call
   const answer = useCallback(async () => {
     if (!peerId) return;
     setCallState("connected");
@@ -244,30 +265,41 @@ export function useCall(userId, onlineUsers) {
     socket.emit("callAccepted", { to: peerId });
   }, [peerId]);
 
+  // Initiate a call
   const call = useCallback(
     async (targetId) => {
       if (callState !== "idle") return;
       if (!onlineUsers.includes(targetId)) {
-        alert("User is offline");
+        alert("User is offline. Cannot start call.");
         return;
       }
+
       setPeerId(targetId);
       setCallState("calling");
       socket.emit("call", { to: targetId, from: userId });
-      await createPeer(true, targetId);
 
-      timeoutRef.current = setTimeout(() => {
-        if (callState === "calling") hangup();
-      }, 30000);
+      try {
+        await createPeer(true, targetId);
+
+        timeoutRef.current = setTimeout(() => {
+          if (callState === "calling") hangup();
+        }, 30000);
+      } catch (err) {
+        console.error("Call setup failed:", err);
+        alert("Call failed. Check mic permission or HTTPS browser.");
+        cleanUp();
+      }
     },
     [callState, userId, onlineUsers]
   );
 
+  // End a call
   const hangup = useCallback(() => {
     if (peerId) socket.emit("callEnded", { to: peerId });
     cleanUp();
   }, [peerId]);
 
+  // Socket listeners
   useEffect(() => {
     socket.emit("register", userId);
 
@@ -278,25 +310,35 @@ export function useCall(userId, onlineUsers) {
     });
 
     socket.on("webrtc-offer", async ({ from, sdp }) => {
+      if (!onlineUsers.includes(from)) return;
       try {
         setPeerId(from);
         await createPeer(false, from, sdp);
         setCallState("connected");
         socket.emit("callAccepted", { to: from });
-      } catch {
+      } catch (e) {
+        console.error("Offer handling failed:", e);
         cleanUp();
       }
     });
 
     socket.on("webrtc-answer", async ({ from, sdp }) => {
       if (from !== peerId) return;
-      await pc.current.setRemoteDescription(new RTCSessionDescription(sdp));
-      setCallState("connected");
+      try {
+        await pc.current.setRemoteDescription(new RTCSessionDescription(sdp));
+        setCallState("connected");
+        clearTimeout(timeoutRef.current);
+      } catch (e) {
+        console.error("Answer error:", e);
+        cleanUp();
+      }
     });
 
     socket.on("webrtc-ice", ({ from, candidate }) => {
       if (!pc.current || from !== peerId) return;
-      pc.current.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+      pc.current.addIceCandidate(new RTCIceCandidate(candidate)).catch((e) =>
+        console.warn("ICE ignored:", e.message)
+      );
     });
 
     socket.on("callEnded", ({ from }) => {
@@ -312,7 +354,12 @@ export function useCall(userId, onlineUsers) {
     };
   }, [peerId, userId, onlineUsers]);
 
-  return { call, hangup, answer, getLocalStream: () => localStream.current, getRemoteStream: () => remoteStream.current, callState };
+  return {
+    call,
+    hangup,
+    answer,
+    getLocalStream: () => localStream.current,
+    getRemoteStream: () => remoteStream.current,
+    callState,
+  };
 }
-
-
