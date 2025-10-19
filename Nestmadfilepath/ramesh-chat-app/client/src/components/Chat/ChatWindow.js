@@ -1645,42 +1645,31 @@ useEffect(() => {
   }, [userId, peerId]);
 
   useEffect(() => {
-    const recv = (m) => {
-      if (isUserBlocked) {
-        console.log("Blocked user - message ignored");
-        return;
-      }
+const recv = (m) => {
+  if (!m || !m.sender || !m.receiver) return;
 
-      const sender = m.sender.toString();
-      const receiver = m.receiver.toString();
-  // Only play sound if message is from peer to current user
+  const sender = m.sender?._id?.toString() || m.sender.toString();
+  const receiver = m.receiver?._id?.toString() || m.receiver.toString();
 
-  // Play sound only for messages from peer to you
-  if (sender === peerId && receiver === userId) {
+  // Play sound only for messages sent to you
+  if (receiver === userId && sender === peerId) {
     notificationAudio.current.play().catch(err => console.log(err));
   }
 
-  // Update chat for all relevant messages (sent & received)
-  if ((sender === peerId && receiver === userId) || (sender === userId && receiver === peerId)) {
+  // Add message if it’s between you and your peer
+  if (
+    (sender === userId && receiver === peerId) ||
+    (sender === peerId && receiver === userId)
+  ) {
     setMsgs((prev) => {
       if (!prev.some((msg) => msg._id === m._id)) {
         return [...prev, m];
       }
+      return prev;
+    });
+  }
+};
 
-
-     
-      // if ((sender === peerId && receiver === userId) || (sender === userId && receiver === peerId)) {
-      //   // <-- use it here
-      //   notificationAudio.current.play().catch(err => console.log(err));
-
-      //   setMsgs((prev) => {
-      //     if (!prev.some((msg) => msg._id === m._id)) {
-      //       return [...prev, m];
-      //     }
-          return prev;
-        });
-      }
-    };
 
     const typingH = (id) => {
       if (id === peerId) {
@@ -2111,6 +2100,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
