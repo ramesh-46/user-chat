@@ -1670,20 +1670,42 @@ useEffect(() => {
     }
   };
 
+  // const onlineH = (id) => {
+  //   if (id === peerId) {
+  //     setOnline(true);
+  //     setLast(null);
+  //   }
+  // };
+
+  // const offlineH = (id) => {
+  //   if (id === peerId) {
+  //     setOnline(false);
+  //     setLast(new Date());
+  //   }
+  // };
+
+  useEffect(() => {
   const onlineH = (id) => {
-    if (id === peerId) {
-      setOnline(true);
-      setLast(null);
-    }
+    setOnline(true);
+    setLast(null);
+    setOnlineUsers((prev) => [...new Set([...prev, id])]); // add user if not exists
   };
 
   const offlineH = (id) => {
-    if (id === peerId) {
-      setOnline(false);
-      setLast(new Date());
-    }
+    setOnline(false);
+    setLast(new Date());
+    setOnlineUsers((prev) => prev.filter((u) => u !== id)); // remove user
   };
 
+  socket.on("userOnline", onlineH);
+  socket.on("userOffline", offlineH);
+
+  return () => {
+    socket.off("userOnline", onlineH);
+    socket.off("userOffline", offlineH);
+  };
+}, [peerId]);
+  
   socket.on("receiveMessage", recv);
   socket.on("peerTyping", typingH);
   socket.on("userOnline", onlineH);
@@ -1782,13 +1804,16 @@ useEffect(() => {
   const otherStyle = { background: "white", color: "black" };
   const headLeftStyle = { ...S.headLeft, fontSize: isMobile ? "0.8rem" : S.headLeft.fontSize };
   const headRightStyle = { ...S.headRight, fontSize: isMobile ? "0.7rem" : S.headRight.fontSize };
+const [onlineUsers, setOnlineUsers] = useState([]);
 
   return (
     <div style={{ ...S.win, width: isMobile ? "100%" : "auto" }}>
       <div style={{ ...S.head, background: ACCENT20, color: "var(--textMain)" }}>
         {isMobile && <button style={S.back} onClick={onBack}>←</button>}
         <div style={headLeftStyle}>{peer.mobile || peer.username}</div>
-        <CallUI peer={peer} />
+        // <CallUI peer={peer} />
+         <CallUI peer={peer} onlineUsers={/* array of online user IDs */} />
+
         <button
           style={{
             backgroundColor: "green",
@@ -2093,6 +2118,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
