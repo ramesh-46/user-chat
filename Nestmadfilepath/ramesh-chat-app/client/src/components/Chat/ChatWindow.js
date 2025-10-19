@@ -1567,6 +1567,7 @@ import { motion } from "framer-motion";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
  // put ping.mp3 in public folder
+import socket from "../../socket"; // adjust the path based on your folder structure
 
 dayjs.extend(relativeTime);
 
@@ -1580,7 +1581,7 @@ const useIsMobile = () => {
   return isMobile;
 };
 
-export default function ChatWindow({ peer, socket, onBack = () => {} }) {
+export default function ChatWindow({ peer, onBack = () => {} }) {
   const { user } = useContext(AuthContext);
   const [msgs, setMsgs] = useState([]);
   const [typing, setTyping] = useState(false);
@@ -2168,6 +2169,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
