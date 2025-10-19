@@ -1772,31 +1772,31 @@ useEffect(() => {
 // }, [socket, userId, peerId, isUserBlocked]);
 
 // Separate useEffect for online/offline status
-useEffect(() => {
-  const onlineH = (id) => {
-    if (id === peerId) {
-      setOnline(true);
-      setLast(null);
-      setOnlineUsers((prev) => [...new Set([...prev, id])]);
-    }
-  };
+// useEffect(() => {
+//   const onlineH = (id) => {
+//     if (id === peerId) {
+//       setOnline(true);
+//       setLast(null);
+//       setOnlineUsers((prev) => [...new Set([...prev, id])]);
+//     }
+//   };
 
-  const offlineH = (id) => {
-    if (id === peerId) {
-      setOnline(false);
-      setLast(new Date());
-      setOnlineUsers((prev) => prev.filter((u) => u !== id));
-    }
-  };
+//   const offlineH = (id) => {
+//     if (id === peerId) {
+//       setOnline(false);
+//       setLast(new Date());
+//       setOnlineUsers((prev) => prev.filter((u) => u !== id));
+//     }
+//   };
 
-  socket.on("userOnline", onlineH);
-  socket.on("userOffline", offlineH);
+//   socket.on("userOnline", onlineH);
+//   socket.on("userOffline", offlineH);
 
-  return () => {
-    socket.off("userOnline", onlineH);
-    socket.off("userOffline", offlineH);
-  };
-}, [peerId]);
+//   return () => {
+//     socket.off("userOnline", onlineH);
+//     socket.off("userOffline", offlineH);
+//   };
+// }, [peerId]);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
@@ -2197,6 +2197,7 @@ const S = {
     textAlign: "center",
   },
 };
+
 
 
 
