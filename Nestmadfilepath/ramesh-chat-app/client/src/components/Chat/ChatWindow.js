@@ -1996,7 +1996,9 @@ const [onlineUsers, setOnlineUsers] = useState([]);
               onDoubleClick={!isMobile ? () => handleDoubleClick(m._id) : undefined}
             >
               {m.text && (
-                <span style={{ ...S.messageText, fontWeight: 'bold', color: 'black',textTransform: "none", }}>
+                <span style={{ ...S.messageText, fontWeight: 'bold', color: 'black', fontFamily: "'Inter', sans-serif", // Use 
+  fontVariant: 'normal', // Disable small 
+  textTransform: 'none' // }}>
                   {m.text}
                 </span>
               )}
