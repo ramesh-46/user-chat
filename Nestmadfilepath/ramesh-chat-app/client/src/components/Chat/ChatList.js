@@ -323,6 +323,7 @@ export default function ChatList({ current, onPick, socket }) {
               style={{
                 ...S.mobile,
                 color: selected ? "orange" : "var(--textMain)",
+                textTransform: "none",
               }}
             >
               {p.mobile || p.username}
@@ -393,3 +394,4 @@ const S = {
     marginTop: 2,
   },
 };
+
