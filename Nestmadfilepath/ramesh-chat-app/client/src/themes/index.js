@@ -11,7 +11,8 @@ export const THEMES = {
       textMain:    "#E1C2B3", // ◎ high-contrast pinkish
       textLight:   "#B8A7A0"
     },
-    fonts: { ui: "'Cinzel', serif" }
+     fonts: { ui: "'Roboto', sans-serif" }
+
   },
 
   /* 02 – Rose Fog */
@@ -105,3 +106,4 @@ export const THEMES = {
     fonts: { ui: "'EB Garamond', serif" }
   }
 };
+
