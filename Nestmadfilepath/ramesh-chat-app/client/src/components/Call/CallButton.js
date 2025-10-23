@@ -20,7 +20,6 @@ export default function CallButton({ peer }) {
   const localRef = useRef(null);
   const remoteRef = useRef(null);
   const [timer, setTimer] = useState(0);
-
   const ringingAudio = useRef(new Audio("/ringing-tone.mp3"));
   const callingAudio = useRef(new Audio("/calling-tone.mp3"));
 
@@ -32,7 +31,6 @@ export default function CallButton({ peer }) {
       ringingAudio.current.pause();
       ringingAudio.current.currentTime = 0;
     }
-
     if (callState === "incoming") {
       callingAudio.current.loop = true;
       callingAudio.current.play().catch(() => {});
@@ -91,6 +89,7 @@ export default function CallButton({ peer }) {
 
   const nameStyle = { color: "#fff", fontSize: 24, fontWeight: "bold", marginBottom: 10 };
   const statusStyle = { color: "#aaa", fontSize: 16, marginBottom: 30 };
+
   const buttonStyle = {
     padding: "12px 24px",
     margin: "0 10px",
@@ -105,17 +104,14 @@ export default function CallButton({ peer }) {
     <>
       <audio ref={localRef} autoPlay muted={isMuted} style={{ display: "none" }} />
       <audio ref={remoteRef} autoPlay style={{ display: "none" }} />
-
       {callState !== "idle" && (
         <div style={containerStyle}>
           <div style={avatarStyle}>👤</div>
           <div style={nameStyle}>{(callState === "incoming" ? incomingPeer : peer)?.username || "Unknown"}</div>
-
           {callState === "calling" && <div style={statusStyle}>Calling...</div>}
           {callState === "incoming" && <div style={statusStyle}>Incoming Call</div>}
           {callState === "connected" && <div style={statusStyle}>{formatTime(timer)}</div>}
           {callState === "ended" && <div style={statusStyle}>Call Ended</div>}
-
           <div style={{ display: "flex", justifyContent: "center", marginTop: 20 }}>
             {callState === "incoming" && (
               <>
@@ -145,10 +141,9 @@ export default function CallButton({ peer }) {
           </div>
         </div>
       )}
-
       {callState === "idle" && (
         <button
-          onClick={() => call(peer._id)}
+          onClick={() => call(peer._id, peer)}
           style={{
             ...buttonStyle,
             background: "#4caf50",
