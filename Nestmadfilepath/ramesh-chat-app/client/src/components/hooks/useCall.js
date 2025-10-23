@@ -7,11 +7,54 @@ export function useCall(userId) {
   const localStream = useRef(null);
   const remoteStream = useRef(null);
   const timeoutRef = useRef(null);
-  const [callState, setCallState] = useState("idle"); // idle, calling, incoming, connected, ended
+  const [callState, setCallState] = useState("idle");
   const [peerId, setPeerId] = useState(null);
   const [incomingPeer, setIncomingPeer] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
   const rtcCfg = { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] };
+
+  const stopTracks = (stream) => {
+    if (!stream) return;
+    stream.getTracks().forEach((track) => {
+      track.stop();
+    });
+  };
+
+  const cleanUp = useCallback(() => {
+    try {
+      // Close peer connection
+      if (pc.current) {
+        pc.current.ontrack = null;
+        pc.current.onicecandidate = null;
+        pc.current.onconnectionstatechange = null;
+        pc.current.close();
+        pc.current = null;
+      }
+
+      // Stop all local/remote audio tracks immediately
+      stopTracks(localStream.current);
+      stopTracks(remoteStream.current);
+
+      localStream.current = null;
+      remoteStream.current = null;
+
+      // Clear any pending timeouts
+      clearTimeout(timeoutRef.current);
+
+      // Reset states
+      setPeerId(null);
+      setIncomingPeer(null);
+      setIsMuted(false);
+      setCallState("idle");
+
+      // Close socket connection gracefully
+      if (socket.current && socket.current.connected) {
+        socket.current.disconnect();
+      }
+    } catch (err) {
+      console.error("Cleanup error:", err);
+    }
+  }, []);
 
   const startLocal = async () => {
     try {
@@ -23,31 +66,10 @@ export function useCall(userId) {
     }
   };
 
-  const stopTracks = (stream) => {
-    if (!stream) return;
-    stream.getTracks().forEach(track => track.stop());
-  };
-
-  const cleanUp = useCallback(() => {
-    if (pc.current) {
-      pc.current.close();
-      pc.current = null;
-    }
-    stopTracks(localStream.current);
-    stopTracks(remoteStream.current);
-    localStream.current = null;
-    remoteStream.current = null;
-    clearTimeout(timeoutRef.current);
-    setCallState("idle");
-    setPeerId(null);
-    setIncomingPeer(null);
-    setIsMuted(false);
-  }, []);
-
   const createPeer = async (isCaller, remoteId, remoteOffer = null) => {
     const stream = await startLocal();
     pc.current = new RTCPeerConnection(rtcCfg);
-    stream.getTracks().forEach(t => pc.current.addTrack(t, stream));
+    stream.getTracks().forEach((t) => pc.current.addTrack(t, stream));
 
     pc.current.ontrack = ({ streams: [s] }) => {
       remoteStream.current = s;
@@ -75,7 +97,11 @@ export function useCall(userId) {
 
     pc.current.onconnectionstatechange = () => {
       if (!pc.current) return;
-      if (pc.current.connectionState === "disconnected" || pc.current.connectionState === "failed" || pc.current.connectionState === "closed") {
+      if (
+        pc.current.connectionState === "disconnected" ||
+        pc.current.connectionState === "failed" ||
+        pc.current.connectionState === "closed"
+      ) {
         cleanUp();
       }
     };
@@ -89,7 +115,7 @@ export function useCall(userId) {
       setCallState("connected");
     } catch {
       setCallState("ended");
-      setTimeout(cleanUp, 2000);
+      setTimeout(cleanUp, 1000);
     }
   }, [callState, peerId, userId, cleanUp]);
 
@@ -100,34 +126,46 @@ export function useCall(userId) {
     cleanUp();
   }, [callState, peerId, userId, cleanUp]);
 
-  const call = useCallback(async (targetId, targetUser) => {
-    if (callState !== "idle") return;
-    setPeerId(targetId);
-    setCallState("calling");
-    try {
-      socket.current.emit("call", { to: targetId, from: userId, fromUser: { username: targetUser?.username || "Caller" } });
-      timeoutRef.current = setTimeout(() => {
+  const call = useCallback(
+    async (targetId, targetUser) => {
+      if (callState !== "idle") return;
+      setPeerId(targetId);
+      setCallState("calling");
+      try {
+        socket.current.emit("call", {
+          to: targetId,
+          from: userId,
+          fromUser: { username: targetUser?.username || "Caller" },
+        });
+        timeoutRef.current = setTimeout(() => {
+          setCallState("ended");
+          socket.current.emit("callEnded", { to: targetId, from: userId });
+          cleanUp();
+        }, 60000);
+      } catch {
         setCallState("ended");
-        socket.current.emit("callEnded", { to: targetId, from: userId });
         cleanUp();
-      }, 60000);
-    } catch {
-      setCallState("ended");
-      cleanUp();
-    }
-  }, [callState, userId, cleanUp]);
+      }
+    },
+    [callState, userId, cleanUp]
+  );
 
+  // ✅ Enhanced hangup: closes all streams, socket, and triggers cleanup
   const hangup = useCallback(() => {
     if (!peerId) return;
-    socket.current.emit("callEnded", { to: peerId, from: userId });
+    try {
+      socket.current.emit("callEnded", { to: peerId, from: userId });
+    } catch {}
     setCallState("ended");
+    stopTracks(localStream.current);
+    stopTracks(remoteStream.current);
     cleanUp();
   }, [peerId, userId, cleanUp]);
 
   const toggleMute = useCallback(() => {
     if (!localStream.current) return;
-    localStream.current.getAudioTracks().forEach(track => (track.enabled = !track.enabled));
-    setIsMuted(prev => !prev);
+    localStream.current.getAudioTracks().forEach((track) => (track.enabled = !track.enabled));
+    setIsMuted((prev) => !prev);
   }, []);
 
   useEffect(() => {
