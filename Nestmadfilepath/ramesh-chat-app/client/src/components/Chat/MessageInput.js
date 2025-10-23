@@ -737,6 +737,8 @@ export default function MessageInput({ onSend, onTyping }) {
       background: "#fff",
       fontWeight: "bold",
       color: "black",
+          textTransform: "none",
+
     },
     icon: {
       border: "none",
@@ -924,3 +926,4 @@ export default function MessageInput({ onSend, onTyping }) {
     </div>
   );
 }
+
