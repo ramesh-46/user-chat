@@ -161,6 +161,8 @@ export function useCall(userId) {
     if (callState !== "incoming" || !peerId) return;
     try {
       if (!localStream.current) await startLocal();
+      // Create the peer connection BEFORE emitting callAccepted
+      await createPeer(false, peerId);
       socket.current.emit("callAccepted", { to: peerId, from: userId });
       setCallState("connected");
     } catch (err) {
@@ -243,7 +245,11 @@ export function useCall(userId) {
     s.on("callAccepted", async ({ from }) => {
       clearTimeout(timeoutRef.current);
       try {
-        await createPeer(true, from);
+        // The caller should already have the peer connection created
+        // But we need to handle the case where it might not be
+        if (!pc.current) {
+          await createPeer(true, from);
+        }
         setCallState("connected");
       } catch (err) {
         console.error("Error during callAccepted:", err);
@@ -315,6 +321,6 @@ export function useCall(userId) {
     getRemoteStream: () => remoteStream.current,
     isMuted,
     micPermission,
-    requestMicPermission, // Expose for UI retry buttons
+    requestMicPermission,
   };
 }
