@@ -21,6 +21,8 @@ export default function CallButton({ peer }) {
     getLocalStream,
     getRemoteStream,
     isMuted,
+    micPermission,
+    requestMicPermission,
   } = useCall(user._id);
 
   const localRef = useRef(null);
@@ -28,6 +30,12 @@ export default function CallButton({ peer }) {
   const [timer, setTimer] = useState(0);
   const ringingAudio = useRef(null);
   const callingAudio = useRef(null);
+  const [showMicPrompt, setShowMicPrompt] = useState(false);
+
+  // Check if we're on a mobile device
+  const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+    navigator.userAgent
+  );
 
   // create audio elements lazily (so they can play on user gesture)
   useEffect(() => {
@@ -40,6 +48,15 @@ export default function CallButton({ peer }) {
       } catch {}
     };
   }, []);
+
+  // If on mobile and mic permission is not granted, show prompt before call
+  useEffect(() => {
+    if (isMobile && callState === "idle" && micPermission !== "granted") {
+      setShowMicPrompt(true);
+    } else {
+      setShowMicPrompt(false);
+    }
+  }, [micPermission, callState, isMobile]);
 
   // Play / stop ring tones based on callState
   useEffect(() => {
@@ -99,7 +116,7 @@ export default function CallButton({ peer }) {
   const formatTime = (s) =>
     `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
-  // Styles (keep your existing inline styles)
+  // Styles
   const containerStyle = {
     position: "fixed",
     top: 0,
@@ -136,13 +153,45 @@ export default function CallButton({ peer }) {
     fontWeight: "bold",
   };
 
+  // Handle call initiation with mic check
+  const handleCall = async () => {
+    if (isMobile && micPermission !== "granted") {
+      const granted = await requestMicPermission();
+      if (!granted) {
+        alert("Microphone access is required to make calls.");
+        return;
+      }
+    }
+    call(peer._id, peer);
+  };
+
   return (
     <>
       {/* Hidden audio elements */}
       <audio ref={localRef} autoPlay muted style={{ display: "none" }} />
       <audio ref={remoteRef} autoPlay style={{ display: "none" }} />
 
-      {callState !== "idle" && (
+      {/* Mic Permission Prompt (Mobile Only) */}
+      {showMicPrompt && (
+        <div style={containerStyle}>
+          <div style={{ color: "#fff", fontSize: 20, marginBottom: 20, textAlign: "center", padding: "0 20px" }}>
+            🎤 Microphone access required for calls
+          </div>
+          <button
+            onClick={requestMicPermission}
+            style={{
+              ...buttonStyle,
+              background: "#2196f3",
+              color: "#fff",
+              padding: "14px 28px",
+            }}
+          >
+            Allow Microphone
+          </button>
+        </div>
+      )}
+
+      {callState !== "idle" && !showMicPrompt && (
         <div style={containerStyle}>
           <div style={avatarStyle}>👤</div>
           <div style={nameStyle}>
@@ -189,9 +238,9 @@ export default function CallButton({ peer }) {
         </div>
       )}
 
-      {callState === "idle" && (
+      {callState === "idle" && !showMicPrompt && (
         <button
-          onClick={() => call(peer._id, peer)}
+          onClick={handleCall}
           style={{
             ...buttonStyle,
             background: "#4caf50",
