@@ -22,7 +22,7 @@ export function useCall(userId) {
 
   // const rtcCfg = {
    // iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-  };
+  // };
 
 
 const rtcCfg = {
