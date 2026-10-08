@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
+    <!-- =========================================================
+         BASIC DOCUMENT SETTINGS
+         ========================================================= -->
+
     <meta charset="utf-8" />
 
     <meta
@@ -8,15 +12,24 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
 
-    <meta name="theme-color" content="#050505" />
+    <meta
+      name="theme-color"
+      content="#050505"
+    />
 
-    <meta name="color-scheme" content="dark" />
+    <meta
+      name="color-scheme"
+      content="dark"
+    />
 
-    <meta name="application-name" content="Black Pearl Chat" />
+    <meta
+      name="application-name"
+      content="Black Pearl Chat"
+    />
 
     <meta
       name="apple-mobile-web-app-title"
-      content="Black Pearl Chat"
+      content="BP Chat"
     />
 
     <meta
@@ -29,17 +42,26 @@
       content="black-translucent"
     />
 
-    <!-- SEO TITLE -->
+    <!-- =========================================================
+         GOOGLE SEARCH CONSOLE VERIFICATION
+         ========================================================= -->
+
+    <meta
+      name="google-site-verification"
+      content="Ty6kIQ2kQkpPW06vs_ioL5iApki67K_zRpw3HmLVxMY"
+    />
+
+    <!-- =========================================================
+         PRIMARY SEO
+         ========================================================= -->
 
     <title>
       BP Chat – Black Pearl Chat | Private Messaging & Audio Calls
     </title>
 
-    <!-- SEO DESCRIPTION -->
-
     <meta
       name="description"
-      content="BP Chat, also known as Black Pearl Chat, is a premium private messaging app for real-time chat, private conversations and audio calls with an elegant modern experience."
+      content="BP Chat, also known as Black Pearl Chat, is a premium private messaging and communication app for real-time chat, private conversations and audio calls."
     />
 
     <meta
@@ -52,7 +74,19 @@
       content="Black Pearl Chat"
     />
 
-    <!-- SEARCH ENGINE SETTINGS -->
+    <meta
+      name="subject"
+      content="Private messaging, real-time chat and audio calling"
+    />
+
+    <meta
+      name="category"
+      content="Communication"
+    />
+
+    <!-- =========================================================
+         SEARCH ENGINE DIRECTIVES
+         ========================================================= -->
 
     <meta
       name="robots"
@@ -64,14 +98,23 @@
       content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
     />
 
-    <!-- CANONICAL -->
+    <meta
+      name="bingbot"
+      content="index, follow"
+    />
+
+    <!-- =========================================================
+         CANONICAL URL
+         ========================================================= -->
 
     <link
       rel="canonical"
       href="https://user-chat-woad.vercel.app/"
     />
 
-    <!-- FAVICON -->
+    <!-- =========================================================
+         FAVICON / APP ICONS
+         ========================================================= -->
 
     <link
       rel="icon"
@@ -81,6 +124,7 @@
 
     <link
       rel="shortcut icon"
+      type="image/x-icon"
       href="%PUBLIC_URL%/favicon.ico"
     />
 
@@ -89,14 +133,32 @@
       href="%PUBLIC_URL%/logo192.png"
     />
 
-    <!-- MANIFEST -->
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="%PUBLIC_URL%/logo192.png"
+    />
+
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="512x512"
+      href="%PUBLIC_URL%/logo512.png"
+    />
+
+    <!-- =========================================================
+         WEB APP MANIFEST
+         ========================================================= -->
 
     <link
       rel="manifest"
       href="%PUBLIC_URL%/manifest.json"
     />
 
-    <!-- OPEN GRAPH -->
+    <!-- =========================================================
+         OPEN GRAPH / FACEBOOK / SOCIAL SHARING
+         ========================================================= -->
 
     <meta
       property="og:type"
@@ -115,7 +177,7 @@
 
     <meta
       property="og:description"
-      content="Experience Black Pearl Chat — a premium private messaging platform for real-time conversations and audio calls."
+      content="Discover BP Chat, the Black Pearl Chat experience for private messaging, real-time conversations and audio calls in a modern luxury interface."
     />
 
     <meta
@@ -135,10 +197,17 @@
 
     <meta
       property="og:image:alt"
-      content="Black Pearl Chat private messaging and audio calling"
+      content="Black Pearl Chat - BP Chat private messaging and audio calls"
     />
 
-    <!-- TWITTER / X -->
+    <meta
+      property="og:image:type"
+      content="image/png"
+    />
+
+    <!-- =========================================================
+         X / TWITTER CARD
+         ========================================================= -->
 
     <meta
       name="twitter:card"
@@ -160,7 +229,14 @@
       content="https://user-chat-woad.vercel.app/logo512.png"
     />
 
-    <!-- PERFORMANCE -->
+    <meta
+      name="twitter:image:alt"
+      content="Black Pearl Chat private messaging application"
+    />
+
+    <!-- =========================================================
+         PERFORMANCE - DNS / CONNECTION
+         ========================================================= -->
 
     <link
       rel="preconnect"
@@ -179,7 +255,24 @@
       crossorigin
     />
 
-    <!-- FONT AWESOME -->
+    <link
+      rel="dns-prefetch"
+      href="//fonts.googleapis.com"
+    />
+
+    <link
+      rel="dns-prefetch"
+      href="//fonts.gstatic.com"
+    />
+
+    <link
+      rel="dns-prefetch"
+      href="//cdnjs.cloudflare.com"
+    />
+
+    <!-- =========================================================
+         FONT AWESOME
+         ========================================================= -->
 
     <link
       rel="stylesheet"
@@ -187,55 +280,60 @@
       referrerpolicy="no-referrer"
     />
 
-    <!-- POPPINS -->
+    <!-- =========================================================
+         POPPINS
+         ========================================================= -->
 
     <link
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
       rel="stylesheet"
     />
 
-    <!-- LUXURY FONTS -->
+    <!-- =========================================================
+         LUXURY / PREMIUM SERIF FONTS
+         ========================================================= -->
 
     <link
       href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:wght@400;500;600;700&family=Cinzel:wght@400;500;600;700&family=Cormorant+Garamond:wght@400;500;600;700&family=Crimson+Text:wght@400;600;700&family=EB+Garamond:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Merriweather:wght@400;700;900&family=Playfair+Display:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
 
-    <!-- =====================================================
+    <!-- =========================================================
          STRUCTURED DATA - WEBSITE
-         ===================================================== -->
+         ========================================================= -->
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "WebSite",
+        "@id": "https://user-chat-woad.vercel.app/#website",
         "name": "Black Pearl Chat",
         "alternateName": [
           "BP Chat",
-          "Black Pearl",
           "Black Pearl Chat App",
           "BP Chat App"
         ],
         "url": "https://user-chat-woad.vercel.app/",
-        "description": "Black Pearl Chat is a private messaging and audio calling platform for real-time communication.",
+        "description": "Black Pearl Chat, also known as BP Chat, is a private messaging and audio calling platform for real-time communication.",
         "inLanguage": "en"
       }
     </script>
 
-    <!-- =====================================================
+    <!-- =========================================================
          STRUCTURED DATA - SOFTWARE APPLICATION
-         ===================================================== -->
+         ========================================================= -->
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
+        "@id": "https://user-chat-woad.vercel.app/#software",
         "name": "Black Pearl Chat",
         "alternateName": "BP Chat",
         "url": "https://user-chat-woad.vercel.app/",
-        "description": "BP Chat, also known as Black Pearl Chat, is a web-based private messaging and audio calling application.",
+        "description": "BP Chat is a web-based private messaging and audio calling application designed for real-time communication.",
         "applicationCategory": "CommunicationApplication",
-        "applicationSubCategory": "Private Messaging",
+        "applicationSubCategory": "MessagingApplication",
         "operatingSystem": "Web",
         "browserRequirements": "Requires JavaScript and a modern web browser",
         "isAccessibleForFree": true,
@@ -246,47 +344,93 @@
         },
         "featureList": [
           "Private messaging",
-          "Real-time chat",
-          "Audio calls",
+          "Real-time messaging",
           "Private conversations",
+          "Audio calls",
           "One-to-one communication",
           "User accounts",
           "Responsive chat interface",
           "Mobile-friendly messaging",
-          "Modern communication experience"
+          "Modern communication experience",
+          "Premium dark interface"
         ]
       }
     </script>
 
-    <!-- =====================================================
+    <!-- =========================================================
          STRUCTURED DATA - ORGANIZATION
-         ===================================================== -->
+         ========================================================= -->
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "Organization",
+        "@id": "https://user-chat-woad.vercel.app/#organization",
         "name": "Black Pearl Chat",
         "alternateName": "BP Chat",
         "url": "https://user-chat-woad.vercel.app/",
-        "logo": "https://user-chat-woad.vercel.app/logo512.png",
-        "description": "Black Pearl Chat is a premium private communication platform for messaging and audio calls."
+        "logo": {
+          "@type": "ImageObject",
+          "url": "https://user-chat-woad.vercel.app/logo512.png",
+          "width": 512,
+          "height": 512
+        },
+        "description": "Black Pearl Chat is a premium private communication platform for real-time messaging and audio calls."
+      }
+    </script>
+
+    <!-- =========================================================
+         STRUCTURED DATA - FEATURES
+         ========================================================= -->
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "BP Chat",
+        "alternateName": "Black Pearl Chat",
+        "url": "https://user-chat-woad.vercel.app/",
+        "applicationCategory": "CommunicationApplication",
+        "operatingSystem": "All",
+        "browserRequirements": "Modern web browser with JavaScript enabled",
+        "description": "BP Chat provides private messaging, real-time conversations and audio calls through a modern web application."
       }
     </script>
   </head>
 
   <body>
+    <!-- =========================================================
+         NO JAVASCRIPT MESSAGE
+         ========================================================= -->
+
     <noscript>
-      Black Pearl Chat requires JavaScript to run.
-      Please enable JavaScript in your browser to use
-      private messaging and audio calls.
+      <div>
+        <h1>Black Pearl Chat – BP Chat</h1>
+
+        <p>
+          Black Pearl Chat is a private messaging and audio calling
+          application for real-time communication.
+        </p>
+
+        <p>
+          Please enable JavaScript in your browser to use BP Chat.
+        </p>
+      </div>
     </noscript>
+
+    <!-- =========================================================
+         REACT APPLICATION
+         ========================================================= -->
 
     <div id="root"></div>
 
+    <!-- =========================================================
+         FIREBASE RECAPTCHA CONTAINER
+         ========================================================= -->
+
     <div
       id="recaptcha-container"
-      style="display:none;"
+      style="display: none;"
       aria-hidden="true"
     ></div>
   </body>
