@@ -1,6 +1,7 @@
 {
-  "short_name": "Black Pearl",
-  "name": "Black Pearl Chat app",
+  "short_name": "BP Chat",
+  "name": "Black Pearl Chat",
+  "description": "BP Chat is a private messaging and audio calling application.",
   "icons": [
     {
       "src": "favicon.ico",
@@ -18,8 +19,8 @@
       "sizes": "512x512"
     }
   ],
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "theme_color": "#050505",
+  "background_color": "#050505"
 }
