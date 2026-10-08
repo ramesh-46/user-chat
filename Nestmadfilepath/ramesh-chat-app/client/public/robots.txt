@@ -1,4 +1,5 @@
 User-agent: *
+
 Allow: /
 
 Sitemap: https://user-chat-woad.vercel.app/sitemap.xml
