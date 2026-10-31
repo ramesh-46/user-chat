@@ -148,13 +148,7 @@
 //       console.error("Error updating user on join:", err.message);//     }
 //   });
 
-//   socket.on("sendMessage", (data) => {
-//     console.log(`Message sent from ${data.sender} to ${data.receiver}:`, data);
-//     io.to(data.receiver).emit("receiveMessage", data);
-//     io.to(data.sender).emit("receiveMessage", data);
-//   });
-
-//   // Secure group room membership using Firebase ID tokens.
+//   // Authenticate group room joins before allowing real-time group events.
   socket.on("group:join", async ({ groupId, token } = {}) => {
     try {
       if (!groupId || !token) return;
@@ -174,62 +168,21 @@
   });
 
   socket.on("group:leave", ({ groupId } = {}) => {
-    if (groupId) socket.leave("group:" + groupId);
+    if (!groupId) return;
+    socket.leave("group:" + groupId);
     if (String(socket.data.groupId) === String(groupId)) {
       socket.data.groupId = null;
       socket.data.groupUserId = null;
     }
   });
-  socket.on("typing", ({ from, to }) => {
-//     console.log(`Typing from ${from} to ${to}`);
-//     io.to(to).emit("peerTyping", from);
+
+  socket.on("sendMessage", (data) => {
+//     console.log(`Message sent from ${data.sender} to ${data.receiver}:`, data);
+//     io.to(data.receiver).emit("receiveMessage", data);
+//     io.to(data.sender).emit("receiveMessage", data);
 //   });
 
-//   // One-to-one call invitation and lifecycle signaling.
-  socket.on("call", (data = {}) => {
-    if (!data.to || !data.from) return;
-    io.to(String(data.to)).emit("incomingCall", { from: data.from, fromUser: data.fromUser || {}, mediaMode: data.mediaMode || "audio" });
-  });
-  socket.on("callAccepted", (data = {}) => {
-    if (data.to && data.from) io.to(String(data.to)).emit("callAccepted", { from: data.from });
-  });
-  socket.on("callDeclined", (data = {}) => {
-    if (data.to && data.from) io.to(String(data.to)).emit("callDeclined", { from: data.from });
-  });
-  socket.on("callEnded", (data = {}) => {
-    if (data.to && data.from) io.to(String(data.to)).emit("callEnded", { from: data.from });
-  });
-  socket.on("webrtc-offer", (data) => {
-//     console.log(`WebRTC offer from ${data.from} to ${data.to}`);
-//     io.to(data.to).emit("webrtc-offer", { from: socket.id, ...data });
-//   });
-
-//   socket.on("webrtc-answer", (data) => {
-//     console.log(`WebRTC answer from ${data.from} to ${data.to}`);
-//     io.to(data.to).emit("webrtc-answer", { from: socket.id, ...data });
-//   });
-
-//   socket.on("webrtc-ice", (data) => {
-//     console.log(`WebRTC ICE from ${data.from} to ${data.to}`);
-//     io.to(data.to).emit("webrtc-ice", { from: socket.id, ...data });
-//   });
-
-//   socket.on("disconnect", async () => {
-//     console.log("🔌 Socket", socket.id, "disconnected");
-//     const rooms = [...socket.rooms].filter(r => r !== socket.id);
-//     for (const id of rooms) {
-//       try {
-//         await User.findByIdAndUpdate(id, {
-//           online: false,
-//           lastSeen: new Date(),
-//         });
-//         io.emit("userOffline", id);
-//       } catch (err) {
-//         console.error("Error updating user on disconnect:", err.message);
-//       }
-//     }
-//   });
-// });
+// Removed obsolete duplicate socket handlers that were outside io.on('connection').
 
 // // Server Start
 // const PORT = process.env.PORT || 4000;
@@ -430,6 +383,26 @@ io.on("connection", (socket) => {
       io.to(to).emit("peerTyping", from);
       console.log(`✅ [DEBUG] 'peerTyping' emitted to user: ${to}`);
     }
+  });
+
+  // One-to-one call invitation and lifecycle signaling.
+  socket.on("call", (data = {}) => {
+    if (data.to && data.from) {
+      io.to(String(data.to)).emit("incomingCall", {
+        from: data.from,
+        fromUser: data.fromUser || {},
+        mediaMode: data.mediaMode || "audio"
+      });
+    }
+  });
+  socket.on("callAccepted", (data = {}) => {
+    if (data.to && data.from) io.to(String(data.to)).emit("callAccepted", { from: data.from });
+  });
+  socket.on("callDeclined", (data = {}) => {
+    if (data.to && data.from) io.to(String(data.to)).emit("callDeclined", { from: data.from });
+  });
+  socket.on("callEnded", (data = {}) => {
+    if (data.to && data.from) io.to(String(data.to)).emit("callEnded", { from: data.from });
   });
 
   socket.on("webrtc-offer", (data) => {
