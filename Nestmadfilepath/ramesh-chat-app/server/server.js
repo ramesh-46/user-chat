@@ -154,7 +154,27 @@
 //     io.to(data.sender).emit("receiveMessage", data);
 //   });
 
-//   socket.on("typing", ({ from, to }) => {
+//   // Secure group room membership using Firebase ID tokens.
+  socket.on("group:join", async ({ groupId, token } = {}) => {
+    try {
+      if (!groupId || !token) return;
+      const decoded = await admin.auth().verifyIdToken(token);
+      const member = await User.findOne({ firebaseUid: decoded.uid }).select("_id");
+      if (!member) return;
+      const Group = require("./models/Group");
+      const group = await Group.findOne({ _id: groupId, members: member._id }).select("_id");
+      if (!group) return;
+      socket.join("group:" + groupId);
+      socket.emit("group:joined", { groupId });
+    } catch (error) {
+      console.warn("[SOCKET_GROUP_JOIN] Rejected:", error.code || error.message);
+    }
+  });
+
+  socket.on("group:leave", ({ groupId } = {}) => {
+    if (groupId) socket.leave("group:" + groupId);
+  });
+  socket.on("typing", ({ from, to }) => {
 //     console.log(`Typing from ${from} to ${to}`);
 //     io.to(to).emit("peerTyping", from);
 //   });
@@ -255,6 +275,7 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
+app.set("io", io);
 console.log("✅ [DEBUG] Express app and Socket.IO server created");
 
 // MongoDB Connection
