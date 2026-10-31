@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const Group = require("../models/Group");
 const User = require("../models/User");
+const Message = require("../models/Message");
 const firebaseAuth = require("../middleware/firebaseAuth");
 
 const router = express.Router();
@@ -203,7 +204,9 @@ router.delete("/:groupId", async (req, res) => {
     const group = await loadGroup(req.params.groupId);
     if (!group) return res.status(404).json({ success: false, error: "Group not found" });
     if (!isAdmin(group, req.user._id)) return res.status(403).json({ success: false, error: "Only group admins can delete this group" });
+    await Message.deleteMany({ groupId: group._id });
     await Group.deleteOne({ _id: group._id });
+    req.app.get("io")?.to("group:" + String(group._id)).emit("group:deleted", { groupId: String(group._id) });
     return res.json({ success: true, message: "Group deleted" });
   } catch (error) {
     console.error("[GROUP_DELETE]", error);
