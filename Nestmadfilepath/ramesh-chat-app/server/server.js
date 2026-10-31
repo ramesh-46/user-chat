@@ -301,16 +301,23 @@ console.log("✅ [DEBUG] Route mounted: /api/settings");
 app.use("/api/groups", groupRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/groups (Firebase-authenticated)");
 
-// Request logging middleware (for all API routes)
+// Lightweight health endpoint for Render and uptime checks.
+app.get("/", (req, res) => {
+  res.status(200).json({ success: true, status: "ok", service: "user-chat-api" });
+});
+app.head("/", (req, res) => res.sendStatus(200));
+
+// Request logging middleware (for all API routes).
 app.use((req, res, next) => {
   console.log(`📥 [DEBUG] ${req.method} ${req.originalUrl} - IP: ${req.ip}`);
-  if (req.method !== 'GET') {
-    console.log("📥 [DEBUG] Request body:", JSON.stringify(req.body).substring(0, 500));
+  if (req.method !== "GET" && req.method !== "HEAD") {
+    const bodyText = req.body === undefined ? "" : JSON.stringify(req.body);
+    if (bodyText) console.log("📥 [DEBUG] Request body:", bodyText.slice(0, 500));
   }
   const originalSend = res.send;
   res.send = function(data) {
     console.log(`📤 [DEBUG] Response ${res.statusCode} for ${req.method} ${req.originalUrl}`);
-    originalSend.call(this, data);
+    return originalSend.call(this, data);
   };
   next();
 });
