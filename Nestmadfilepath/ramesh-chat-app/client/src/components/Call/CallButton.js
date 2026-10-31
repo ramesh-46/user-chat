@@ -62,7 +62,8 @@ export default function CallButton({ peer }) {
   useEffect(() => {
     if (!ringingAudio.current || !callingAudio.current) return;
 
-    if (callState === "calling") {
+    // The receiver hears the ringtone; the caller hears the outgoing tone.
+    if (callState === "incoming") {
       ringingAudio.current.loop = true;
       ringingAudio.current.play().catch(() => {});
     } else {
@@ -70,7 +71,7 @@ export default function CallButton({ peer }) {
       ringingAudio.current.currentTime = 0;
     }
 
-    if (callState === "incoming") {
+    if (callState === "calling") {
       callingAudio.current.loop = true;
       callingAudio.current.play().catch(() => {});
     } else {
