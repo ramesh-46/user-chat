@@ -243,7 +243,9 @@ const User = require("./models/User");
 const authRoutes = require("./routes/authRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const profileRoutes = require("./routes/profileRoutes");
-const settingsRoutes = require("./routes/settingsRoutes");console.log("✅ [DEBUG] Models and routes loaded successfully");
+const settingsRoutes = require("./routes/settingsRoutes");
+const groupRoutes = require("./routes/grouproutes");
+console.log("✅ [DEBUG] Models and routes loaded successfully");
 
 // App & Server Setup
 console.log("🚀 [DEBUG] Setting up Express app and HTTP server...");
@@ -295,6 +297,9 @@ app.use("/api", chatRoutes);
 console.log("✅ [DEBUG] Route mounted: /api (chatRoutes)");
 app.use("/api/settings", settingsRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/settings");
+
+app.use("/api/groups", groupRoutes);
+console.log("✅ [DEBUG] Route mounted: /api/groups (Firebase-authenticated)");
 
 // Request logging middleware (for all API routes)
 app.use((req, res, next) => {
@@ -475,6 +480,7 @@ server.listen(PORT, () => {
   console.log(`   - GET/PUT /api/profile/*`);
   console.log(`   - GET/POST /api/messages, /api/conversations/*, /api/chatlist/*`);
   console.log(`   - GET/POST /api/settings/*`);
+  console.log(`   - GET/POST/PATCH/DELETE /api/groups/* (Firebase-authenticated)`);
   console.log(`✅ [DEBUG] Socket.IO ready for connections`);
 });
 
