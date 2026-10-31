@@ -183,6 +183,11 @@ export const demoteGroupAdmin = (groupId, userId) => api.post("/groups/admins/re
 export const updateGroup = (groupId, data) => api.patch(`/groups/${groupId}`, data);
 export const deleteGroup = (groupId) => api.delete(`/groups/${groupId}`);
 export const leaveGroup = (groupId) => api.post(`/groups/${groupId}/leave`);
+export const fetchGroupMessages = (groupId) => api.get(`/group-messages/${groupId}/messages`);
+export const sendGroupMessage = (groupId, formData) => api.post(`/group-messages/${groupId}/messages`, formData, { headers: { "Content-Type": "multipart/form-data" } });
+export const deleteGroupMessage = (messageId, forEveryone = false) => api.delete(`/group-messages/messages/${messageId}`, { params: { forEveryone } });
+export const fetchGroupMedia = (messageId) => api.get(`/group-messages/messages/${messageId}/media`, { responseType: "blob" });
+
 
 // User lookup (by mobile or username)
 export const findUser = value =>
