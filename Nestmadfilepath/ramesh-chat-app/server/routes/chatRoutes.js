@@ -578,6 +578,8 @@ router.get("/messages/:u1/:u2", async (req, res) => {
         { sender: u1, receiver: u2 },
         { sender: u2, receiver: u1 },
       ],
+      deletedFor: { $ne: u1 },
+      deletedForEveryone: { $ne: true },
     }).sort("createdAt");
     
     console.log("📜 [DEBUG] Messages found:", msgs.length);
