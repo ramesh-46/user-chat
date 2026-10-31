@@ -7,6 +7,7 @@
 // import SearchBar   from "./SearchBar";
 // import ChatList    from "./Chat/ChatList";
 // import ChatWindow  from "./Chat/ChatWindow";
+import GroupChat from "./Chat/GroupChat";
 // import Navbar      from "./Navbar";
 // import ProfilePanel from "./Accounts/ProfilePanel";  // ← folder “Account” (singular)
 
@@ -17,6 +18,7 @@
 
 //   const [current,    setCurrent]    = useState(null);
 //   const [showProfile, setShowProfile] = useState(false);
+  const [showGroups, setShowGroups] = useState(false);
 
 //   /* join socket room */
 //   useEffect(() => {
@@ -133,29 +135,25 @@ export default function Main() {
         <Navbar logout={logout} onProfile={() => setShowProfile(true)} />
       )}
 
-      {/* Hide SearchBar on mobile while chatting */}
-      {(!isMobile || !current) && (
-        <SearchBar onFound={setCurrent} />
+      {/* Search and group navigation */}
+      {(!isMobile || (!current && !showGroups)) && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ flex: 1 }}><SearchBar onFound={(peer) => { setShowGroups(false); setCurrent(peer); }} /></div>
+          <button onClick={() => { setCurrent(null); setShowGroups(value => !value); }} style={{ border: 0, borderRadius: 8, padding: "9px 12px", background: "var(--primary)", color: "white", cursor: "pointer", marginRight: 8 }}>Groups</button>
+        </div>
       )}
 
       <div style={S.body}>
-        <ChatList
-          current={current}
-          onPick={setCurrent}
-          socket={socket}
-        />
-
-        {current ? (
-          <ChatWindow
-            peer={current}
-            socket={socket}
-            onBack={() => setCurrent(null)}   // ← back-arrow handler
-          />
-        ) : (
-          <div style={S.welcome}>
-            Select or search a contact to start chatting ✨
-          </div>
-        )}
+        {showGroups ? (
+          <GroupChat onBack={() => setShowGroups(false)} />
+        ) : <>
+          <ChatList current={current} onPick={setCurrent} socket={socket} />
+          {current ? (
+            <ChatWindow peer={current} socket={socket} onBack={() => setCurrent(null)} />
+          ) : (
+            <div style={S.welcome}>Select or search a contact to start chatting ✨</div>
+          )}
+        </>}
       </div>
 
       {/* profile slide-in */}
