@@ -187,6 +187,7 @@ export const fetchGroupMessages = (groupId) => api.get(`/group-messages/${groupI
 export const sendGroupMessage = (groupId, formData) => api.post(`/group-messages/${groupId}/messages`, formData, { headers: { "Content-Type": "multipart/form-data" } });
 export const deleteGroupMessage = (messageId, forEveryone = false) => api.delete(`/group-messages/messages/${messageId}`, { params: { forEveryone } });
 export const fetchGroupMedia = (messageId) => api.get(`/group-messages/messages/${messageId}/media`, { responseType: "blob" });
+export const deleteDirectMessage = (messageId, forEveryone = false) => api.delete(`/message-actions/${messageId}`, { params: { forEveryone } });
 
 
 // User lookup (by mobile or username)
