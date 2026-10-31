@@ -7,7 +7,7 @@
 // import SearchBar   from "./SearchBar";
 // import ChatList    from "./Chat/ChatList";
 // import ChatWindow  from "./Chat/ChatWindow";
-import GroupChat from "./Chat/GroupChat";
+
 // import Navbar      from "./Navbar";
 // import ProfilePanel from "./Accounts/ProfilePanel";  // ← folder “Account” (singular)
 
