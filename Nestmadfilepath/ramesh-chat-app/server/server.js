@@ -148,45 +148,7 @@
 //       console.error("Error updating user on join:", err.message);//     }
 //   });
 
-//   // Authenticate group room joins before allowing real-time group events.
-  socket.on("group:join", async ({ groupId, token } = {}) => {
-    try {
-      if (!groupId || !token) return;
-      const decoded = await admin.auth().verifyIdToken(token);
-      const member = await User.findOne({ firebaseUid: decoded.uid }).select("_id");
-      if (!member) return;
-      const Group = require("./models/Group");
-      const group = await Group.findOne({ _id: groupId, members: member._id }).select("_id");
-      if (!group) return;
-      socket.join("group:" + groupId);
-      socket.data.groupUserId = String(member._id);
-      socket.data.groupId = String(groupId);
-      socket.emit("group:joined", { groupId });
-    } catch (error) {
-      console.warn("[SOCKET_GROUP_JOIN] Rejected:", error.code || error.message);
-    }
-  });
-
-  socket.on("group:leave", ({ groupId } = {}) => {
-    if (!groupId) return;
-    socket.leave("group:" + groupId);
-    if (String(socket.data.groupId) === String(groupId)) {
-      socket.data.groupId = null;
-      socket.data.groupUserId = null;
-    }
-  });
-
-  socket.on("sendMessage", (data) => {
-//     console.log(`Message sent from ${data.sender} to ${data.receiver}:`, data);
-//     io.to(data.receiver).emit("receiveMessage", data);
-//     io.to(data.sender).emit("receiveMessage", data);
-//   });
-
-// Removed obsolete duplicate socket handlers that were outside io.on('connection').
-
-// // Server Start
-// const PORT = process.env.PORT || 4000;
-// server.listen(PORT, () => console.log(`🚀 Server @ http://localhost:${PORT}`));
+// Legacy duplicate socket block removed.
 
 require("dotenv").config();
 const express = require("express");
@@ -353,6 +315,34 @@ io.on("connection", (socket) => {
       console.log(`📢 [DEBUG] Broadcasted 'userOnline' event for userId: ${userId}`);
     } catch (err) {      console.error(`❌ [DEBUG] Error updating user ${userId} on join:`, err.message);
       console.error("❌ [DEBUG] Error stack:", err.stack);
+    }
+  });
+
+  // Authenticate group room joins before allowing real-time group events.
+  socket.on("group:join", async ({ groupId, token } = {}) => {
+    try {
+      if (!groupId || !token) return;
+      const decoded = await admin.auth().verifyIdToken(token);
+      const member = await User.findOne({ firebaseUid: decoded.uid }).select("_id");
+      if (!member) return;
+      const Group = require("./models/Group");
+      const group = await Group.findOne({ _id: groupId, members: member._id }).select("_id");
+      if (!group) return;
+      socket.join("group:" + groupId);
+      socket.data.groupUserId = String(member._id);
+      socket.data.groupId = String(groupId);
+      socket.emit("group:joined", { groupId });
+    } catch (error) {
+      console.warn("[SOCKET_GROUP_JOIN] Rejected:", error.code || error.message);
+    }
+  });
+
+  socket.on("group:leave", ({ groupId } = {}) => {
+    if (!groupId) return;
+    socket.leave("group:" + groupId);
+    if (String(socket.data.groupId) === String(groupId)) {
+      socket.data.groupId = null;
+      socket.data.groupUserId = null;
     }
   });
 
