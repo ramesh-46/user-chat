@@ -90,7 +90,7 @@ import GroupChat from "./Chat/GroupChat";
 import Navbar      from "./Navbar";
 import ProfilePanel from "./Accounts/ProfilePanel";
 
-const socket = io("https://blackpearlbackend.onrender.com");   // backend port
+const socket = io("https://user-chat-9luh.onrender.com");   // backend port
 
 /* ---------- tiny helper ---------- */
 const useIsMobile = () => {
