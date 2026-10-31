@@ -1,5 +1,6 @@
 // // client/src/api.js — single source of API calls
 // import axios from "axios";
+import { auth } from "./firebase";
 
 // // --------------------------------------------------
 // // ✅ Central Axios instance
@@ -131,6 +132,17 @@ import axios from "axios";
 // Central Axios instance
 const api = axios.create({ baseURL: "https://blackpearlbackend.onrender.com/api" });
 
+// Attach the current Firebase ID token to authenticated API requests.
+api.interceptors.request.use(async (config) => {
+  const currentUser = auth.currentUser;
+  if (currentUser) {
+    const token = await currentUser.getIdToken();
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 // Chat-settings helpers
 export const blockUser = (userId, peerId) => api.post(`/block/${userId}/${peerId}`);
 export const unblockUser = (userId, peerId) => api.post(`/unblock/${userId}/${peerId}`);
@@ -161,9 +173,16 @@ export const recoverUsername = email => api.get("/auth/recover/username", { para
 export const recoverEmail = uname => api.get("/auth/recover/email", { params: { username: uname } });
 export const updateProfile = (userId, data) => api.put(`/profile/${userId}`, data);
 
-// Groups
-const BASE = "https://blackpearlbackend.onrender.com/api";
-export const fetchGroups = async userId => await axios.get(`${BASE}/groups/${userId}`);
+// Groups (all requests use the Firebase-authenticated Axios instance)
+export const fetchGroups = () => api.get("/groups");
+export const createGroup = (data) => api.post("/groups/create", data);
+export const addGroupMember = (groupId, newUserId) => api.post("/groups/add", { groupId, newUserId });
+export const removeGroupMember = (groupId, removeUserId) => api.post("/groups/remove", { groupId, removeUserId });
+export const promoteGroupAdmin = (groupId, userId) => api.post("/groups/admins/add", { groupId, userId });
+export const demoteGroupAdmin = (groupId, userId) => api.post("/groups/admins/remove", { groupId, userId });
+export const updateGroup = (groupId, data) => api.patch(`/groups/${groupId}`, data);
+export const deleteGroup = (groupId) => api.delete(`/groups/${groupId}`);
+export const leaveGroup = (groupId) => api.post(`/groups/${groupId}/leave`);
 
 // User lookup (by mobile or username)
 export const findUser = value =>
