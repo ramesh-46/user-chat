@@ -20,6 +20,13 @@ async function loadGroup(groupId) {
   if (!isId(groupId)) return null;
   return Group.findById(groupId);
 }
+async function evictGroupUser(req, groupId, userId) {
+  const io = req.app.get("io");
+  if (!io) return;
+  const room = "group:" + String(groupId);
+  const sockets = await io.in(room).fetchSockets();
+  await Promise.all(sockets.filter(s => s.data.groupUserId === String(userId)).map(s => s.leave(room)));
+}
 
 // Create a group. The authenticated user is always the creator/admin.
 router.post("/create", async (req, res) => {
@@ -132,6 +139,7 @@ router.post("/remove", async (req, res) => {
     group.admins = admins.filter((id) => id !== String(removeUserId));
     if (String(group.admin) === String(removeUserId)) group.admin = group.admins[0];
     await group.save();
+    await evictGroupUser(req, group._id, removeUserId);
     return res.json({ success: true, group });
   } catch (error) {
     console.error("[GROUP_REMOVE_MEMBER]", error);
@@ -227,6 +235,7 @@ router.post("/:groupId/leave", async (req, res) => {
     group.admins = admins.filter((id) => id !== userId);
     if (String(group.admin) === userId) group.admin = group.admins[0];
     await group.save();
+    await evictGroupUser(req, group._id, userId);
     return res.json({ success: true, message: "You left the group" });
   } catch (error) {
     console.error("[GROUP_LEAVE]", error);
