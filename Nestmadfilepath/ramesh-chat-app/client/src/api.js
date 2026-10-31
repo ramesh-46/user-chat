@@ -130,7 +130,7 @@ import { auth } from "./firebase";
 import axios from "axios";
 
 // Central Axios instance
-const api = axios.create({ baseURL: "https://blackpearlbackend.onrender.com/api" });
+const api = axios.create({ baseURL: "https://user-chat-9luh.onrender.com/api" });
 
 // Attach the current Firebase ID token to authenticated API requests.
 api.interceptors.request.use(async (config) => {
