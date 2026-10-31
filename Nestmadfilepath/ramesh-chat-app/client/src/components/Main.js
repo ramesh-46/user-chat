@@ -18,7 +18,6 @@ import GroupChat from "./Chat/GroupChat";
 
 //   const [current,    setCurrent]    = useState(null);
 //   const [showProfile, setShowProfile] = useState(false);
-  const [showGroups, setShowGroups] = useState(false);
 
 //   /* join socket room */
 //   useEffect(() => {
@@ -87,6 +86,7 @@ import { ThemeContext } from "../contexts/ThemeContext";
 import SearchBar   from "./SearchBar";
 import ChatList    from "./Chat/ChatList";
 import ChatWindow  from "./Chat/ChatWindow";
+import GroupChat from "./Chat/GroupChat";
 import Navbar      from "./Navbar";
 import ProfilePanel from "./Accounts/ProfilePanel";
 
@@ -109,6 +109,7 @@ export default function Main() {
 
   const [current, setCurrent]   = useState(null);     // selected peer
   const [showProfile, setShowProfile] = useState(false);
+  const [showGroups, setShowGroups] = useState(false);
   const isMobile = useIsMobile();
 
   /* join personal room once */
