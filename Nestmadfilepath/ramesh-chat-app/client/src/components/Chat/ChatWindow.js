@@ -326,6 +326,9 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
               {m.file && m.fileType === "image" && <img src={fileURL(m.file)} alt="sent" style={S.thumbnail} onClick={() => window.open(fileURL(m.file), "_blank")} />}
               {m.file && m.fileType === "video" && <video style={S.thumbnail} controls onClick={() => window.open(fileURL(m.file), "_blank")}><source src={fileURL(m.file)} type="video/mp4" /></video>}
               {m.file && m.fileType === "audio" && <audio controls style={S.audioPlayer}><source src={fileURL(m.file)} type="audio/webm" /></audio>}
+              <div style={{ fontSize: 10, opacity: 0.6, textAlign: "right", marginTop: 5 }}>
+                {dayjs(m.createdAt).format("DD MMM, hh:mm A")}
+              </div>
             </motion.div>
           );
         })}
