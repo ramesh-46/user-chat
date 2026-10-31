@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
-import { fetchMessages, sendMessage, blockUser, unblockUser } from "../../api";
+import { fetchMessages, sendMessage, blockUser, unblockUser, deleteDirectMessage } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import MessageInput from "./MessageInput";
 import CallUI from "../Call/CallButton";
@@ -132,13 +132,19 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       }
     };
 
+    const deletedH = ({ messageId }) => {
+      setMsgs(prev => prev.map(m => m._id === messageId ? { ...m, deletedForEveryone: true, text: "", file: null } : m));
+    };
+
     socket.on("receiveMessage", recv);
+    socket.on("direct:message-deleted", deletedH);
     socket.on("peerTyping", typingH);
     socket.on("userOnline", onlineH);
     socket.on("userOffline", offlineH);
 
     return () => {
       socket.off("receiveMessage", recv);
+      socket.off("direct:message-deleted", deletedH);
       socket.off("peerTyping", typingH);
       socket.off("userOnline", onlineH);
       socket.off("userOffline", offlineH);
@@ -198,6 +204,23 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     setSelectedMessages((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
+  };
+
+  const deleteSelected = async (forEveryone = false) => {
+    const chosen = msgs.filter(m => selectedMessages.includes(m._id));
+    const allowed = forEveryone ? chosen.filter(m => String(m.sender?._id || m.sender) === userId) : chosen;
+    if (!allowed.length) return;
+    if (!window.confirm(forEveryone ? "Delete selected messages for everyone?" : "Delete selected messages for you?")) return;
+    try {
+      await Promise.all(allowed.map(m => deleteDirectMessage(m._id, forEveryone)));
+      setMsgs(prev => forEveryone
+        ? prev.map(m => allowed.some(x => x._id === m._id) ? { ...m, deletedForEveryone: true, text: "", file: null } : m)
+        : prev.filter(m => !allowed.some(x => x._id === m._id)));
+      setSelectedMessages([]);
+    } catch (error) {
+      console.error("Failed to delete selected messages:", error);
+      alert(error.response?.data?.error || "Unable to delete selected messages.");
+    }
   };
 
   const copySelected = () => {
@@ -353,6 +376,8 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
         }}>
           <button onClick={copySelected} style={S.toolbarButton}>📋 Copy</button>
           <button onClick={shareSelected} style={S.toolbarButton}>📤 Share</button>
+          <button onClick={() => deleteSelected(false)} style={S.toolbarButton}>Delete for me</button>
+          <button onClick={() => deleteSelected(true)} style={S.toolbarButton}>Delete for everyone</button>
           <button onClick={() => setSelectedMessages([])} style={S.toolbarButton}>❌ Cancel</button>
         </div>
       )}
