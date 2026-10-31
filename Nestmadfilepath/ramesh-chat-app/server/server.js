@@ -165,6 +165,8 @@
       const group = await Group.findOne({ _id: groupId, members: member._id }).select("_id");
       if (!group) return;
       socket.join("group:" + groupId);
+      socket.data.groupUserId = String(member._id);
+      socket.data.groupId = String(groupId);
       socket.emit("group:joined", { groupId });
     } catch (error) {
       console.warn("[SOCKET_GROUP_JOIN] Rejected:", error.code || error.message);
@@ -173,6 +175,10 @@
 
   socket.on("group:leave", ({ groupId } = {}) => {
     if (groupId) socket.leave("group:" + groupId);
+    if (String(socket.data.groupId) === String(groupId)) {
+      socket.data.groupId = null;
+      socket.data.groupUserId = null;
+    }
   });
   socket.on("typing", ({ from, to }) => {
 //     console.log(`Typing from ${from} to ${to}`);
