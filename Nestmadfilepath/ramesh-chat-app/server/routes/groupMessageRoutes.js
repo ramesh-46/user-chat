@@ -83,8 +83,10 @@ router.post("/:groupId/messages", upload.single("file"), async (req, res) => {
     });
     group.updatedAt = new Date();
     await group.save();
+    const populatedMessage = await Message.findById(message._id).populate("sender", "username name avatar").lean();
+    req.app.get("io")?.to("group:" + String(group._id)).emit("group:message", populatedMessage);
     return res.status(201).json({ success: true, message: {
-      ...message.toObject(),
+      ...populatedMessage,
       file: message.viewOnce ? null : message.file
     }});
   } catch (error) {
@@ -111,6 +113,7 @@ router.delete("/messages/:messageId", async (req, res) => {
       message.text = "";
       message.file = undefined;
       await message.save();
+      req.app.get("io")?.to("group:" + String(group._id)).emit("group:message-deleted", { messageId: String(message._id), deletedForEveryone: true });
       return res.json({ success: true, deletedForEveryone: true });
     }
     await Message.updateOne({ _id: message._id }, { $addToSet: { deletedFor: req.user._id } });
