@@ -179,7 +179,21 @@
 //     io.to(to).emit("peerTyping", from);
 //   });
 
-//   socket.on("webrtc-offer", (data) => {
+//   // One-to-one call invitation and lifecycle signaling.
+  socket.on("call", (data = {}) => {
+    if (!data.to || !data.from) return;
+    io.to(String(data.to)).emit("incomingCall", { from: data.from, fromUser: data.fromUser || {}, mediaMode: data.mediaMode || "audio" });
+  });
+  socket.on("callAccepted", (data = {}) => {
+    if (data.to && data.from) io.to(String(data.to)).emit("callAccepted", { from: data.from });
+  });
+  socket.on("callDeclined", (data = {}) => {
+    if (data.to && data.from) io.to(String(data.to)).emit("callDeclined", { from: data.from });
+  });
+  socket.on("callEnded", (data = {}) => {
+    if (data.to && data.from) io.to(String(data.to)).emit("callEnded", { from: data.from });
+  });
+  socket.on("webrtc-offer", (data) => {
 //     console.log(`WebRTC offer from ${data.from} to ${data.to}`);
 //     io.to(data.to).emit("webrtc-offer", { from: socket.id, ...data });
 //   });
