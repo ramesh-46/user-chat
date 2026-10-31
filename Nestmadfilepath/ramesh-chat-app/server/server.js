@@ -245,6 +245,7 @@ const chatRoutes = require("./routes/chatRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 const settingsRoutes = require("./routes/settingsRoutes");
 const groupRoutes = require("./routes/grouproutes");
+const groupMessageRoutes = require("./routes/groupMessageRoutes");
 console.log("✅ [DEBUG] Models and routes loaded successfully");
 
 // App & Server Setup
@@ -299,6 +300,7 @@ app.use("/api/settings", settingsRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/settings");
 
 app.use("/api/groups", groupRoutes);
+app.use("/api/group-messages", groupMessageRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/groups (Firebase-authenticated)");
 
 // Lightweight health endpoint for Render and uptime checks.
