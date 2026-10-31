@@ -6,6 +6,8 @@ import {
   removeGroupMember, deleteGroup, leaveGroup
 } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
+import { auth } from "../../firebase";
+import socket from "../../socket";
 
 const panel = { display: "flex", height: "100%", minHeight: 0, background: "var(--surfaceAlt)", color: "var(--textMain)", fontFamily: "var(--font-ui)" };
 const side = { width: 270, maxWidth: "38%", overflowY: "auto", borderRight: "1px solid var(--border)", padding: 12, boxSizing: "border-box" };
@@ -55,9 +57,31 @@ export default function GroupChat({ onBack }) {
   useEffect(() => { loadGroups(); }, []);
   useEffect(() => {
     if (!active?._id) { setMessages([]); return; }
+    let mounted = true;
+    const join = async () => {
+      try {
+        const token = await auth.currentUser?.getIdToken();
+        if (token && mounted) socket.emit("group:join", { groupId: active._id, token });
+      } catch (e) { console.error("Group socket authentication failed:", e); }
+    };
+    join();
     loadMessages(active);
-    const timer = setInterval(() => loadMessages(active), 3000);
-    return () => clearInterval(timer);
+    const onMessage = (message) => {
+      if (String(message.groupId) === String(active._id)) {
+        setMessages(prev => prev.some(m => m._id === message._id) ? prev : [...prev, message]);
+      }
+    };
+    const onDeleted = ({ messageId }) => {
+      setMessages(prev => prev.map(m => m._id === messageId ? { ...m, deletedForEveryone: true, text: "", file: null } : m));
+    };
+    socket.on("group:message", onMessage);
+    socket.on("group:message-deleted", onDeleted);
+    return () => {
+      mounted = false;
+      socket.emit("group:leave", { groupId: active._id });
+      socket.off("group:message", onMessage);
+      socket.off("group:message-deleted", onDeleted);
+    };
   }, [active?._id]);
 
   useEffect(() => () => Object.values(mediaUrls).forEach(url => URL.revokeObjectURL(url)), [mediaUrls]);
