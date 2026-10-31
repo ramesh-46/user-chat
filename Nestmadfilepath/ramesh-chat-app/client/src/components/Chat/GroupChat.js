@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useContext } from "react";
 import dayjs from "dayjs";
 import {
   fetchGroups, createGroup, fetchGroupMessages, sendGroupMessage,
-  deleteGroupMessage, fetchGroupMedia, addGroupMember, promoteGroupAdmin,
+  deleteGroupMessage, fetchGroupMedia, addGroupMember, promoteGroupAdmin, demoteGroupAdmin,
   removeGroupMember, deleteGroup, leaveGroup
 } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
@@ -69,6 +69,10 @@ export default function GroupChat({ onBack }) {
     const onMessage = (message) => {
       if (String(message.groupId) === String(active._id)) {
         setMessages(prev => prev.some(m => m._id === message._id) ? prev : [...prev, message]);
+        if (String(message.sender?._id || message.sender) !== myId) {
+          const audio = new Audio("/ping.mp3");
+          audio.play().catch(() => {});
+        }
       }
     };
     const onDeleted = ({ messageId }) => {
@@ -149,6 +153,7 @@ export default function GroupChat({ onBack }) {
     try {
       if (action === "add") await addGroupMember(active._id, adminTarget.trim());
       if (action === "promote") await promoteGroupAdmin(active._id, adminTarget.trim());
+      if (action === "demote") await demoteGroupAdmin(active._id, adminTarget.trim());
       if (action === "remove") await removeGroupMember(active._id, adminTarget.trim());
       setAdminTarget(""); await loadGroups();
     } catch (e) { setError(e.response?.data?.error || "Group update failed."); }
@@ -191,6 +196,7 @@ export default function GroupChat({ onBack }) {
               <input style={{ ...field, maxWidth: 220, margin: 0 }} placeholder="Member user ID" value={adminTarget} onChange={e => setAdminTarget(e.target.value)}/>
               <button style={button} onClick={() => manageMember("add")}>Add member</button>
               <button style={button} onClick={() => manageMember("promote")}>Make admin</button>
+              <button style={button} onClick={() => manageMember("demote")}>Demote admin</button>
               <button style={button} onClick={() => manageMember("remove")}>Remove member</button>
               <button style={{ ...button, background: "#a33" }} onClick={() => closeGroup("delete")}>Delete group</button>
             </div>}
@@ -211,9 +217,9 @@ export default function GroupChat({ onBack }) {
                   </div>}
                   {m.mediaUnavailable && <small>Media already viewed or unavailable</small>}
                 </>}
-                {mine && !m.deletedForEveryone && <div style={{ display: "flex", gap: 4, marginTop: 5 }}>
+                {!m.deletedForEveryone && <div style={{ display: "flex", gap: 4, marginTop: 5 }}>
                   <button style={{ ...button, fontSize: 11 }} onClick={() => removeMessage(m, false)}>Delete for me</button>
-                  <button style={{ ...button, fontSize: 11, background: "#a33" }} onClick={() => removeMessage(m, true)}>Delete for everyone</button>
+                  {mine && <button style={{ ...button, fontSize: 11, background: "#a33" }} onClick={() => removeMessage(m, true)}>Delete for everyone</button>}
                 </div>}
               </article>;
             })}
