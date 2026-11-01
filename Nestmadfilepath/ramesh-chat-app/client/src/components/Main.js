@@ -31,7 +31,7 @@ export default function Main() {
   const { theme, themeKey, setTheme } = useContext(ThemeContext);
 
   const [current, setCurrent] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("lastOpenChat") || "null"); } catch (_) { return null; }
+    try { return JSON.parse(localStorage.getItem("lastOpenChat:" + String(user?._id || user?.userId || "guest")) || "null"); } catch (_) { return null; }
   });
   const [showProfile, setShowProfile] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
@@ -41,8 +41,8 @@ export default function Main() {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (current?._id) localStorage.setItem("lastOpenChat", JSON.stringify(current));
-    else localStorage.removeItem("lastOpenChat");
+    if (current?._id) localStorage.setItem("lastOpenChat:" + userId, JSON.stringify(current));
+    else localStorage.removeItem("lastOpenChat:" + userId);
   }, [current]);
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function Main() {
     root.style.setProperty("--primarySoft", `color-mix(in srgb, ${customColor} 17%, #ffffff)`);
     root.style.setProperty("--primaryGradient", `linear-gradient(135deg, ${customColor}, color-mix(in srgb, ${customColor} 55%, #111827))`);
     localStorage.setItem("chatCustomAccent", customColor);
-  }, [customColor]);
+  }, [customColor, themeKey]);
 
   // AuthContext stores the Mongo user document. Older sessions may contain
   // userId instead of _id, so support both without changing the login flow.
