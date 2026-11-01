@@ -19,7 +19,7 @@ export default function Navbar({ logout, onProfile, onGroups, onSettings }) {
   );
 }
 const S = {
-  bar: { height: 58, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px 0 18px", background: "var(--primary)", color: "#fff", boxSizing: "border-box" },
+  bar: { height: 58, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 14px 0 18px", background: "var(--primaryGradient, var(--primary))", color: "#fff", boxSizing: "border-box" },
   brand: { display: "flex", alignItems: "center", gap: 10, letterSpacing: ".5px", fontSize: "clamp(.9rem,2.5vw,1.05rem)" },
   mark: { width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", background: "rgba(255,255,255,.18)", fontWeight: 800 },
   menuButton: { width: 40, height: 40, border: 0, borderRadius: 10, background: "rgba(255,255,255,.13)", color: "#fff", fontSize: 26, cursor: "pointer" },
