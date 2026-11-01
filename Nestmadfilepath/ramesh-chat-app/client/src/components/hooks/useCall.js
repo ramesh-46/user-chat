@@ -28,7 +28,8 @@ export function useCall(userId) {
   const [isMuted, setIsMuted] = useState(false);
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [cameraFacing, setCameraFacing] = useState("user");
-  const [recording, setRecording] = useState(false);\n  const [recordingPaused, setRecordingPaused] = useState(false);\n  const [recordingSaved, setRecordingSaved] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);\n  const [recordingSaved, setRecordingSaved] = useState(false);
   const [recordingRequest, setRecordingRequest] = useState(null);
 
   const getLocalStream = useCallback(() => localStream.current, []);
@@ -245,7 +246,9 @@ export function useCall(userId) {
       };
       instance.start(1000);
       recorder.current = instance;
-      setRecording(true);\n      setRecordingPaused(false);\n      setRecordingSaved(false);
+      setRecording(true);
+      setRecordingPaused(false);
+      setRecordingSaved(false);
     } catch (error) {
       window.alert("Could not start recording in this browser.");
     }
