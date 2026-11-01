@@ -178,7 +178,9 @@
 const router = require("express").Router();
 const User = require("../models/User");
 const Message = require("../models/Message");
-const upload = require("../utils/upload");
+const mongoose = require("mongoose");
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 }, fileFilter: (_req, _file, cb) => cb(null, true) });
 const DeletedAccount = require("../models/DeletedAccount");
 
 /* 🔎 User search – by mobile OR username */
@@ -305,7 +307,18 @@ router.post("/messages", upload.single("file"), async (req, res) => {
     let filePath, mime;
 
     if (req.file) {
-      filePath = `/uploads/${req.file.filename}`;
+      if (!mongoose.connection.db) return res.status(503).json({ error: "Media storage is not ready. Please retry." });
+      const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "directChatMedia" });
+      const fileId = await new Promise((resolve, reject) => {
+        const stream = bucket.openUploadStream(req.file.originalname || "attachment", {
+          contentType: req.file.mimetype,
+          metadata: { sender: String(sender), receiver: String(receiver), uploadedAt: new Date() }
+        });
+        stream.once("error", reject);
+        stream.once("finish", () => resolve(String(stream.id)));
+        stream.end(req.file.buffer);
+      });
+      filePath = `/api/media/${fileId}`;
       mime = req.file.mimetype;
       console.log("📤 [DEBUG] File path set:", filePath, "MIME:", mime);
     }
@@ -352,6 +365,33 @@ router.post("/messages", upload.single("file"), async (req, res) => {
     res.status(500).json({ error: "Failed to send message" });
   }
 });
+/* Stream durable direct-chat attachments from MongoDB GridFS. */
+router.get("/media/:fileId", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.fileId) || !mongoose.connection.db) {
+      return res.status(404).json({ error: "Media not found" });
+    }
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "directChatMedia" });
+    const fileId = new mongoose.Types.ObjectId(req.params.fileId);
+    const files = await bucket.find({ _id: fileId }).toArray();
+    if (!files.length) return res.status(404).json({ error: "Media not found" });
+    res.setHeader("Content-Type", files[0].contentType || "application/octet-stream");
+    res.setHeader("Content-Disposition", "inline");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    const stream = bucket.openDownloadStream(fileId);
+    stream.on("error", (error) => {
+      console.error("[DIRECT_MEDIA_STREAM]", error);
+      if (!res.headersSent) res.status(404).end();
+      else res.end();
+    });
+    return stream.pipe(res);
+  } catch (error) {
+    console.error("[DIRECT_MEDIA_READ]", error);
+    return res.status(500).json({ error: "Unable to open attachment" });
+  }
+});
+
 /* Block a user */
 router.post("/block/:userId/:peerId", async (req, res) => {
   console.log("🚫 [DEBUG] POST /api/block/:userId/:peerId - Request received");
