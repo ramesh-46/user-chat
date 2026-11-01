@@ -1,343 +1,338 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { io } from "socket.io-client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import socket from "../../socket";
 
-export function useCall(userId) {
-  const socket = useRef(null);
-  const pc = useRef(null);
-  const localStream = useRef(null);
-  const remoteStream = useRef(null);
-  const timeoutRef = useRef(null);
-  const [callState, setCallState] = useState("idle"); // idle | calling | incoming | connected | ended
-  const [peerId, setPeerId] = useState(null);
-  const [incomingPeer, setIncomingPeer] = useState(null);
-  const [isMuted, setIsMuted] = useState(false);
-  const [micPermission, setMicPermission] = useState(null); // 'granted' | 'denied' | 'prompt'
-
-  // Initialize socket lazily
-  if (typeof window !== "undefined" && socket.current === null) {
-    socket.current = io("https://blackpearlbackend.onrender.com", {
-      transports: ["websocket", "polling"],
-    });
-  }
-
-  // const rtcCfg = {
-   // iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
-  // };
-
-
-const rtcCfg = {
+const RTC_CONFIG = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun3.l.google.com:19302" },
-    { urls: "stun:stun4.l.google.com:19302" },
-    {
-      urls: "turn:relay1.expressturn.com:3478",
-      username: "efree",
-      credential: "efree123",
-    },
   ],
-  iceCandidatePoolSize: 10,
+  iceCandidatePoolSize: 8,
 };
 
-  // Helper: Stop all tracks in a stream
-  const stopTracks = (stream) => {
-    if (!stream) return;
-    stream.getTracks().forEach((track) => {
-      try {
-        track.stop();
-      } catch (e) {
-        console.error("Error stopping track:", e);
-      }
+export function useCall(userId) {
+  const pc = useRef(null);
+  const localStream = useRef(null);
+  const remoteStream = useRef(null);
+  const pendingOffer = useRef(null);
+  const pendingIce = useRef([]);
+  const timeoutRef = useRef(null);
+  const recorder = useRef(null);
+  const recordingRequestPending = useRef(false);
+  const recordedChunks = useRef([]);
+  const [callState, setCallState] = useState("idle");
+  const [peerId, setPeerId] = useState(null);
+  const [incomingPeer, setIncomingPeer] = useState(null);
+  const [mediaMode, setMediaMode] = useState("audio");
+  const [localVersion, setLocalVersion] = useState(0);
+  const [remoteVersion, setRemoteVersion] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [cameraEnabled, setCameraEnabled] = useState(true);
+  const [cameraFacing, setCameraFacing] = useState("user");
+  const [recording, setRecording] = useState(false);
+  const [recordingRequest, setRecordingRequest] = useState(null);
+
+  const getLocalStream = useCallback(() => localStream.current, []);
+  const getRemoteStream = useCallback(() => remoteStream.current, []);
+
+  const stopTracks = useCallback((stream) => {
+    stream?.getTracks?.().forEach((track) => {
+      try { track.stop(); } catch (_) {}
     });
-  };
-
-  // Check microphone permission state
-  const checkMicPermission = async () => {
-    try {
-      const permissionStatus = await navigator.permissions.query({ name: "microphone" });
-      setMicPermission(permissionStatus.state);
-      return permissionStatus.state === "granted";
-    } catch (e) {
-      console.error("Permission API not supported:", e);
-      return false;
-    }
-  };
-
-  // Request microphone permission (with user feedback)
-  const requestMicPermission = async () => {
-    try {
-      const hasPermission = await checkMicPermission();
-      if (hasPermission) return true;
-      // Request permission
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      stopTracks(stream); // Stop the temporary stream
-      setMicPermission("granted");
-      return true;
-    } catch (e) {
-      console.error("Microphone access denied:", e);
-      setMicPermission("denied");
-      alert("Microphone access is required for calls. Please enable it in your browser settings.");
-      return false;
-    }
-  };
-
-  // Start local stream (with permission handling)
-  const startLocal = async () => {
-    const hasPermission = await requestMicPermission();
-    if (!hasPermission) throw new Error("Microphone permission denied");
-    try {
-      localStream.current = await navigator.mediaDevices.getUserMedia({ audio: true });
-      return localStream.current;
-    } catch (err) {
-      console.error("getUserMedia error:", err);
-      throw new Error("Failed to access microphone");
-    }
-  };
-
-  // Clean up resources
-  const cleanUp = useCallback(() => {
-    try {
-      if (pc.current) {
-        pc.current.ontrack = null;
-        pc.current.onicecandidate = null;
-        pc.current.onconnectionstatechange = null;
-        pc.current.close();
-        pc.current = null;
-      }
-      stopTracks(localStream.current);
-      stopTracks(remoteStream.current);
-      localStream.current = null;
-      remoteStream.current = null;
-      clearTimeout(timeoutRef.current);
-      setPeerId(null);
-      setIncomingPeer(null);
-      setIsMuted(false);
-      setCallState("idle");
-    } catch (err) {
-      console.error("Cleanup error:", err);
-    }
   }, []);
 
-  // Create peer connection (offer/answer/ICE)
-  const createPeer = async (isCaller, remoteId, remoteOffer = null) => {
-    try {
-      const stream = localStream.current || (await startLocal());
-      pc.current = new RTCPeerConnection(rtcCfg);
-      stream.getTracks().forEach((t) => pc.current.addTrack(t, stream));
-
-      pc.current.ontrack = ({ streams: [s] }) => {
-        remoteStream.current = s;
-        console.log("Remote stream received");
-      };
-
-      pc.current.onicecandidate = ({ candidate }) => {
-        if (candidate && remoteId) {
-          socket.current.emit("webrtc-ice", { to: remoteId, from: userId, candidate });
-        }
-      };
-
-      if (remoteOffer) {
-        await pc.current.setRemoteDescription(remoteOffer);
-        const answer = await pc.current.createAnswer();
-        await pc.current.setLocalDescription(answer);
-        socket.current.emit("webrtc-answer", {
-          to: remoteId,
-          from: userId,
-          sdp: pc.current.localDescription,
-        });
-        return;
-      }
-
-      if (isCaller) {
-        const offer = await pc.current.createOffer();
-        await pc.current.setLocalDescription(offer);
-        socket.current.emit("webrtc-offer", {
-          to: remoteId,
-          from: userId,
-          sdp: pc.current.localDescription,
-        });
-      }
-
-      pc.current.onconnectionstatechange = () => {
-        if (!pc.current) return;
-        const state = pc.current.connectionState;
-        if (state === "disconnected" || state === "failed" || state === "closed") {
-          cleanUp();
-        }
-      };
-    } catch (err) {
-      console.error("Error in createPeer:", err);
-      throw err;
+  const cleanup = useCallback(() => {
+    clearTimeout(timeoutRef.current);
+    if (recorder.current && recorder.current.state !== "inactive") {
+      try { recorder.current.stop(); } catch (_) {}
     }
-  };
+    recorder.current = null;
+    setRecording(false);
+    setRecordingRequest(null);
+    recordingRequestPending.current = false;
+    if (pc.current) {
+      pc.current.ontrack = null;
+      pc.current.onicecandidate = null;
+      pc.current.onconnectionstatechange = null;
+      pc.current.close();
+      pc.current = null;
+    }
+    stopTracks(localStream.current);
+    localStream.current = null;
+    remoteStream.current = null;
+    pendingOffer.current = null;
+    pendingIce.current = [];
+    setLocalVersion((v) => v + 1);
+    setRemoteVersion((v) => v + 1);
+    setPeerId(null);
+    setIncomingPeer(null);
+    setIsMuted(false);
+    setCameraEnabled(true);
+    setCallState("idle");
+  }, [stopTracks]);
 
-  // Answer an incoming call
+  const acquireMedia = useCallback(async (mode) => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      throw new Error("Calls require HTTPS and a browser that supports camera/microphone access.");
+    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: mode === "video" ? { facingMode: cameraFacing } : false,
+    });
+    localStream.current = stream;
+    setLocalVersion((v) => v + 1);
+    return stream;
+  }, [cameraFacing]);
+
+  const createPeer = useCallback((targetId, offer = null) => {
+    const connection = new RTCPeerConnection(RTC_CONFIG);
+    pc.current = connection;
+    const stream = localStream.current;
+    stream?.getTracks().forEach((track) => connection.addTrack(track, stream));
+    connection.ontrack = (event) => {
+      const incoming = event.streams?.[0];
+      if (incoming) remoteStream.current = incoming;
+      else {
+        if (!remoteStream.current) remoteStream.current = new MediaStream();
+        remoteStream.current.addTrack(event.track);
+      }
+      setRemoteVersion((v) => v + 1);
+    };
+    connection.onicecandidate = ({ candidate }) => {
+      if (candidate) socket.emit("webrtc-ice", { to: targetId, from: userId, candidate });
+    };
+    connection.onconnectionstatechange = () => {
+      if (["failed", "closed"].includes(connection.connectionState)) cleanup();
+      if (connection.connectionState === "connected") {
+        clearTimeout(timeoutRef.current);
+        setCallState("connected");
+      }
+    };
+    return (async () => {
+      if (offer) {
+        await connection.setRemoteDescription(new RTCSessionDescription(offer));
+        for (const candidate of pendingIce.current.splice(0)) {
+          try { await connection.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) {}
+        }
+        const answer = await connection.createAnswer();
+        await connection.setLocalDescription(answer);
+        socket.emit("webrtc-answer", { to: targetId, from: userId, sdp: connection.localDescription });
+      } else {
+        const created = await connection.createOffer();
+        await connection.setLocalDescription(created);
+        socket.emit("webrtc-offer", { to: targetId, from: userId, sdp: connection.localDescription });
+      }
+    })();
+  }, [cleanup, userId]);
+
+  const call = useCallback(async (targetId, targetUser, mode = "audio") => {
+    if (!targetId || callState !== "idle") return;
+    try {
+      setPeerId(String(targetId));
+      setMediaMode(mode);
+      setCallState("calling");
+      await acquireMedia(mode);
+      socket.emit("call", {
+        to: String(targetId),
+        from: String(userId),
+        mediaMode: mode,
+        fromUser: { username: targetUser?.username || targetUser?.name || "Caller", avatar: targetUser?.avatar || "" },
+      });
+      await createPeer(String(targetId));
+      timeoutRef.current = setTimeout(() => {
+        socket.emit("callEnded", { to: String(targetId), from: String(userId) });
+        cleanup();
+      }, 60000);
+    } catch (error) {
+      console.error("Unable to start call:", error);
+      cleanup();
+      window.alert(error.message || "Unable to start the call. Check camera/microphone permissions.");
+    }
+  }, [acquireMedia, callState, cleanup, createPeer, userId]);
+
   const answer = useCallback(async () => {
     if (callState !== "incoming" || !peerId) return;
     try {
-      if (!localStream.current) await startLocal();
-      // Create the peer connection BEFORE emitting callAccepted
-      await createPeer(false, peerId);
-      socket.current.emit("callAccepted", { to: peerId, from: userId });
+      await acquireMedia(mediaMode);
+      if (!pendingOffer.current) throw new Error("The caller's connection offer has not arrived yet. Please try again.");
+      await createPeer(peerId, pendingOffer.current);
+      pendingOffer.current = null;
+      socket.emit("callAccepted", { to: peerId, from: String(userId) });
       setCallState("connected");
-    } catch (err) {
-      console.error("Answer error:", err);
-      setCallState("ended");
-      cleanUp();
+    } catch (error) {
+      console.error("Unable to answer call:", error);
+      window.alert(error.message || "Could not answer the call.");
+      socket.emit("callDeclined", { to: peerId, from: String(userId) });
+      cleanup();
     }
-  }, [callState, peerId, userId, cleanUp]);
+  }, [acquireMedia, callState, cleanup, createPeer, mediaMode, peerId, userId]);
 
-  // Decline an incoming call
   const decline = useCallback(() => {
-    if (callState !== "incoming" || !peerId) return;
-    socket.current.emit("callDeclined", { to: peerId, from: userId });
-    setCallState("ended");
-    cleanUp();
-  }, [callState, peerId, userId, cleanUp]);
+    if (peerId) socket.emit("callDeclined", { to: peerId, from: String(userId) });
+    cleanup();
+  }, [cleanup, peerId, userId]);
 
-  // Initiate a call
-  const call = useCallback(
-    async (targetId, targetUser) => {
-      if (callState !== "idle") return;
-      setPeerId(targetId);
-      setCallState("calling");
-      try {
-        if (!localStream.current) await startLocal();
-        socket.current.emit("call", {
-          to: targetId,
-          from: userId,
-          fromUser: { username: targetUser?.username || "Caller" },
-        });
-        timeoutRef.current = setTimeout(() => {
-          setCallState("ended");
-          socket.current.emit("callEnded", { to: targetId, from: userId });
-          cleanUp();
-        }, 60000);
-      } catch (err) {
-        console.error("Call error:", err);
-        setCallState("ended");
-        cleanUp();
-      }
-    },
-    [callState, userId, cleanUp]
-  );
-
-  // End the current call
   const hangup = useCallback(() => {
-    if (!peerId) {
-      cleanUp();
+    if (peerId) socket.emit("callEnded", { to: peerId, from: String(userId) });
+    cleanup();
+  }, [cleanup, peerId, userId]);
+
+  const toggleMute = useCallback(() => {
+    const tracks = localStream.current?.getAudioTracks() || [];
+    if (!tracks.length) return;
+    const next = !isMuted;
+    tracks.forEach((track) => { track.enabled = !next; });
+    setIsMuted(next);
+  }, [isMuted]);
+
+  const toggleCamera = useCallback(() => {
+    const tracks = localStream.current?.getVideoTracks() || [];
+    if (!tracks.length) return;
+    const next = !cameraEnabled;
+    tracks.forEach((track) => { track.enabled = next; });
+    setCameraEnabled(next);
+  }, [cameraEnabled]);
+
+  const switchCamera = useCallback(async () => {
+    if (mediaMode !== "video" || !localStream.current) return;
+    const nextFacing = cameraFacing === "user" ? "environment" : "user";
+    let replacement;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: nextFacing } }, audio: false });
+      replacement = stream.getVideoTracks()[0];
+      if (!replacement) throw new Error("No camera available");
+      const sender = pc.current?.getSenders().find((item) => item.track?.kind === "video");
+      if (sender) await sender.replaceTrack(replacement);
+      const previous = localStream.current.getVideoTracks()[0];
+      if (previous) {
+        localStream.current.removeTrack(previous);
+        previous.stop();
+      }
+      localStream.current.addTrack(replacement);
+      setCameraFacing(nextFacing);
+      setLocalVersion((v) => v + 1);
+    } catch (error) {
+      stopTracks(replacement ? new MediaStream([replacement]) : null);
+      window.alert("Unable to switch camera on this device.");
+    }
+  }, [cameraFacing, mediaMode, stopTracks]);
+
+  const startRecording = useCallback(() => {
+    if (!localStream.current) return;
+    const tracks = [
+      ...(localStream.current?.getTracks() || []),
+      ...(remoteStream.current?.getTracks() || []),
+    ];
+    if (!tracks.length || !window.MediaRecorder) {
+      window.alert("Recording is not supported by this browser.");
       return;
     }
     try {
-      socket.current.emit("callEnded", { to: peerId, from: userId });
-    } catch (e) {
-      console.error("Error emitting callEnded:", e);
+      const combined = new MediaStream(tracks);
+      const mimeType = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"].find((type) => MediaRecorder.isTypeSupported(type));
+      const instance = new MediaRecorder(combined, mimeType ? { mimeType } : undefined);
+      recordedChunks.current = [];
+      instance.ondataavailable = (event) => { if (event.data?.size) recordedChunks.current.push(event.data); };
+      instance.onstop = () => {
+        if (!recordedChunks.current.length) return;
+        const blob = new Blob(recordedChunks.current, { type: instance.mimeType || "video/webm" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `call-recording-${Date.now()}.webm`;
+        link.click();
+        URL.revokeObjectURL(url);
+        recordedChunks.current = [];
+      };
+      instance.start(1000);
+      recorder.current = instance;
+      setRecording(true);
+    } catch (error) {
+      window.alert("Could not start recording in this browser.");
     }
-    setCallState("ended");
-    cleanUp();
-  }, [peerId, userId, cleanUp]);
-
-  // Toggle mute
-  const toggleMute = useCallback(() => {
-    if (!localStream.current) return;
-    localStream.current.getAudioTracks().forEach((track) => (track.enabled = !track.enabled));
-    setIsMuted((prev) => !prev);
   }, []);
 
-  // Socket event listeners
+  const requestRecording = useCallback(() => {
+    if (!peerId) return;
+    socket.emit("recording:request", { to: peerId, from: String(userId) });
+  }, [peerId, userId]);
+
+  const acceptRecording = useCallback((accepted) => {
+    if (!recordingRequest) return;
+    socket.emit("recording:consent", { to: recordingRequest.from, from: String(userId), accepted });
+    setRecordingRequest(null);
+  }, [recordingRequest, userId]);
+
+  const stopRecording = useCallback(() => {
+    if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
+    recorder.current = null;
+    setRecording(false);
+    setRecordingConsent(false);
+  }, []);
+
   useEffect(() => {
-    const s = socket.current;
-    if (!s) return;
-
-    s.emit("join", userId);
-
-    s.on("incomingCall", ({ from, fromUser }) => {
-      setIncomingPeer(fromUser);
-      setPeerId(from);
+    if (!userId) return;
+    const join = () => {
+      // Main.js authenticates the shared socket room; do not create or disconnect another socket here.
+    };
+    const onIncoming = ({ from, fromUser, mediaMode: mode }) => {
+      setPeerId(String(from));
+      setIncomingPeer(fromUser || {});
+      setMediaMode(mode === "video" ? "video" : "audio");
       setCallState("incoming");
-    });
-
-    s.on("callAccepted", async ({ from }) => {
-      clearTimeout(timeoutRef.current);
-      try {
-        // The caller should already have the peer connection created
-        // But we need to handle the case where it might not be
-        if (!pc.current) {
-          await createPeer(true, from);
-        }
-        setCallState("connected");
-      } catch (err) {
-        console.error("Error during callAccepted:", err);
-        setCallState("ended");
-        cleanUp();
-      }
-    });
-
-    s.on("callDeclined", ({ from }) => {
-      clearTimeout(timeoutRef.current);
-      setCallState("ended");
-      cleanUp();
-    });
-
-    s.on("callEnded", ({ from }) => {
-      clearTimeout(timeoutRef.current);
-      setCallState("ended");
-      cleanUp();
-    });
-
-    s.on("webrtc-offer", async ({ from, sdp }) => {
+    };
+    const onOffer = async ({ from, sdp }) => {
       if (!from || !sdp) return;
-      setPeerId(from);
-      try {
-        await createPeer(false, from, new RTCSessionDescription(sdp));
-      } catch (err) {
-        console.error("Error handling webrtc-offer:", err);
-      }
-    });
-
-    s.on("webrtc-answer", async ({ sdp }) => {
+      if (!pc.current) pendingOffer.current = sdp;
+    };
+    const onAnswer = async ({ sdp }) => {
       if (!sdp || !pc.current) return;
       try {
         await pc.current.setRemoteDescription(new RTCSessionDescription(sdp));
+        clearTimeout(timeoutRef.current);
+        for (const candidate of pendingIce.current.splice(0)) {
+          try { await pc.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) {}
+        }
         setCallState("connected");
-      } catch (err) {
-        console.error("Error setting remote description (answer):", err);
-      }
-    });
-
-    s.on("webrtc-ice", async ({ candidate }) => {
-      if (!candidate || !pc.current) return;
-      try {
-        await pc.current.addIceCandidate(new RTCIceCandidate(candidate));
-      } catch (err) {
-        console.error("addIceCandidate error:", err);
-      }
-    });
-
-    return () => {
-      try {
-        s.disconnect();
-      } catch (e) {
-        console.error("Error disconnecting socket:", e);
-      }
-      cleanUp();
+      } catch (error) { console.error("Call answer negotiation failed:", error); cleanup(); }
     };
-  }, [userId, cleanUp]);
+    const onIce = async ({ candidate }) => {
+      if (!candidate) return;
+      if (!pc.current || !pc.current.remoteDescription) { pendingIce.current.push(candidate); return; }
+      try { await pc.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch (error) { console.warn("ICE candidate rejected:", error); }
+    };
+    const onEnded = () => cleanup();
+    const onRecordingRequest = ({ from }) => setRecordingRequest({ from });
+    const onRecordingConsent = ({ from, accepted }) => {
+      if (!recordingRequestPending.current || String(from) !== String(peerId)) return;
+      recordingRequestPending.current = false;
+      if (!accepted) { window.alert("The other participant did not consent to recording."); return; }
+      startRecording();
+    };
+    socket.on("incomingCall", onIncoming);
+    socket.on("webrtc-offer", onOffer);
+    socket.on("webrtc-answer", onAnswer);
+    socket.on("webrtc-ice", onIce);
+    socket.on("callEnded", onEnded);
+    socket.on("callDeclined", onEnded);
+    socket.on("recording:request", onRecordingRequest);
+    socket.on("recording:consent", onRecordingConsent);
+    return () => {
+      socket.off("incomingCall", onIncoming);
+      socket.off("webrtc-offer", onOffer);
+      socket.off("webrtc-answer", onAnswer);
+      socket.off("webrtc-ice", onIce);
+      socket.off("callEnded", onEnded);
+      socket.off("callDeclined", onEnded);
+      socket.off("recording:request", onRecordingRequest);
+      socket.off("recording:consent", onRecordingConsent);
+    };
+  }, [cleanup, peerId, startRecording, userId]);
+
 
   return {
-    call,
-    hangup,
-    answer,
-    decline,
-    toggleMute,
-    callState,
-    incomingPeer,
-    getLocalStream: () => localStream.current,
-    getRemoteStream: () => remoteStream.current,
-    isMuted,
-    micPermission,
-    requestMicPermission,
+    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera,
+    requestRecording, acceptRecording, stopRecording,
+    callState, incomingPeer, mediaMode, isMuted, cameraEnabled, recording,
+    recordingRequest, getLocalStream, getRemoteStream, localVersion, remoteVersion,
   };
 }

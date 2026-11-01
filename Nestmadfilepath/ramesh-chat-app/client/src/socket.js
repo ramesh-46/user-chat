@@ -1,44 +1,28 @@
-// import { io } from "socket.io-client";
-
-// const SOCKET_URL = "https://blackpearlbackend.onrender.com"; // your backend URL
-
-// // Single shared Socket.IO instance
-// const socket = io(SOCKET_URL, {
-//   transports: ["websocket"],
-//   withCredentials: true,
-// });
-
-// socket.on("connect", () => console.log("✅ Socket connected:", socket.id));
-// socket.on("connect_error", (err) => console.error("❌ Socket connection failed:", err.message));
-
-// export default socket;
-
-
-// src/socket.js
 import { io } from "socket.io-client";
 
-// ✅ Clean URL — NO TRAILING SPACES
-const SOCKET_URL = "https://blackpearlbackend.onrender.com";
+// Use the same Render backend as the REST API. A single shared socket instance
+// is imported by Main, ChatWindow, GroupChat, and call components.
+const SOCKET_URL = "https://user-chat-9luh.onrender.com";
 
-// 🌐 Single, reusable socket instance
 const socket = io(SOCKET_URL, {
   transports: ["websocket", "polling"],
-  withCredentials: true,
   reconnection: true,
-  reconnectionAttempts: 5,
+  reconnectionAttempts: Infinity,
   reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  timeout: 20000,
 });
 
 socket.on("connect", () => {
-  console.log("✅ Socket connected. ID:", socket.id);
+  console.log("✅ Socket connected:", socket.id);
 });
 
-socket.on("connect_error", (err) => {
-  console.error("❌ Socket connection failed:", err.message);
+socket.on("connect_error", (error) => {
+  console.error("❌ Socket connection failed:", error.message);
 });
 
-socket.on("disconnect", () => {
-  console.log("🔌 Socket disconnected");
+socket.on("disconnect", (reason) => {
+  console.log("🔌 Socket disconnected:", reason);
 });
 
 export default socket;

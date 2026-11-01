@@ -49,15 +49,22 @@ export default function ChatList({ current, onPick, socket }) {
     return () => socket.off("refreshConversations", load);
   }, [socket]);
 
+  useEffect(() => {
+    const online = (id) => setPeers((items) => items.map((peer) => String(peer._id) === String(id) ? { ...peer, online: true, lastSeen: null } : peer));
+    const offline = (payload) => {
+      const id = payload?.userId || payload;
+      setPeers((items) => items.map((peer) => String(peer._id) === String(id) ? { ...peer, online: false, lastSeen: payload?.lastSeen || new Date() } : peer));
+    };
+    socket.on("userOnline", online);
+    socket.on("userOffline", offline);
+    return () => {
+      socket.off("userOnline", online);
+      socket.off("userOffline", offline);
+    };
+  }, [socket]);
+
   /* hide list when a chat is selected on mobile */
   const hidden = isMobile && current;
-
-  // Request notification permission once
-  useEffect(() => {
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
 
   // Handle chat selection
   const handlePick = (p) => {
@@ -81,7 +88,7 @@ export default function ChatList({ current, onPick, socket }) {
         });
 
         // Show browser/mobile notification
-        if (Notification.permission === "granted") {
+        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
           new Notification(`New message from ${m.senderName || "User"}`, {
             body: m.text || "Sent a message",
             icon: "/favicon.ico", // optional icon
