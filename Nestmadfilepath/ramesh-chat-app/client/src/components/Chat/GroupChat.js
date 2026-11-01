@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import {
   fetchGroups, createGroup, fetchGroupMessages, sendGroupMessage,
   deleteGroupMessage, fetchGroupMedia, addGroupMember, promoteGroupAdmin, demoteGroupAdmin,
-  removeGroupMember, deleteGroup, leaveGroup, findUser
+  removeGroupMember, deleteGroup, leaveGroup, findUser, fetchChatList
 } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
@@ -21,6 +21,11 @@ export default function GroupChat({ onBack }) {
   const [messages, setMessages] = useState([]);
   const [name, setName] = useState("");
   const [memberIds, setMemberIds] = useState("");
+  const [contacts, setContacts] = useState([]);
+  const [selectedMembers, setSelectedMembers] = useState([]);
+  const [memberSearch, setMemberSearch] = useState("");
+  const [lookupResult, setLookupResult] = useState(null);
+  const [mobileLayout, setMobileLayout] = useState(window.innerWidth <= 700);
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [viewOnce, setViewOnce] = useState(false);
@@ -57,7 +62,8 @@ export default function GroupChat({ onBack }) {
     } catch (e) { setError(e.response?.data?.error || "Unable to load group messages."); }
   };
 
-  useEffect(() => { loadGroups(); }, []);
+  useEffect(() => { loadGroups(); fetchChatList(myId).then(res => setContacts(res.data.users || [])).catch(() => {}); }, [myId]);
+  useEffect(() => { const resize = () => setMobileLayout(window.innerWidth <= 700); window.addEventListener("resize", resize); return () => window.removeEventListener("resize", resize); }, []);
   useEffect(() => {
     if (!active?._id) { setMessages([]); return; }
     let mounted = true;
@@ -117,10 +123,10 @@ export default function GroupChat({ onBack }) {
         if (!found.data?.user?._id) throw new Error(`User not found: ${entry}`);
         ids.push(found.data.user._id);
       }
-      const res = await createGroup({ name: name.trim(), memberIds: ids });
+      if (lookupResult?._id) ids.push(String(lookupResult._id));\n      const uniqueIds = [...new Set(ids.filter(id => String(id) !== myId))];\n      const res = await createGroup({ name: name.trim(), memberIds: uniqueIds });
       await loadGroups();
       setActive(res.data.group);
-      setName(""); setMemberIds("");
+      setName(""); setMemberIds(""); setSelectedMembers([]); setLookupResult(null); setMemberSearch("");
     } catch (e) { setError(e.response?.data?.error || e.message || "Could not create group."); }
     finally { setBusy(false); }
   };
@@ -200,8 +206,19 @@ export default function GroupChat({ onBack }) {
         <h3>Groups</h3>
         <form onSubmit={create}>
           <input style={field} placeholder="New group name" value={name} onChange={e => setName(e.target.value)} maxLength={100}/>
-          <textarea style={field} placeholder="Member usernames, mobile numbers or IDs (comma separated)" rows={2} value={memberIds} onChange={e => setMemberIds(e.target.value)}/>
-          <button style={button} disabled={busy || !name.trim()}>Create group</button>
+          <input style={field} placeholder="Add by username, email or mobile number" value={memberSearch} onChange={e => { setMemberSearch(e.target.value); setLookupResult(null); }}/>
+          <button type="button" style={{ ...button, width: "100%" }} disabled={!memberSearch.trim()} onClick={async () => { try { const result = await findUser(memberSearch.trim()); if (!result.data?.user?._id) throw new Error("No account found for that username, email or mobile number."); setLookupResult(result.data.user); setSelectedMembers(prev => [...new Set([...prev, String(result.data.user._id)])]); } catch (error) { setError(error.response?.data?.error || error.message || "User not found."); } }}>Find and add person</button>
+          {lookupResult && <div style={{ padding: 8, borderRadius: 8, background: "var(--primarySoft)", margin: "5px 0" }}>Added: {lookupResult.name || lookupResult.username || lookupResult.email}</div>}
+          <div style={{ marginTop: 8, border: "1px solid var(--border)", borderRadius: 10, padding: 8, maxHeight: 170, overflowY: "auto" }}>
+            <strong style={{ fontSize: 13 }}>Your available chats</strong>
+            {contacts.map(contact => <label key={contact._id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 2px", cursor: "pointer", borderBottom: "1px solid var(--border)" }}>
+              <input type="checkbox" checked={selectedMembers.includes(String(contact._id))} onChange={e => setSelectedMembers(prev => e.target.checked ? [...new Set([...prev, String(contact._id)])] : prev.filter(id => id !== String(contact._id)))}/>
+              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{contact.name || contact.username || contact.email || contact.mobile}</span>
+              <small style={{ marginLeft: "auto", opacity: .65 }}>{contact.mobile || ""}</small>
+            </label>)}
+            {!contacts.length && <small style={{ opacity: .7 }}>No existing chats yet. Search by username, email or mobile above.</small>}
+          </div>
+          <button style={{ ...button, width: "100%", padding: 11 }} disabled={busy || !name.trim()}>Create group ({selectedMembers.length} selected)</button>
         </form>
         <div style={{ marginTop: 12 }}>
           {groups.map(g => <button key={g._id} onClick={() => setActive(g)} style={{ ...field, textAlign: "left", cursor: "pointer", borderColor: active?._id === g._id ? "var(--primary)" : "var(--border)" }}>
