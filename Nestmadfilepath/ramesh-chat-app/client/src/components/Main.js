@@ -50,7 +50,6 @@ export default function Main() {
     const root = document.documentElement;
     root.style.setProperty("--primary", customColor);
     root.style.setProperty("--primarySoft", `color-mix(in srgb, ${customColor} 17%, #ffffff)`);
-    root.style.setProperty("--surfaceAlt", `color-mix(in srgb, ${customColor} 4%, #ffffff)`);
     root.style.setProperty("--primaryGradient", `linear-gradient(135deg, ${customColor}, color-mix(in srgb, ${customColor} 55%, #111827))`);
     localStorage.setItem("chatCustomAccent", customColor);
   }, [customColor]);
