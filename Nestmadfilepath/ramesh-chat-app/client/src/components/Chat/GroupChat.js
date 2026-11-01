@@ -21,6 +21,7 @@ export default function GroupChat({ onBack }) {
   const [messages, setMessages] = useState([]);
   const [selectedGroupMessages, setSelectedGroupMessages] = useState([]);
   const groupTouchTimer = React.useRef(null);
+  const groupLongPressTriggered = React.useRef(false);
   const [name, setName] = useState("");
   const [memberIds, setMemberIds] = useState("");
   const [contacts, setContacts] = useState([]);
@@ -270,10 +271,10 @@ export default function GroupChat({ onBack }) {
               const selected = selectedGroupMessages.includes(m._id);
               return <article key={m._id}
                 onContextMenu={event => { event.preventDefault(); toggleGroupMessage(m._id); }}
-                onTouchStart={() => { groupTouchTimer.current = setTimeout(() => toggleGroupMessage(m._id), 550); }}
+                onTouchStart={() => { groupLongPressTriggered.current = false; groupTouchTimer.current = setTimeout(() => { groupLongPressTriggered.current = true; toggleGroupMessage(m._id); }, 550); }}
                 onTouchEnd={() => clearTimeout(groupTouchTimer.current)}
                 onTouchMove={() => clearTimeout(groupTouchTimer.current)}
-                onClick={() => { if (selectedGroupMessages.length) toggleGroupMessage(m._id); }}
+                onClick={() => { if (groupLongPressTriggered.current) { groupLongPressTriggered.current = false; return; } if (selectedGroupMessages.length) toggleGroupMessage(m._id); }}
                 style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "min(78%, 680px)", padding: "10px 13px", borderRadius: 16, background: selected ? "#DCEBFF" : mine ? "#D9FDD3" : "#FFFFFF", color: "#17212B", border: selected ? "2px solid #5B9CF5" : "1px solid #E5E7EB", boxShadow: "0 2px 8px rgba(15,23,42,.06)", cursor: "default", animation: "bpFadeUp .18s ease both" }}>
                 <div style={{ fontSize: 11, opacity: .7 }}>{m.sender?.username || (mine ? "You" : "Member")} · {dayjs(m.createdAt).format("DD MMM, hh:mm A")}</div>
                 {m.deletedForEveryone ? <i>This message was deleted</i> : <>
