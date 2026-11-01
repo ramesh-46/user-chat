@@ -32,6 +32,7 @@ import { auth } from "./firebase";
 // // 📨 Messages CRUD
 // // --------------------------------------------------
 // export const fetchMessages = (u1, u2) => api.get(`/messages/${u1}/${u2}`);
+export const markConversationRead = (userId, peerId) => api.post(`/messages/read/${peerId}`, { userId });
 // export const sendMessage   = formData  => api.post("/messages", formData, {
 //   headers: { "Content-Type": "multipart/form-data" }
 // });
