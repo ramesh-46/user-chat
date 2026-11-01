@@ -111,13 +111,15 @@ export default function ChatList({ current, onPick, socket }) {
         <div><strong style={styles.headingTitle}>Chats</strong><div style={styles.subheading}>Your recent conversations</div></div>
         <span style={styles.total}>{orderedPeers.length}</span>
       </div>
-      {contactImportMessage && <div role="status" style={styles.contactHint}>{contactImportMessage}</div>}\n      <div style={styles.list}>
+      {contactImportMessage && <div role="status" style={styles.contactHint}>{contactImportMessage}</div>}
+      <div style={styles.list}>
         {loading && orderedPeers.length === 0 && <div style={styles.empty}>Loading your chats…</div>}
         {!loading && orderedPeers.length === 0 && <div style={styles.empty}>No conversations yet. Search for someone to start chatting.</div>}
         {orderedPeers.map((peer) => {
           const selected = String(current?._id) === String(peer._id);
           const unread = Number(peer.unreadCount || 0);
-          const savedNames = (() => { try { return JSON.parse(localStorage.getItem("savedChatContactNames:" + userId) || "{}"); } catch (_) { return {}; } })();\n          const displayName = savedNames[String(peer._id)] || peer.contactName || peer.name || peer.username || peer.email || peer.mobile || "User";
+          const savedNames = (() => { try { return JSON.parse(localStorage.getItem("savedChatContactNames:" + userId) || "{}"); } catch (_) { return {}; } })();
+          const displayName = savedNames[String(peer._id)] || peer.contactName || peer.name || peer.username || peer.email || peer.mobile || "User";
           const preview = peer.lastText || (peer.lastFileType ? "📎 Attachment" : "Start a conversation");
           return (
             <motion.button key={peer._id} type="button" onClick={() => handlePick(peer)}
