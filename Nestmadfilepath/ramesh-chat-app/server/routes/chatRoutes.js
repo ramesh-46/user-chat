@@ -356,6 +356,7 @@ router.post("/messages", upload.single("file"), async (req, res) => {
     res.json({ success: true, message: msg });
     console.log("📤 [DEBUG] Response sent successfully");
   } catch (err) {
+    if (err instanceof multer.MulterError) return res.status(413).json({ error: "File is too large (100 MB maximum)" });
     console.error("❌ [DEBUG] Error in /messages:", err);
     console.error("❌ [DEBUG] Error details:", {
       name: err.name,
