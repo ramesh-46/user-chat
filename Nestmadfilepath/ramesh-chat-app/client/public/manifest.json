@@ -1,7 +1,7 @@
 {
-  "short_name": "BP Chat",
-  "name": "Black Pearl Chat",
-  "description": "BP Chat is a private messaging and audio calling application.",
+  "short_name": "SURA Chat",
+  "name": "SURA Chat",
+  "description": "SURA Chat is a messaging, group chats and audio/video calling application.",
   "icons": [
     {
       "src": "favicon.ico",

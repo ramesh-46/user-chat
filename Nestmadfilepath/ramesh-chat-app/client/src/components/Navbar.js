@@ -5,12 +5,12 @@ export default function Navbar({ logout, onProfile, onGroups, onSettings, onSear
   const action = (callback) => { setOpen(false); callback?.(); };
   return (
     <header style={S.bar}>
-      <div style={S.brand}><span style={S.mark}>BP</span><strong>BLACK PEARL CHAT</strong></div>
+      <div style={S.brand}><span style={S.mark}>S</span><strong>SURA CHAT</strong></div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative" }}>
         <button type="button" aria-label="Search" title="Search people" onClick={onSearchToggle} style={S.searchButton}>⌕</button>
         <button type="button" aria-label="Open menu" aria-expanded={open} onClick={() => setOpen((v) => !v)} style={S.menuButton}>⋮</button>
         {open && <div style={S.menu}>
-          <button style={S.item} onClick={() => action(onGroups)}>＋ Create / Open Group</button>
+          <button style={S.item} onClick={() => action(onGroups)}>＋ Create group</button>
           <button style={S.item} onClick={() => action(onSettings)}>⚙ Settings</button>
           <button style={S.item} onClick={() => action(onProfile)}>👤 My Account</button>
           <button style={S.item} onClick={() => action(logout)}>↪ Log out</button>

@@ -1,111 +1,30 @@
-// Luxe theme registry – palette now uses the accent color from the image
 export const THEMES = {
-  /* 01 – Black Pearl */
   blackPearl: {
-    name: "Black Pearl",
+    name: "Light",
     palette: {
-      primary:     "#075E54",
-      primarySoft: "#F0F2F5",
-      border:      "#E5E7EB",
-      textMain:    "#17212B",
-      textLight:   "#667781",
-      surface:     "#FFFFFF",
-      surfaceAlt:  "#FFFFFF",
-      chatSelected:"#E8F5F2"
+      primary: "#111111",
+      primarySoft: "#F4F4F4",
+      border: "#E5E5E5",
+      textMain: "#111111",
+      textLight: "#666666",
+      surface: "#FFFFFF",
+      surfaceAlt: "#FFFFFF",
+      chatSelected: "#EEEEEE"
     },
-     fonts: { ui: "'Roboto', sans-serif" }
-
+    fonts: { ui: "'Inter', 'Roboto', sans-serif" }
   },
-
-  /* 02 – Rose Fog */
-  roseFog: {
-    name: "Rose Fog",
+  midnight: {
+    name: "Dark",
     palette: {
-      primary:     "#E1C2B3", // rosy bg
-      primarySoft: "#EBD7CE",
-      border:      "#D3B1A1",
-      textMain:    "#091C2A", // ◎ navy title
-      textLight:   "#463F3B"
+      primary: "#EAEAEA",
+      primarySoft: "#090909",
+      border: "#303030",
+      textMain: "#F5F5F5",
+      textLight: "#A5A5A5",
+      surface: "#111111",
+      surfaceAlt: "#171717",
+      chatSelected: "#292929"
     },
-    fonts: { ui: "'Playfair Display', serif" }
-  },
-
-  /* 03 – Jungle Green */
-  jungleGreen: {
-    name: "Jungle Green",
-    palette: {
-      primary:     "#233326",
-      primarySoft: "#293C2E",
-      border:      "#365040",
-      textMain:    "#E8D0A7", // ◎ Hampton accent
-      textLight:   "#CFC6AC"
-    },
-    fonts: { ui: "'Cormorant Garamond', serif" }
-  },
-
-  /* 04 – Hampton */
-  hampton: {
-    name: "Hampton",
-    palette: {
-      primary:     "#E8D0A7",
-      primarySoft: "#ECD9B9",
-      border:      "#CDBE9E",
-      textMain:    "#233326", // ◎ Jungle Green ink
-      textLight:   "#4B4B3F"
-    },
-    fonts: { ui: "'Lora', serif" }
-  },
-
-  /* 05 – Wine Berry */
-  wineBerry: {
-    name: "Wine Berry",
-    palette: {
-      primary:     "#58242A",
-      primarySoft: "#632E32",
-      border:      "#70373B",
-      textMain:    "#E8D0A7", // ◎ Hampton accent
-      textLight:   "#CCB6A4"
-    },
-    fonts: { ui: "'Merriweather', serif" }
-  },
-
-  /* 06 – Timberwolf */
-  timberwolf: {
-    name: "Timberwolf",
-    palette: {
-      primary:     "#E2D6C9",
-      primarySoft: "#EBE0D5",
-      border:      "#CFC5BA",
-      textMain:    "#58242A", // ◎ Wine Berry ink
-      textLight:   "#624448"
-    },
-    fonts: { ui: "'Bodoni Moda', serif" }
-  },
-
-  /* 07 – Walnut */
-  walnut: {
-    name: "Walnut",
-    palette: {
-      primary:     "#3A2E29",
-      primarySoft: "#443531",
-      border:      "#503C38",
-      textMain:    "#E1C2B3", // ◎ Rose Fog accent
-      textLight:   "#C5B0A4"
-    },
-    fonts: { ui: "'Crimson Text', serif" }
-  },
-
-  /* 08 – Pale Taupe */
-  paleTaupe: {
-    name: "Pale Taupe",
-    palette: {
-      primary:     "#BE9C83",
-      primarySoft: "#C7A68F",
-      border:      "#AF9782",
-      textMain:    "#3A2E29", // ◎ Walnut ink
-      textLight:   "#5A4A42"
-    },
-    fonts: { ui: "'EB Garamond', serif" }
+    fonts: { ui: "'Inter', 'Roboto', sans-serif" }
   }
 };
-

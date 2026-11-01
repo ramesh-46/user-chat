@@ -10,6 +10,7 @@ import { FaCheckCircle, FaExclamationCircle, FaInfoCircle } from "react-icons/fa
 export default function Signup() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [username, setUsername] = useState("");
   const [busy, setBusy] = useState(false);
   const [agreed, setAgreed] = useState(false);
@@ -112,7 +113,7 @@ export default function Signup() {
       {renderPopup()}
 
       <div style={styles.card}>
-        <h2 style={styles.h2}>BLACK PEARL CHAT</h2>
+        <h2 style={styles.h2}>SURA CHAT</h2>
 
         <input
           style={styles.input}
