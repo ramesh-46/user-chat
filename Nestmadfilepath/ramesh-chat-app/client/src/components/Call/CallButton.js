@@ -6,9 +6,9 @@ export default function CallButton({ peer }) {
   const { user } = useContext(AuthContext);
   const {
     call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera,
-    requestRecording, acceptRecording, stopRecording,
+    requestRecording, acceptRecording, stopRecording, pauseRecording,
     callState, incomingPeer, mediaMode, isMuted, cameraEnabled, recording,
-    recordingRequest, getLocalStream, getRemoteStream, localVersion, remoteVersion,
+    recordingRequest, recordingPaused, recordingSaved, getLocalStream, getRemoteStream, localVersion, remoteVersion,
   } = useCall(user?._id || user?.userId);
   const localVideo = useRef(null);
   const remoteVideo = useRef(null);
@@ -39,7 +39,8 @@ export default function CallButton({ peer }) {
   const active = callState !== "idle";
 
   return (
-    <div style={{ position: "fixed", right: 16, bottom: 82, zIndex: 1200, display: "inline-flex", alignItems: "center", gap: 6 }}>
+    <div style={{ position: "fixed", right: 14, top: 66, zIndex: 1200, display: "inline-flex", alignItems: "center", gap: 8 }}>
+      {recordingSaved && <div role="status" style={styles.savedToast}>✓ Recording saved to this device Downloads</div>}
       {!active && peer && <>
         <button type="button" title="Voice call" onClick={() => start("audio")} style={styles.icon}>☎</button>
         <button type="button" title="Video call" onClick={() => start("video")} style={styles.icon}>▣</button>
@@ -75,7 +76,7 @@ export default function CallButton({ peer }) {
                 <button onClick={switchCamera} style={styles.control}>Switch camera</button>
               </>}
               {!recording && <button onClick={requestRecording} style={styles.control}>Request recording</button>}
-              {recording && <button onClick={stopRecording} style={styles.control}>Stop & save</button>}
+              {recording && <><button onClick={pauseRecording} style={styles.control}>{recordingPaused ? "Resume recording" : "Pause recording"}</button><button onClick={stopRecording} style={styles.control}>Stop & save</button></>}
               <button onClick={hangup} style={styles.reject}>End call</button>
             </>}
           </div>
@@ -88,11 +89,11 @@ export default function CallButton({ peer }) {
 
 const styles = {
   icon: { border: 0, borderRadius: 20, padding: "7px 10px", cursor: "pointer", background: "var(--primary)", color: "#fff", fontSize: 16 },
-  backdrop: { position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,.82)", display: "grid", placeItems: "center", padding: 12 },
-  panel: { width: "min(560px, 100%)", maxHeight: "92dvh", overflow: "auto", borderRadius: 18, background: "#17191f", color: "#fff", padding: 18, boxSizing: "border-box" },
+  backdrop: { position: "fixed", inset: 0, zIndex: 10000, background: "#080a0e", display: "grid", placeItems: "stretch", padding: 0 },
+  panel: { width: "100vw", height: "100dvh", maxHeight: "100dvh", overflow: "auto", borderRadius: 0, background: "radial-gradient(ellipse at top, #293342 0%, #10141c 58%, #080a0e 100%)", color: "#fff", padding: "max(18px, env(safe-area-inset-top)) 18px max(22px, env(safe-area-inset-bottom))", boxSizing: "border-box", display: "flex", flexDirection: "column", justifyContent: "space-between" },
   heading: { display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: 8 },
-  videoStage: { position: "relative", background: "#050505", borderRadius: 14, overflow: "hidden", minHeight: 220, aspectRatio: "16/9" },
-  remoteVideo: { width: "100%", height: "100%", minHeight: 220, objectFit: "contain", background: "#050505" },
+  videoStage: { position: "relative", background: "#050505", borderRadius: 18, overflow: "hidden", flex: 1, minHeight: 220, width: "100%", maxHeight: "72dvh", margin: "12px auto" },
+  remoteVideo: { width: "100%", height: "100%", minHeight: 220, objectFit: "cover", background: "#050505" },
   localVideo: { position: "absolute", right: 10, bottom: 10, width: "27%", maxHeight: 140, aspectRatio: "3/4", objectFit: "cover", borderRadius: 10, background: "#333" },
   avatar: { margin: "26px auto", width: 110, height: 110, borderRadius: "50%", background: "#343943", display: "grid", placeItems: "center", fontSize: 42 },
   controls: { display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 18 },
@@ -101,4 +102,5 @@ const styles = {
   reject: { border: 0, borderRadius: 24, padding: "11px 17px", background: "#b83232", color: "#fff", cursor: "pointer" },
   consent: { padding: 12, marginTop: 10, borderRadius: 10, background: "#303641", textAlign: "center" },
   note: { display: "block", marginTop: 16, textAlign: "center", color: "#b9c0cc", lineHeight: 1.4 },
+  savedToast: { position: "fixed", top: 72, left: "50%", transform: "translateX(-50%)", zIndex: 11000, padding: "11px 16px", borderRadius: 12, background: "#146c43", color: "#fff", fontWeight: 700, boxShadow: "0 8px 24px rgba(0,0,0,.35)", whiteSpace: "nowrap" },
 };
