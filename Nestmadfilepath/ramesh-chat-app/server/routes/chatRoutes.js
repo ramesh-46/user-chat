@@ -7,7 +7,7 @@
 
 // /* 🔎 User search – by mobile OR username */
 // router.get("/users", async (req, res) => {
-//   const { mobile, username } = req.query;
+//   const { mobile, username, email } = req.query;
 //   const query = mobile
 //     ? { mobile }
 //     : { username: username?.toLowerCase() };
@@ -187,7 +187,7 @@ router.get("/users", async (req, res) => {
   console.log("🔍 [DEBUG] Query params:", req.query);
   
   const { mobile, username } = req.query;
-  const query = mobile ? { mobile } : { username: username?.toLowerCase() };
+  const query = mobile ? { mobile } : email ? { email: email.toLowerCase() } : { username: username?.toLowerCase() };
   
   console.log("🔍 [DEBUG] Search query:", JSON.stringify(query));
   
