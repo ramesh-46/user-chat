@@ -116,7 +116,7 @@ export default function GroupChat({ onBack }) {
     setBusy(true); setError("");
     try {
       const entries = memberIds.split(/[ ,\n]+/).map(x => x.trim()).filter(Boolean);
-      const ids = [];
+      const ids = [...selectedMembers];
       for (const entry of entries) {
         if (/^[a-f0-9]{24}$/i.test(entry)) { ids.push(entry); continue; }
         const found = await findUser(entry);
