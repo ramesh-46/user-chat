@@ -23,6 +23,6 @@ const S = {
   brand: { display: "flex", alignItems: "center", gap: 10, letterSpacing: ".5px", fontSize: "clamp(.9rem,2.5vw,1.05rem)" },
   mark: { width: 32, height: 32, borderRadius: 10, display: "grid", placeItems: "center", background: "rgba(255,255,255,.18)", fontWeight: 800 },
   menuButton: { width: 40, height: 40, border: 0, borderRadius: 10, background: "rgba(255,255,255,.13)", color: "#fff", fontSize: 26, cursor: "pointer" },
-  menu: { position: "absolute", top: 46, right: 0, zIndex: 4000, width: 220, padding: 6, borderRadius: 12, background: "var(--surfaceAlt)", border: "1px solid var(--border)", boxShadow: "0 12px 30px rgba(0,0,0,.25)" },
-  item: { display: "block", width: "100%", padding: "11px 10px", textAlign: "left", border: 0, borderRadius: 8, background: "transparent", color: "var(--textMain)", cursor: "pointer" },
+  menu: { position: "absolute", top: 46, right: 0, zIndex: 4000, width: 220, padding: 6, borderRadius: 12, background: "var(--surfaceAlt)", opacity: 1, color: "var(--textMain)", border: "1px solid var(--border)", boxShadow: "0 12px 30px rgba(0,0,0,.25)" },
+  item: { display: "block", width: "100%", padding: "11px 10px", textAlign: "left", border: 0, borderRadius: 8, background: "var(--surfaceAlt)", color: "var(--textMain)", cursor: "pointer", opacity: 1, fontWeight: 600 },
 };
