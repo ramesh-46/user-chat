@@ -448,7 +448,7 @@ router.get("/chatlist/:userId", async (req, res) => {
         _id: { $cond: [{ $eq: ["$sender", userId] }, "$receiver", "$sender"] },
         lastMessage: { $first: "$$ROOT" },
         unreadCount: { $sum: { $cond: [
-          { $and: [{ $eq: ["$sender", { $cond: [{ $eq: ["$sender", userId] }, "$receiver", "$sender"] }] }, { $not: [{ $in: [userId, { $ifNull: ["$readBy", []] }] }] }] },
+          { $and: [{ $ne: ["$sender", userId] }, { $not: [{ $in: [userId, { $ifNull: ["$readBy", []] }] }] }] },
           1, 0
         ] } }
       } },
