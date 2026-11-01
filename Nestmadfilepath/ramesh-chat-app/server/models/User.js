@@ -57,7 +57,9 @@ const userSchema = new Schema(
     fcmToken: { type: String },
     password: { type: String },
     recoveryAnswer: { type: String },
-    blockList: [{ type: Schema.Types.ObjectId, ref: "User" }], // Add block list
+    blockList: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    online: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: null },
   },
   { timestamps: true, versionKey: false }
 );
