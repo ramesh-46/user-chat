@@ -1,188 +1,178 @@
-// import React, { useState, useContext, useEffect } from "react";
-// import io from "socket.io-client";
-// import { AnimatePresence } from "framer-motion";
-
-// import { AuthContext } from "../contexts/AuthContext";
-
-// import SearchBar   from "./SearchBar";
-// import ChatList    from "./Chat/ChatList";
-// import ChatWindow  from "./Chat/ChatWindow";
-
-// import Navbar      from "./Navbar";
-// import ProfilePanel from "./Accounts/ProfilePanel";  // ← folder “Account” (singular)
-
-// const socket = io("http://localhost:4000");   // backend port
-
-// export default function Main() {
-//   const { user, logout } = useContext(AuthContext);
-
-//   const [current,    setCurrent]    = useState(null);
-//   const [showProfile, setShowProfile] = useState(false);
-
-//   /* join socket room */
-//   useEffect(() => {
-//     socket.emit("join", user.userId);
-//   }, [user]);
-
-//   /* desktop notifications (unchanged) */
-//   useEffect(() => {
-//     if (Notification.permission === "default") Notification.requestPermission();
-//     socket.on("receiveMessage", m => {
-//       if (
-//         document.hidden &&
-//         Notification.permission === "granted" &&
-//         m.sender !== user.userId
-//       ) {
-//         new Notification("New message", { body: m.text || "Image 📷" });
-//       }
-//     });
-//     return () => socket.off("receiveMessage");
-//   }, [socket, user]);
-
-//   return (
-//     <div style={styles.wrap}>
-//       <Navbar logout={logout} onProfile={() => setShowProfile(true)} />
-//       <SearchBar onFound={setCurrent} />
-
-//       <div style={styles.body}>
-//         <ChatList current={current} onPick={setCurrent} socket={socket} />
-//         {current ? (
-//           <ChatWindow peer={current} socket={socket} />
-//         ) : (
-//           <div style={styles.welcome}>Select or search a contact to start chatting ✨</div>
-//         )}
-//       </div>
-
-//       {/* Slide‑in profile panel */}
-//       <AnimatePresence>
-//         {showProfile && (
-//           <ProfilePanel
-//             user={user}                     // pass user for display/edit
-//             onClose={() => setShowProfile(false)}
-//           />
-//         )}
-//       </AnimatePresence>
-//     </div>
-//   );
-// }
-
-// const styles = {
-//   wrap:   { height: "100vh", display: "flex", flexDirection: "column", background: "#F3E5F5" },
-//   body:   { flex: 1, display: "flex" },
-//   welcome:{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-//             color: "#7E57C2", fontSize: 18, opacity: 0.8 }
-// };
-// client/src/components/Main.js
-
-
-
 import React, { useState, useContext, useEffect } from "react";
-import io from "socket.io-client";
 import { AnimatePresence } from "framer-motion";
 
 import { AuthContext } from "../contexts/AuthContext";
 import { ThemeContext } from "../contexts/ThemeContext";
 
-import SearchBar   from "./SearchBar";
-import ChatList    from "./Chat/ChatList";
-import ChatWindow  from "./Chat/ChatWindow";
+import SearchBar from "./SearchBar";
+import ChatList from "./Chat/ChatList";
+import ChatWindow from "./Chat/ChatWindow";
 import GroupChat from "./Chat/GroupChat";
-import Navbar      from "./Navbar";
+import Navbar from "./Navbar";
 import ProfilePanel from "./Accounts/ProfilePanel";
+import socket from "../socket";
 
-const socket = io("https://user-chat-9luh.onrender.com");   // backend port
-
-/* ---------- tiny helper ---------- */
 const useIsMobile = () => {
-  const [m, setM] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
   useEffect(() => {
-    const h = () => setM(window.innerWidth <= 768);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
-  return m;
+
+  return isMobile;
 };
 
 export default function Main() {
   const { user, logout } = useContext(AuthContext);
   const { theme } = useContext(ThemeContext);
 
-  const [current, setCurrent]   = useState(null);     // selected peer
+  const [current, setCurrent] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
   const isMobile = useIsMobile();
 
-  /* join personal room once */
-  useEffect(() => { socket.emit("join", user.userId); }, [user]);
+  // AuthContext stores the Mongo user document. Older sessions may contain
+  // userId instead of _id, so support both without changing the login flow.
+  const userId = String(user?._id || user?.userId || "");
 
-  /* desktop notifications */
+  // Join after every successful socket connection, including reconnects.
   useEffect(() => {
-    if (Notification.permission === "default") Notification.requestPermission();
-    const notif = (m) => {
-      if (document.hidden && Notification.permission === "granted" && m.sender !== user.userId) {
-        new Notification("New message", { body: m.text || "Image 📷" });
+    if (!userId) return;
+
+    const joinUserRoom = () => {
+      socket.emit("join", userId);
+    };
+
+    if (socket.connected) joinUserRoom();
+    socket.on("connect", joinUserRoom);
+
+    return () => {
+      socket.off("connect", joinUserRoom);
+    };
+  }, [userId]);
+
+  // Notifications are opt-in: never trigger a permission prompt merely by
+  // opening the app or a chat.
+  useEffect(() => {
+    if (!userId) return;
+
+    const handleNotification = (message) => {
+      const senderId = String(message?.sender?._id || message?.sender || "");
+      if (
+        document.hidden &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted" &&
+        senderId !== userId
+      ) {
+        new Notification("New message", {
+          body: message.text || (message.file ? "Attachment 📎" : "New message"),
+        });
       }
     };
-    socket.on("receiveMessage", notif);
-    return () => socket.off("receiveMessage", notif);
-  }, [socket, user]);
 
-  /* -------- UI -------- */
+    socket.on("receiveMessage", handleNotification);
+    return () => socket.off("receiveMessage", handleNotification);
+  }, [userId]);
+
   return (
     <div style={S.wrap}>
-
-      {/* Hide Navbar only on mobile *inside* a chat */}
-      {(!isMobile || !current) && (
-        <Navbar logout={logout} onProfile={() => setShowProfile(true)} />
+      {(!isMobile || (!current && !showGroups)) && (
+        <Navbar
+          logout={logout}
+          onProfile={() => setShowProfile(true)}
+        />
       )}
 
-      {/* Search and group navigation */}
       {(!isMobile || (!current && !showGroups)) && (
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <div style={{ flex: 1 }}><SearchBar onFound={(peer) => { setShowGroups(false); setCurrent(peer); }} /></div>
-          <button onClick={() => { setCurrent(null); setShowGroups(value => !value); }} style={{ border: 0, borderRadius: 8, padding: "9px 12px", background: "var(--primary)", color: "white", cursor: "pointer", marginRight: 8 }}>Groups</button>
+        <div style={S.searchRow}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <SearchBar
+              onFound={(peer) => {
+                setShowGroups(false);
+                setCurrent(peer);
+              }}
+            />
+          </div>
+          <button
+            onClick={() => {
+              setCurrent(null);
+              setShowGroups((value) => !value);
+            }}
+            style={S.groupsButton}
+          >
+            Groups
+          </button>
         </div>
       )}
 
       <div style={S.body}>
         {showGroups ? (
           <GroupChat onBack={() => setShowGroups(false)} />
-        ) : <>
-          <ChatList current={current} onPick={setCurrent} socket={socket} />
-          {current ? (
-            <ChatWindow peer={current} socket={socket} onBack={() => setCurrent(null)} />
-          ) : (
-            <div style={S.welcome}>Select or search a contact to start chatting ✨</div>
-          )}
-        </>}
+        ) : (
+          <>
+            <ChatList
+              current={current}
+              onPick={setCurrent}
+              socket={socket}
+            />
+            {current ? (
+              <ChatWindow
+                peer={current}
+                socket={socket}
+                onBack={() => setCurrent(null)}
+              />
+            ) : (
+              <div style={S.welcome}>
+                Select or search a contact to start chatting
+              </div>
+            )}
+          </>
+        )}
       </div>
 
-      {/* profile slide-in */}
       <AnimatePresence>
         {showProfile && (
-          <ProfilePanel
-            onClose={() => setShowProfile(false)}
-          />
+          <ProfilePanel onClose={() => setShowProfile(false)} />
         )}
       </AnimatePresence>
     </div>
   );
 }
 
-/* --------------- theme-aware, responsive styles --------------- */
 const S = {
   wrap: {
-    height: "98vh",
+    height: "100dvh",
+    minHeight: 0,
     display: "flex",
     flexDirection: "column",
+    overflow: "hidden",
     background: "var(--primarySoft)",
     fontFamily: "var(--font-ui)",
     color: "var(--textMain)",
   },
+  searchRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 0,
+    padding: "4px 8px",
+  },
+  groupsButton: {
+    border: 0,
+    borderRadius: 8,
+    padding: "9px 12px",
+    background: "var(--primary)",
+    color: "white",
+    cursor: "pointer",
+    flexShrink: 0,
+  },
   body: {
     flex: 1,
     display: "flex",
-    minHeight: 0,            // allow children to scroll
+    minHeight: 0,
+    overflow: "hidden",
   },
   welcome: {
     flex: 1,
@@ -190,10 +180,8 @@ const S = {
     alignItems: "center",
     justifyContent: "center",
     color: "var(--textLight)",
-    fontSize: "clamp(1.1rem, 3vw, 1.4rem)",
+    fontSize: "clamp(1rem, 3vw, 1.3rem)",
     padding: 20,
     textAlign: "center",
   },
 };
-
-
