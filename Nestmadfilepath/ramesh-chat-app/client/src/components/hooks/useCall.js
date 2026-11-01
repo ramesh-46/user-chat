@@ -281,8 +281,13 @@ export function useCall(userId) {
     };
     const onAnswer = async ({ sdp }) => {
       if (!sdp || !pc.current) return;
-      try { await pc.current.setRemoteDescription(new RTCSessionDescription(sdp)); setCallState("connected"); }
-      catch (error) { console.error("Call answer negotiation failed:", error); cleanup(); }
+      try {
+        await pc.current.setRemoteDescription(new RTCSessionDescription(sdp));
+        for (const candidate of pendingIce.current.splice(0)) {
+          try { await pc.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) {}
+        }
+        setCallState("connected");
+      } catch (error) { console.error("Call answer negotiation failed:", error); cleanup(); }
     };
     const onIce = async ({ candidate }) => {
       if (!candidate) return;
