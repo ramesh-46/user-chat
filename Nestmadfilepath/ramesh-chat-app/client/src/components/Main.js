@@ -30,12 +30,29 @@ export default function Main() {
   const { user, logout } = useContext(AuthContext);
   const { theme, themeKey, setTheme } = useContext(ThemeContext);
 
-  const [current, setCurrent] = useState(null);
+  const [current, setCurrent] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("lastOpenChat:" + String(user?._id || user?.userId || "guest")) || "null"); } catch (_) { return null; }
+  });
   const [showProfile, setShowProfile] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(typeof Notification !== "undefined" && Notification.permission === "granted");
+  const [customColor, setCustomColor] = useState(() => localStorage.getItem("chatCustomAccent") || "#7657d5");
   const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (current?._id) localStorage.setItem("lastOpenChat:" + userId, JSON.stringify(current));
+    else localStorage.removeItem("lastOpenChat:" + userId);
+  }, [current]);
+
+  useEffect(() => {
+    if (!/^#[0-9a-f]{6}$/i.test(customColor)) return;
+    const root = document.documentElement;
+    root.style.setProperty("--primary", customColor);
+    root.style.setProperty("--primarySoft", `color-mix(in srgb, ${customColor} 17%, #ffffff)`);
+    root.style.setProperty("--primaryGradient", `linear-gradient(135deg, ${customColor}, color-mix(in srgb, ${customColor} 55%, #111827))`);
+    localStorage.setItem("chatCustomAccent", customColor);
+  }, [customColor, themeKey]);
 
   // AuthContext stores the Mongo user document. Older sessions may contain
   // userId instead of _id, so support both without changing the login flow.
@@ -129,11 +146,7 @@ export default function Main() {
                 socket={socket}
                 onBack={() => setCurrent(null)}
               />
-            ) : (
-              <div style={S.welcome}>
-                Select or search a contact to start chatting
-              </div>
-            )}
+            ) : null}
           </>
         )}
       </div>
@@ -153,6 +166,13 @@ export default function Main() {
             <select value={themeKey} onChange={(event) => setTheme(event.target.value)} style={S.settingsSelect}>
               {Object.entries(THEMES).map(([key, item]) => <option key={key} value={key}>{item.name || key}</option>)}
             </select>
+            <p style={{ marginBottom: 7 }}>Custom theme colour</p>
+            <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
+              <input aria-label="Choose theme colour" type="color" value={customColor} onChange={(event) => setCustomColor(event.target.value)} style={{ width: 52, height: 42, padding: 2, border: "1px solid var(--border)", borderRadius: 9, background: "var(--surface)" }}/>
+              <input aria-label="Theme hex colour" value={customColor} onChange={(event) => { const value = event.target.value; setCustomColor(value); }} placeholder="#7657d5" style={{ ...S.settingsSelect, margin: 0, flex: 1 }}/>
+              <button type="button" onClick={() => setCustomColor("#7657d5")} style={{ ...S.settingsClose, fontSize: 12 }}>Reset</button>
+            </div>
+            <div style={{ height: 30, borderRadius: 9, marginTop: 10, background: "var(--primaryGradient, var(--primary))" }} />
             <p>Notifications</p>
             <button style={S.settingsAction} onClick={async () => {
               if (typeof Notification === "undefined") return alert("Notifications are not supported in this browser.");

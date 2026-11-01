@@ -29,6 +29,8 @@ export function useCall(userId) {
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [cameraFacing, setCameraFacing] = useState("user");
   const [recording, setRecording] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);
+  const [recordingSaved, setRecordingSaved] = useState(false);
   const [recordingRequest, setRecordingRequest] = useState(null);
 
   const getLocalStream = useCallback(() => localStream.current, []);
@@ -239,13 +241,19 @@ export function useCall(userId) {
         const link = document.createElement("a");
         link.href = url;
         link.download = `call-recording-${Date.now()}.webm`;
+        document.body.appendChild(link);
         link.click();
-        URL.revokeObjectURL(url);
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
         recordedChunks.current = [];
+        setRecordingSaved(true);
+        window.setTimeout(() => setRecordingSaved(false), 6000);
       };
       instance.start(1000);
       recorder.current = instance;
       setRecording(true);
+      setRecordingPaused(false);
+      setRecordingSaved(false);
     } catch (error) {
       window.alert("Could not start recording in this browser.");
     }
@@ -253,6 +261,7 @@ export function useCall(userId) {
 
   const requestRecording = useCallback(() => {
     if (!peerId) return;
+    recordingRequestPending.current = true;
     socket.emit("recording:request", { to: peerId, from: String(userId) });
   }, [peerId, userId]);
 
@@ -262,11 +271,17 @@ export function useCall(userId) {
     setRecordingRequest(null);
   }, [recordingRequest, userId]);
 
+  const pauseRecording = useCallback(() => {
+    if (!recorder.current || recorder.current.state === "inactive") return;
+    if (recorder.current.state === "recording") { recorder.current.pause(); setRecordingPaused(true); }
+    else if (recorder.current.state === "paused") { recorder.current.resume(); setRecordingPaused(false); }
+  }, []);
+
   const stopRecording = useCallback(() => {
     if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
     recorder.current = null;
     setRecording(false);
-    setRecordingConsent(false);
+    setRecordingPaused(false);
   }, []);
 
   useEffect(() => {
@@ -331,8 +346,8 @@ export function useCall(userId) {
 
   return {
     call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera,
-    requestRecording, acceptRecording, stopRecording,
+    requestRecording, acceptRecording, stopRecording, pauseRecording,
     callState, incomingPeer, mediaMode, isMuted, cameraEnabled, recording,
-    recordingRequest, getLocalStream, getRemoteStream, localVersion, remoteVersion,
+    recordingRequest, recordingPaused, recordingSaved, getLocalStream, getRemoteStream, localVersion, remoteVersion,
   };
 }
