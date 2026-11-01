@@ -104,6 +104,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
         (sender === userId && receiver === peerId) ||
         (sender === peerId && receiver === userId)
       ) {
+        if (sender === peerId && receiver === userId) markConversationRead(userId, peerId).catch(() => {});
         setMsgs((prev) => {
           if (!prev.some((msg) => msg._id === m._id)) {
             return [...prev, m];
