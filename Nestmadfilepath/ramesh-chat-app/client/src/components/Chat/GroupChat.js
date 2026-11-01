@@ -202,8 +202,8 @@ export default function GroupChat({ onBack }) {
   };
 
   return (
-    <div style={panel}>
-      <aside style={side}>
+    <div style={{ ...panel, flexDirection: mobileLayout ? "column" : "row", overflow: "hidden" }}>
+      <aside style={{ ...side, width: mobileLayout ? "100%" : 320, maxWidth: mobileLayout ? "100%" : 320, maxHeight: mobileLayout ? "48dvh" : "100%", flexShrink: 0 }}>
         <button style={{ ...button, background: "transparent", color: "var(--textMain)", border: "1px solid var(--border)" }} onClick={onBack}>← Back to chats</button>
         <h3>Groups</h3>
         <form onSubmit={create}>
