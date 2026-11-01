@@ -147,11 +147,7 @@ export default function Main() {
                 socket={socket}
                 onBack={() => setCurrent(null)}
               />
-            ) : (
-              <div style={S.welcome}>
-                Select or search a contact to start chatting
-              </div>
-            )}
+            ) : null}
           </>
         )}
       </div>
