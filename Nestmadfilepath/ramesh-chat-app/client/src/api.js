@@ -60,7 +60,7 @@ export const markConversationRead = (userId, peerId) => api.post(`/messages/read
 // // --------------------------------------------------
 // // 🔎 User lookup (by mobile or username)
 // // --------------------------------------------------
-// export const findUser = value => {
+export const findUser = value => {
   const normalized = String(value || "").trim();
   const params = /^(?:\+?\d+)$/.test(normalized)
     ? { mobile: normalized }
