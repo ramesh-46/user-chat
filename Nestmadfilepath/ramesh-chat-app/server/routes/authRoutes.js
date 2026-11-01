@@ -34,12 +34,16 @@ const router  = express.Router();
 
 // Deleted-account model is intentionally not loaded here; account deletion routes are disabled.
 
-/* helper – safe verify */
+/* Verify Firebase ID tokens using the shared Admin SDK instance. */
 const verifyId = async (token) => {
-  try { return await admin.auth().verifyIdToken(token); }
-  catch { return null; }
+  if (typeof token !== "string" || !token.trim()) return null;
+  try {
+    return await admin.auth().verifyIdToken(token.trim());
+  } catch (error) {
+    console.warn("[AUTH] Firebase ID-token verification failed:", error.code || error.message);
+    return null;
+  }
 };
-const bcrypt = require("bcrypt");
 
 /* ---------- SIGN‑UP ----------  { idToken, username, password } */
 
