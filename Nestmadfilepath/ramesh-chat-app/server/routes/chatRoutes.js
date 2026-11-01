@@ -435,93 +435,61 @@ router.get("/isBlocked/:userId/:peerId", async (req, res) => {
   }
 });
 
-/* GET /api/chatlist/:userId */
+/* GET /api/chatlist/:userId — latest-first list and unread message counts */
 router.get("/chatlist/:userId", async (req, res) => {
-  console.log("📋 [DEBUG] GET /api/chatlist/:userId - Request received");
-  console.log("📋 [DEBUG] userId param:", req.params.userId);
-  
   try {
-    const userId = req.params.userId;
+    const mongoose = require("mongoose");
+    if (!mongoose.Types.ObjectId.isValid(req.params.userId)) return res.status(400).json({ error: "Invalid user ID" });
+    const userId = new mongoose.Types.ObjectId(req.params.userId);
+    const users = await Message.aggregate([
+      { $match: { $or: [{ sender: userId }, { receiver: userId }], groupId: null } },
+      { $sort: { createdAt: -1 } },
+      { $group: {
+        _id: { $cond: [{ $eq: ["$sender", userId] }, "$receiver", "$sender"] },
+        lastMessage: { $first: "$$ROOT" },
+        unreadCount: { $sum: { $cond: [
+          { $and: [{ $eq: ["$sender", { $cond: [{ $eq: ["$sender", userId] }, "$receiver", "$sender"] }] }, { $not: [{ $in: [userId, { $ifNull: ["$readBy", []] }] }] }] },
+          1, 0
+        ] } }
+      } },
+      { $lookup: { from: "users", localField: "_id", foreignField: "_id", as: "peer" } },
+      { $unwind: "$peer" },
+      { $project: {
+        _id: "$peer._id", username: "$peer.username", name: "$peer.name",
+        email: "$peer.email", mobile: "$peer.mobile", avatar: "$peer.avatar",
+        online: { $ifNull: ["$peer.online", false] }, lastSeen: "$peer.lastSeen",
+        lastText: { $ifNull: ["$lastMessage.text", ""] },
+        lastFileType: "$lastMessage.fileType", lastMessageAt: "$lastMessage.createdAt",
+        unreadCount: 1
+      } },
+      { $sort: { lastMessageAt: -1 } }
+    ]);
+    return res.json({ users });
+  } catch (error) {
+    console.error("[CHATLIST]", error);
+    return res.status(500).json({ error: "Unable to load chat list" });
+  }
+});
 
-    // Find current user
-    console.log("📋 [DEBUG] Finding currentUser by ID...");
-    const currentUser = await User.findById(userId);
-    console.log("📋 [DEBUG] currentUser found:", !!currentUser);
-    
-    if (!currentUser) {
-      console.warn("⚠️ [DEBUG] User not found - returning 404");      return res.status(404).json({ error: "User not found" });
+/* Mark all incoming messages in this conversation as read. */
+router.post("/messages/read/:peerId", async (req, res) => {
+  try {
+    const mongoose = require("mongoose");
+    const { userId } = req.body || {};
+    const { peerId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId) || !mongoose.Types.ObjectId.isValid(peerId)) {
+      return res.status(400).json({ error: "Valid user and peer IDs are required" });
     }
-
-    // OPTIONAL: Find all users who have chatted with this user
-    console.log("📋 [DEBUG] Fetching messages for chat history...");
-    const messages = await Message.find({
-      $or: [{ sender: userId }, { receiver: userId }],
-    }).sort({ updatedAt: -1 });
-    
-    console.log("📋 [DEBUG] Messages found:", messages.length);
-    console.log("📋 [DEBUG] First 3 messages preview:", messages.slice(0, 3).map(m => ({
-      _id: m._id,
-      sender: m.sender,
-      receiver: m.receiver,
-      text: m.text?.substring(0, 30)
-    })));
-
-    const partnerIds = new Set();
-
-    messages.forEach((msg) => {
-      if (msg.sender.toString() !== userId) partnerIds.add(msg.sender.toString());
-      if (msg.receiver.toString() !== userId) partnerIds.add(msg.receiver.toString());
-    });
-    
-    console.log("📋 [DEBUG] Unique partner IDs extracted:", partnerIds.size);
-    console.log("📋 [DEBUG] Partner IDs:", Array.from(partnerIds));
-
-    // Fetch users involved in chats
-    console.log("📋 [DEBUG] Fetching partner users from DB...");
-    const users = await User.find({ _id: { $in: Array.from(partnerIds) } });
-    console.log("📋 [DEBUG] Partner users found:", users.length);
-    console.log("📋 [DEBUG] Partner users preview:", users.slice(0, 3).map(u => ({
-      _id: u._id,
-      username: u.username,
-      mobile: u.mobile
-    })));
-
-    // Attach last message to each
-    console.log("📋 [DEBUG] Attaching last message to each partner...");
-    const usersWithLastMsg = await Promise.all(
-      users.map(async (u) => {
-        const last = await Message.findOne({
-          $or: [
-            { sender: userId, receiver: u._id },
-            { sender: u._id, receiver: userId },
-          ],
-        })
-          .sort({ createdAt: -1 })
-          .limit(1);
-                console.log("📋 [DEBUG] Last message for user", u._id, ":", last ? "found" : "none");
-
-        return {
-          _id: u._id,
-          username: u.username,
-          mobile: u.mobile,
-          lastText: last?.text || "",
-        };
-      })
+    await Message.updateMany(
+      { sender: peerId, receiver: userId, readBy: { $ne: userId }, deletedForEveryone: { $ne: true } },
+      { $addToSet: { readBy: userId } }
     );
-    
-    console.log("📋 [DEBUG] Final chatlist result count:", usersWithLastMsg.length);
-    console.log("📋 [DEBUG] Chatlist preview:", usersWithLastMsg.slice(0, 3));
-
-    res.json({ users: usersWithLastMsg });
-    console.log("📋 [DEBUG] Response sent successfully");
-  } catch (err) {
-    console.error("❌ [DEBUG] Failed to load chat list:", err);
-    console.error("❌ [DEBUG] Error details:", {
-      name: err.name,
-      message: err.message,
-      stack: err.stack
-    });
-    res.status(500).json({ error: "Server error" });
+    const io = req.app.get("io");
+    if (io) io.to(String(userId)).emit("refreshConversations");
+    return res.json({ success: true });
+  } catch (error) {
+    console.error("[MESSAGE_READ]", error);
+    return res.status(500).json({ error: "Unable to mark messages as read" });
   }
 });
 
