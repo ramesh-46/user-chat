@@ -24,7 +24,8 @@ export default function ChatList({ current, onPick, socket }) {
   const [peers, setPeers] = useState(() => {
     try { return JSON.parse(localStorage.getItem(cacheKey) || "[]"); } catch (_) { return []; }
   });
-  const [loading, setLoading] = useState(peers.length === 0);\n  const [contactImporting, setContactImporting] = useState(false);\n  const [contactImportMessage, setContactImportMessage] = useState("");
+  const [loading, setLoading] = useState(peers.length === 0);
+  const [contactImporting, setContactImporting] = useState(false);\n  const [contactImportMessage, setContactImportMessage] = useState("");
 
   const load = async () => {
     if (!userId) return;
@@ -152,7 +153,9 @@ const styles = {
   heading: { minHeight: 70, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border)", boxSizing: "border-box" },
   headingTitle: { fontSize: 22, letterSpacing: "-.4px" },
   subheading: { color: "var(--textLight)", fontSize: 12, marginTop: 3 },
-  importButton: { border: "1px solid var(--border)", borderRadius: 18, padding: "6px 9px", background: "var(--surface)", color: "var(--textMain)", fontSize: 11, fontWeight: 700, cursor: "pointer" },\n  contactHint: { padding: "7px 14px", color: "var(--textLight)", fontSize: 11, background: "var(--surface)" },\n  total: { borderRadius: 20, padding: "4px 9px", background: "var(--primarySoft)", color: "var(--textMain)", fontSize: 12, fontWeight: 700 },
+  importButton: { border: "1px solid var(--border)", borderRadius: 18, padding: "6px 9px", background: "var(--surface)", color: "var(--textMain)", fontSize: 11, fontWeight: 700, cursor: "pointer" },
+  contactHint: { padding: "7px 14px", color: "var(--textLight)", fontSize: 11, background: "var(--surface)" },
+  total: { borderRadius: 20, padding: "4px 9px", background: "var(--primarySoft)", color: "var(--textMain)", fontSize: 12, fontWeight: 700 },
   list: { overflowY: "auto", flex: 1, minHeight: 0, padding: "4px 0" },
   empty: { textAlign: "center", padding: 32, color: "var(--textLight)", fontSize: 14 },
   chat: { width: "100%", minHeight: 78, display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", border: 0, borderBottom: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "var(--textMain)", boxSizing: "border-box" },
