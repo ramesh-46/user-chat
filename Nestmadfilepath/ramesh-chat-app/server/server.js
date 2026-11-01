@@ -158,39 +158,9 @@ const mongoose = require("mongoose");
 const { Server } = require("socket.io");
 const path = require("path");
 
-// Firebase Admin SDK
-const admin = require("firebase-admin");
-console.log("🔐 [DEBUG] Initializing Firebase Admin SDK...");
-
-if (!admin.apps.length) {
-  console.log("🔐 [DEBUG] No Firebase apps initialized, creating new instance...");
-  
-  // const serviceAccount = require("./serviceAccount.json"); 
-  const serviceAccount = {
-    type: process.env.FB_TYPE,
-    project_id: process.env.FB_PROJECT_ID,
-    private_key_id: process.env.FB_PRIVATE_KEY_ID,
-    private_key: process.env.FB_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    client_email: process.env.FB_CLIENT_EMAIL,
-    client_id: process.env.FB_CLIENT_ID,
-    auth_uri: process.env.FB_AUTH_URI,
-    token_uri: process.env.FB_TOKEN_URI,
-    auth_provider_x509_cert_url: process.env.FB_AUTH_PROVIDER_X509_CERT_URL,
-    client_x509_cert_url: process.env.FB_CLIENT_X509_CERT_URL,
-    universe_domain: process.env.FB_UNIVERSE_DOMAIN,
-  };
-
-  console.log("🔐 [DEBUG] Firebase config loaded (project_id):", process.env.FB_PROJECT_ID);
-  
-  try {
-    admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-    console.log("✅ [DEBUG] Firebase Admin SDK initialized successfully");
-  } catch (fbErr) {
-    console.error("❌ [DEBUG] Firebase Admin initialization failed:", fbErr.message);
-  }
-} else {
-  console.log("✅ [DEBUG] Firebase Admin SDK already initialized");
-}
+// Firebase Admin SDK: use one shared initializer for routes and middleware.
+const admin = require("./config/firebaseAdmin");
+console.log("✅ Firebase Admin SDK ready");
 
 // Models and Routes
 console.log("📦 [DEBUG] Loading models and routes...");
