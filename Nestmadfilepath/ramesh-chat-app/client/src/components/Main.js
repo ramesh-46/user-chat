@@ -38,7 +38,7 @@ export default function Main() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(typeof Notification !== "undefined" && Notification.permission === "granted");
-  const [customColor, setCustomColor] = useState(() => localStorage.getItem("chatCustomAccent") || "#7657d5");
+  const [customColor, setCustomColor] = useState(() => localStorage.getItem("chatCustomAccent") || "#111111");
   const isMobile = useIsMobile();
 
   useEffect(() => {
@@ -124,8 +124,8 @@ export default function Main() {
       )}
       {(!isMobile || (!current && !showGroups)) && (
         <nav aria-label="Main sections" style={S.tabs}>
-          <button type="button" onClick={() => { setShowGroups(false); setCurrent(null); }} style={{ ...S.tab, ...( !showGroups ? S.activeTab : {}) }}>Chats</button>
-          <button type="button" onClick={() => { setCurrent(null); setShowGroups(true); }} style={{ ...S.tab, ...( showGroups ? S.activeTab : {}) }}>Groups</button>
+          <button type="button" onClick={() => { setShowGroups(false); setCurrent(null); }} style={{ ...S.tab, ...( !showGroups ? S.activeTab : {}) }}>☷ Chats</button>
+          <button type="button" onClick={() => { setCurrent(null); setShowGroups(true); }} style={{ ...S.tab, ...( showGroups ? S.activeTab : {}) }}>♧ Groups</button>
         </nav>
       )}
 
@@ -169,7 +169,7 @@ export default function Main() {
             <div style={{ display: "flex", gap: 9, alignItems: "center" }}>
               <input aria-label="Choose theme colour" type="color" value={customColor} onChange={(event) => setCustomColor(event.target.value)} style={{ width: 52, height: 42, padding: 2, border: "1px solid var(--border)", borderRadius: 9, background: "var(--surface)" }}/>
               <input aria-label="Theme hex colour" value={customColor} onChange={(event) => { const value = event.target.value; setCustomColor(value); }} placeholder="#7657d5" style={{ ...S.settingsSelect, margin: 0, flex: 1 }}/>
-              <button type="button" onClick={() => setCustomColor("#7657d5")} style={{ ...S.settingsClose, fontSize: 12 }}>Reset</button>
+              <button type="button" onClick={() => setCustomColor("#111111")} style={{ ...S.settingsClose, fontSize: 12 }}>Reset</button>
             </div>
             <div style={{ height: 30, borderRadius: 9, marginTop: 10, background: "var(--primaryGradient, var(--primary))" }} />
             <p>Notifications</p>
@@ -204,13 +204,13 @@ const S = {
     gap: 8,
     flexShrink: 0,
     padding: "8px 12px",
-    background: "#FFFFFF",
-    borderBottom: "1px solid #E5E7EB",
+    background: "var(--surfaceAlt)",
+    borderBottom: "1px solid var(--border)",
   },
   searchClose: { width: 42, height: 42, border: 0, borderRadius: 12, background: "#F0F2F5", color: "#17212B", cursor: "pointer" },
-  tabs: { display: "flex", gap: 8, padding: "8px 14px", background: "#FFFFFF", borderBottom: "1px solid #E5E7EB", flexShrink: 0 },
-  tab: { border: 0, borderRadius: 999, padding: "8px 18px", background: "#F0F2F5", color: "#667781", fontWeight: 700, cursor: "pointer" },
-  activeTab: { background: "#075E54", color: "#FFFFFF", boxShadow: "0 4px 12px rgba(7,94,84,.2)" },
+  tabs: { display: "flex", gap: 8, padding: "8px 14px", background: "var(--surfaceAlt)", borderBottom: "1px solid var(--border)", flexShrink: 0 },
+  tab: { border: "1px solid var(--border)", borderRadius: 999, padding: "9px 18px", background: "var(--surface)", color: "var(--textMain)", fontWeight: 700, cursor: "pointer" },
+  activeTab: { background: "var(--primary)", color: "var(--surfaceAlt)", borderColor: "var(--primary)", boxShadow: "0 4px 12px rgba(0,0,0,.12)" },
   body: {
     flex: 1,
     display: "flex",
