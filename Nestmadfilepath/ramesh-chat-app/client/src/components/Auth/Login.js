@@ -8,7 +8,7 @@ import {
 } from "firebase/auth";
 
 import { auth } from "../../firebase";
-import { login as apiLogin, recoverEmail } from "../../api";
+import api, { login as apiLogin, recoverEmail } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 
 export default function Login() {
@@ -122,7 +122,6 @@ export default function Login() {
 
 // Keep the Google endpoint separate from the existing username/password endpoint.
 async function apiLoginWithGoogle(idToken) {
-  const { default: api } = await import("../../api");
   return api.post("/auth/google", { idToken });
 }
 
