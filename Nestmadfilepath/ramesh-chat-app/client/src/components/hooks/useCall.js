@@ -17,6 +17,7 @@ export function useCall(userId) {
   const pendingIce = useRef([]);
   const timeoutRef = useRef(null);
   const recorder = useRef(null);
+  const recordingRequestPending = useRef(false);
   const recordedChunks = useRef([]);
   const [callState, setCallState] = useState("idle");
   const [peerId, setPeerId] = useState(null);
@@ -47,6 +48,7 @@ export function useCall(userId) {
     recorder.current = null;
     setRecording(false);
     setRecordingRequest(null);
+    recordingRequestPending.current = false;
     if (pc.current) {
       pc.current.ontrack = null;
       pc.current.onicecandidate = null;
@@ -296,7 +298,9 @@ export function useCall(userId) {
     };
     const onEnded = () => cleanup();
     const onRecordingRequest = ({ from }) => setRecordingRequest({ from });
-    const onRecordingConsent = ({ accepted }) => {
+    const onRecordingConsent = ({ from, accepted }) => {
+      if (!recordingRequestPending.current || String(from) !== String(peerId)) return;
+      recordingRequestPending.current = false;
       if (!accepted) { window.alert("The other participant did not consent to recording."); return; }
       startRecording();
     };
@@ -318,7 +322,7 @@ export function useCall(userId) {
       socket.off("recording:request", onRecordingRequest);
       socket.off("recording:consent", onRecordingConsent);
     };
-  }, [cleanup, startRecording, userId]);
+  }, [cleanup, peerId, startRecording, userId]);
 
 
   return {
