@@ -30,7 +30,7 @@ export const recoverByQuestion = (email, answer) =>
 // User lookup: username, email or mobile number.
 export const findUser = (value) => {
   const normalized = String(value || "").trim();
-  const params = /^\\+?\\d+$/.test(normalized)
+  const params = /^\+?\d+$/.test(normalized)
     ? { mobile: normalized }
     : normalized.includes("@")
       ? { email: normalized.toLowerCase() }
