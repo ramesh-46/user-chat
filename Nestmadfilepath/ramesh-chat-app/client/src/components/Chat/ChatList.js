@@ -1,215 +1,137 @@
-
-
-
-
-import React, { useEffect, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState, useContext } from "react";
 import { fetchChatList } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import { motion } from "framer-motion";
 
-/* 10 % of the accent into the panel surface */
-const LIST_BG  = "color-mix(in srgb, var(--primary) 10%, var(--primarySoft))";
-/* Selected-row highlight (25 % accent) */
-const SELECT_BG = "color-mix(in srgb, var(--primary) 25%, transparent)";
-
-/* ---------- small helper ---------- */
 const useIsMobile = () => {
   const [mobile, setMobile] = useState(window.innerWidth <= 768);
   useEffect(() => {
-    const h = () => setMobile(window.innerWidth <= 768);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
+    const resize = () => setMobile(window.innerWidth <= 768);
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
   }, []);
   return mobile;
 };
 
+const initials = (peer) => (peer?.name || peer?.username || peer?.email || "?")
+  .trim().split(/[\s._-]+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
+
 export default function ChatList({ current, onPick, socket }) {
   const { user } = useContext(AuthContext);
-  const [peers, setPeers] = useState([]);
+  const userId = String(user?._id || user?.userId || "");
   const isMobile = useIsMobile();
-
-  // Unread state stored in localStorage
-  const [unread, setUnread] = useState(() => {
-    return JSON.parse(localStorage.getItem("unreadMessages") || "{}");
+  const cacheKey = "chatlist:" + userId;
+  const [peers, setPeers] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(cacheKey) || "[]"); } catch (_) { return []; }
   });
+  const [loading, setLoading] = useState(peers.length === 0);
 
   const load = async () => {
+    if (!userId) return;
     try {
-      const res = await fetchChatList(user._id);
-      setPeers(res.data.users);
-    } catch (e) {
-      console.error("Chat list fetch failed:", e);
-    }
+      const res = await fetchChatList(userId);
+      const list = (res.data.users || []).sort((a, b) =>
+        new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
+      );
+      setPeers(list);
+      localStorage.setItem(cacheKey, JSON.stringify(list));
+    } catch (error) {
+      console.error("Chat list refresh failed:", error);
+    } finally { setLoading(false); }
   };
 
-  /* initial + socket refresh */
-  useEffect(() => { load(); }, [user]);
+  useEffect(() => { load(); }, [userId]);
   useEffect(() => {
-    socket.on("refreshConversations", load);
-    return () => socket.off("refreshConversations", load);
-  }, [socket]);
-
-  useEffect(() => {
-    const online = (id) => setPeers((items) => items.map((peer) => String(peer._id) === String(id) ? { ...peer, online: true, lastSeen: null } : peer));
+    if (!socket) return;
+    const refresh = () => load();
+    socket.on("refreshConversations", refresh);
+    socket.on("receiveMessage", refresh);
+    const online = (payload) => {
+      const id = String(payload?.userId || payload?._id || payload);
+      setPeers((items) => items.map((peer) => String(peer._id) === id ? { ...peer, online: true, lastSeen: null } : peer));
+    };
     const offline = (payload) => {
-      const id = payload?.userId || payload;
-      setPeers((items) => items.map((peer) => String(peer._id) === String(id) ? { ...peer, online: false, lastSeen: payload?.lastSeen || new Date() } : peer));
+      const id = String(payload?.userId || payload);
+      setPeers((items) => items.map((peer) => String(peer._id) === id ? { ...peer, online: false, lastSeen: payload?.lastSeen || new Date().toISOString() } : peer));
     };
     socket.on("userOnline", online);
     socket.on("userOffline", offline);
     return () => {
+      socket.off("refreshConversations", refresh);
+      socket.off("receiveMessage", refresh);
       socket.off("userOnline", online);
       socket.off("userOffline", offline);
     };
-  }, [socket]);
+  }, [socket, userId]);
 
-  /* hide list when a chat is selected on mobile */
-  const hidden = isMobile && current;
+  const orderedPeers = useMemo(() => [...peers].sort((a, b) =>
+    new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
+  ), [peers]);
 
-  // Handle chat selection
-  const handlePick = (p) => {
-    // Remove unread for this peer
-    const copy = { ...unread };
-    delete copy[p._id];
-    setUnread(copy);
-    localStorage.setItem("unreadMessages", JSON.stringify(copy));
-    onPick(p);
+  const hidden = isMobile && !!current;
+  const handlePick = (peer) => {
+    setPeers((items) => items.map((item) => String(item._id) === String(peer._id) ? { ...item, unreadCount: 0 } : item));
+    onPick(peer);
   };
 
-  // Listen for incoming messages from socket
-  useEffect(() => {
-    const newMsgHandler = (m) => {
-      if (m.receiver === user._id) {
-        // Update unread state
-        setUnread((prev) => {
-          const copy = { ...prev, [m.sender]: true };
-          localStorage.setItem("unreadMessages", JSON.stringify(copy));
-          return copy;
-        });
-
-        // Show browser/mobile notification
-        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          new Notification(`New message from ${m.senderName || "User"}`, {
-            body: m.text || "Sent a message",
-            icon: "/favicon.ico", // optional icon
-          });
-
-          // Optional: sound/vibration
-          const audio = new Audio("/ping.mp3");
-          audio.play();
-          navigator.vibrate?.(200);
-        }
-      }
-    };
-
-    socket.on("receiveMessage", newMsgHandler);
-    return () => socket.off("receiveMessage", newMsgHandler);
-  }, [socket, user._id]);
-
   return (
-    <div
-      style={{
-        ...S.side,
-        width  : isMobile ? "100%" : "18rem",
-        display: hidden   ? "none" : "block",
-      }}
-    >
-      {peers.length === 0 && (
-        <div style={S.empty}>No chats yet – use the search bar ↑</div>
-      )}
-
-      {peers.map((p) => {
-        const selected = current?._id === p._id;
-        const hasUnread = unread[p._id]; // check if unread
-
-        return (
-          <motion.div
-            key={p._id}
-            style={{
-              ...S.item,
-              background: selected ? SELECT_BG : "transparent",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-            whileHover={{ boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
-            whileTap={{ scale: 0.97 }}
-            onClick={() => handlePick(p)}
-          >
-            <div
-              style={{
-                ...S.mobile,
-                color: selected ? "orange" : "var(--textMain)",
-                textTransform: "none",
-              }}
-            >
-              {p.mobile || p.username}
-            </div>
-            {p.lastText && <div style={S.snip}>{p.lastText}</div>}
-
-            {/* Notification balloon */}
-            {hasUnread && !selected && (
-              <div style={{
-                minWidth: 18,
-                height: 18,
-                borderRadius: "50%",
-                backgroundColor: "red",
-                color: "white",
-                fontSize: 12,
-                fontWeight: "bold",
-                display: "flex",
-                justifyContent: "center",
-                alignItems: "center",
-                padding: "0 5px",
-                marginLeft: 8,
-              }}>
-                !
+    <aside style={{ ...styles.panel, width: isMobile ? "100%" : 340, display: hidden ? "none" : "flex" }}>
+      <div style={styles.heading}>
+        <div><strong style={styles.headingTitle}>Chats</strong><div style={styles.subheading}>Your recent conversations</div></div>
+        <span style={styles.total}>{orderedPeers.length}</span>
+      </div>
+      <div style={styles.list}>
+        {loading && orderedPeers.length === 0 && <div style={styles.empty}>Loading your chats…</div>}
+        {!loading && orderedPeers.length === 0 && <div style={styles.empty}>No conversations yet. Search for someone to start chatting.</div>}
+        {orderedPeers.map((peer) => {
+          const selected = String(current?._id) === String(peer._id);
+          const unread = Number(peer.unreadCount || 0);
+          const displayName = peer.name || peer.username || peer.email || peer.mobile || "User";
+          const preview = peer.lastText || (peer.lastFileType ? "📎 Attachment" : "Start a conversation");
+          return (
+            <motion.button key={peer._id} type="button" onClick={() => handlePick(peer)}
+              whileTap={{ scale: .985 }}
+              style={{ ...styles.chat, background: selected ? "var(--chatSelected, color-mix(in srgb, var(--primary) 16%, var(--surfaceAlt)))" : "transparent" }}>
+              <div style={styles.avatarWrap}>
+                {peer.avatar ? <img src={peer.avatar} alt="" style={styles.avatar}/> : <div style={styles.avatarFallback}>{initials(peer)}</div>}
+                <span title={peer.online ? "Online" : "Offline"} style={{ ...styles.presence, background: peer.online ? "#20c878" : "#9aa2ad" }}/>
               </div>
-            )}
-          </motion.div>
-        );
-      })}
-    </div>
+              <div style={styles.details}>
+                <div style={styles.topline}>
+                  <strong style={styles.name}>{displayName}</strong>
+                  <span style={styles.time}>{peer.lastMessageAt ? new Date(peer.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</span>
+                </div>
+                <div style={styles.bottomline}>
+                  <span style={styles.preview}>{preview}</span>
+                  {unread > 0 && !selected && <span style={styles.unread}>{unread > 99 ? "99+" : unread}</span>}
+                </div>
+              </div>
+            </motion.button>
+          );
+        })}
+      </div>
+    </aside>
   );
 }
 
-/* ---------- theme-aware styles ---------- */
-const S = {
-  side: {
-    overflowY: "auto",
-    background: LIST_BG,
-    borderRight: "1px solid var(--border)",
-    padding: 12,
-    fontFamily: "var(--font-ui)",
-    boxSizing: "border-box",
-    height: "100%",
-  },
-  empty: {
-    opacity: 0.7,
-    fontSize: "clamp(0.95rem, 2.4vw, 1.05rem)",
-    textAlign: "center",
-    padding: "40px 8px",
-    color: "var(--textLight)",
-  },
-  item: {
-    padding: 14,
-    borderRadius: 10,
-    cursor: "pointer",
-    marginBottom: 6,
-    transition: "background 0.15s, box-shadow 0.15s",
-  },
-  mobile: {
-    fontWeight: 700,
-    fontSize: "clamp(1.05rem, 2.5vw, 1.25rem)",
-  },
-  snip: {
-    fontSize: "clamp(0.9rem, 2.3vw, 1rem)",
-    color: "var(--textLight)",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    marginTop: 2,
-  },
+const styles = {
+  panel: { flexShrink: 0, height: "100%", minHeight: 0, flexDirection: "column", overflow: "hidden", background: "var(--surfaceAlt)", borderRight: "1px solid var(--border)", boxSizing: "border-box", color: "var(--textMain)" },
+  heading: { minHeight: 70, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border)", boxSizing: "border-box" },
+  headingTitle: { fontSize: 22, letterSpacing: "-.4px" },
+  subheading: { color: "var(--textLight)", fontSize: 12, marginTop: 3 },
+  total: { borderRadius: 20, padding: "4px 9px", background: "var(--primarySoft)", color: "var(--textMain)", fontSize: 12, fontWeight: 700 },
+  list: { overflowY: "auto", flex: 1, minHeight: 0, padding: "4px 0" },
+  empty: { textAlign: "center", padding: 32, color: "var(--textLight)", fontSize: 14 },
+  chat: { width: "100%", minHeight: 78, display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", border: 0, borderBottom: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "var(--textMain)", boxSizing: "border-box" },
+  avatarWrap: { position: "relative", flexShrink: 0, width: 50, height: 50 },
+  avatar: { width: 50, height: 50, borderRadius: "50%", objectFit: "cover" },
+  avatarFallback: { width: 50, height: 50, borderRadius: "50%", display: "grid", placeItems: "center", background: "linear-gradient(135deg, var(--primary), var(--primarySoft))", color: "#fff", fontWeight: 800, fontSize: 17 },
+  presence: { position: "absolute", width: 12, height: 12, borderRadius: "50%", right: 0, bottom: 1, border: "2px solid var(--surfaceAlt)" },
+  details: { minWidth: 0, flex: 1 },
+  topline: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  name: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 15, fontWeight: 700 },
+  time: { color: "var(--textLight)", fontSize: 11, flexShrink: 0 },
+  bottomline: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 },
+  preview: { minWidth: 0, color: "var(--textLight)", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+  unread: { flexShrink: 0, minWidth: 20, height: 20, padding: "0 5px", borderRadius: 12, display: "grid", placeItems: "center", background: "#20b96b", color: "#fff", fontSize: 11, fontWeight: 800 },
 };
-
-
