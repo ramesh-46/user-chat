@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from "react";
-import { fetchMessages, sendMessage, blockUser, unblockUser, deleteDirectMessage } from "../../api";
+import { fetchMessages, sendMessage, blockUser, unblockUser, deleteDirectMessage, markConversationRead } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import MessageInput from "./MessageInput";
 
@@ -61,6 +61,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       try {
         const res = await fetchMessages(userId, peerId);
         setMsgs(res.data.messages);
+        markConversationRead(userId, peerId).catch((error) => console.warn("Read receipt update failed:", error));
       } catch (err) {
         console.error("Failed to load messages:", err);
       }
