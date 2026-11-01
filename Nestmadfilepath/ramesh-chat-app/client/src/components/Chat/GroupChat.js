@@ -68,6 +68,8 @@ export default function GroupChat({ onBack }) {
   useEffect(() => { loadGroups(); fetchChatList(myId).then(res => setContacts(res.data.users || [])).catch(() => {}); }, [myId]);
   useEffect(() => { const resize = () => setMobileLayout(window.innerWidth <= 700); window.addEventListener("resize", resize); return () => window.removeEventListener("resize", resize); }, []);
   useEffect(() => {
+    setSelectedGroupMessages([]);
+    clearTimeout(groupTouchTimer.current);
     if (!active?._id) { setMessages([]); return; }
     let mounted = true;
     const join = async () => {
