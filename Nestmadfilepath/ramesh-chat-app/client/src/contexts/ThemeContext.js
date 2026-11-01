@@ -1,4 +1,4 @@
-// src/contexts/ThemeContext.js
+// src/contexts/ThemeContext. is .
 import React, {
   createContext,
   useState,
