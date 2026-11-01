@@ -170,6 +170,12 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
 
   const send = async (text, file, fileType, content) => {
     if (isUserBlocked) return;
+    const pendingId = `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const optimistic = {
+      _id: pendingId, sender: userId, receiver: peerId, text: text || "",
+      fileType: fileType || "", createdAt: new Date().toISOString(), pending: true,
+    };
+    setMsgs((prev) => [...prev, optimistic]);
     const fd = new FormData();
     fd.append("sender", userId);
     fd.append("receiver", peerId);
@@ -177,16 +183,15 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     if (file) fd.append("file", file);
     if (fileType) fd.append("fileType", fileType);
     if (content) fd.append("content", content);
-
     try {
       const res = await sendMessage(fd);
       const message = res.data.message;
-      setMsgs((prev) => {
-        if (!prev.some((msg) => msg._id === message._id)) return [...prev, message];
-        return prev;
-      });
+      setMsgs((prev) => prev.map((item) => item._id === pendingId ? message : item)
+        .filter((item, index, items) => items.findIndex((entry) => entry._id === item._id) === index));
     } catch (error) {
+      setMsgs((prev) => prev.filter((item) => item._id !== pendingId));
       console.error("Error sending message:", error);
+      alert(error.response?.data?.error || "Message could not be sent. Please try again.");
     }
   };
 
@@ -359,7 +364,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
               } : undefined}
               onClick={!isMobile ? (e) => { if (e.ctrlKey || e.metaKey) toggleSelectMessage(m._id); } : undefined}
             >
-              {m.text && <span style={{ textTransform: "none" }}>{linkifyText(m.text)}</span>}
+              {m.text && <span style={{ textTransform: "none" }}>{linkifyText(m.text)}</span>}{m.pending && !m.text && <small style={{ opacity: .7 }}>Sending attachment…</small>}{m.pending && <small style={{ display: "block", opacity: .55, textAlign: "right" }}>Sending…</small>}
               {m.file && m.fileType === "image" && <img src={fileURL(m.file)} alt="sent" style={S.thumbnail} onClick={() => window.open(fileURL(m.file), "_blank")} />}
               {m.file && m.fileType === "video" && <video style={S.thumbnail} controls onClick={() => window.open(fileURL(m.file), "_blank")}><source src={fileURL(m.file)} type="video/mp4" /></video>}
               {m.file && (m.fileType === "audio" || m.mime?.startsWith("audio/")) && <audio controls style={S.audioPlayer}><source src={fileURL(m.file)} type={m.mime || "audio/webm"} /></audio>}
