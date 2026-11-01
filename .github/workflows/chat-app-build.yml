@@ -3,6 +3,7 @@ name: Chat app build checks
 on:
   push:
     branches:
+      - main
       - fix/realtime-chat-foundation
   pull_request:
     branches:
