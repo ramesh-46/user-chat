@@ -11,6 +11,8 @@ import GroupChat from "./Chat/GroupChat";
 import Navbar from "./Navbar";
 import ProfilePanel from "./Accounts/ProfilePanel";
 import socket from "../socket";
+import { THEMES } from "../themes";
+import CallButton from "./Call/CallButton";
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -26,11 +28,13 @@ const useIsMobile = () => {
 
 export default function Main() {
   const { user, logout } = useContext(AuthContext);
-  const { theme } = useContext(ThemeContext);
+  const { theme, themeKey, setTheme } = useContext(ThemeContext);
 
   const [current, setCurrent] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(typeof Notification !== "undefined" && Notification.permission === "granted");
   const isMobile = useIsMobile();
 
   // AuthContext stores the Mongo user document. Older sessions may contain
@@ -82,6 +86,8 @@ export default function Main() {
         <Navbar
           logout={logout}
           onProfile={() => setShowProfile(true)}
+          onGroups={() => { setCurrent(null); setShowGroups(true); }}
+          onSettings={() => setShowSettings(true)}
         />
       )}
 
@@ -132,11 +138,32 @@ export default function Main() {
         )}
       </div>
 
+      <CallButton peer={current} />
       <AnimatePresence>
-        {showProfile && (
-          <ProfilePanel onClose={() => setShowProfile(false)} />
-        )}
+        {showProfile && <ProfilePanel onClose={() => setShowProfile(false)} />}
       </AnimatePresence>
+      {showSettings && (
+        <div style={S.settingsBackdrop} onClick={() => setShowSettings(false)}>
+          <section role="dialog" aria-modal="true" aria-label="Chat settings" style={S.settingsPanel} onClick={(event) => event.stopPropagation()}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h3 style={{ margin: 0 }}>Settings</h3>
+              <button style={S.settingsClose} onClick={() => setShowSettings(false)}>✕</button>
+            </div>
+            <p>Appearance</p>
+            <select value={themeKey} onChange={(event) => setTheme(event.target.value)} style={S.settingsSelect}>
+              {Object.entries(THEMES).map(([key, item]) => <option key={key} value={key}>{item.name || key}</option>)}
+            </select>
+            <p>Notifications</p>
+            <button style={S.settingsAction} onClick={async () => {
+              if (typeof Notification === "undefined") return alert("Notifications are not supported in this browser.");
+              const permission = await Notification.requestPermission();
+              setNotificationsEnabled(permission === "granted");
+            }}>{notificationsEnabled ? "Notifications enabled" : "Enable notifications"}</button>
+            <button style={S.settingsAction} onClick={() => { setShowSettings(false); setShowProfile(true); }}>My Account</button>
+            <button style={{ ...S.settingsAction, background: "#a33" }} onClick={logout}>Log out</button>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -174,6 +201,11 @@ const S = {
     minHeight: 0,
     overflow: "hidden",
   },
+  settingsBackdrop: { position: "fixed", inset: 0, zIndex: 5000, background: "rgba(0,0,0,.55)", display: "grid", placeItems: "center", padding: 16 },
+  settingsPanel: { width: "min(360px, 100%)", background: "var(--surfaceAlt)", color: "var(--textMain)", border: "1px solid var(--border)", borderRadius: 16, padding: 20, boxShadow: "0 16px 50px rgba(0,0,0,.3)" },
+  settingsClose: { border: 0, background: "transparent", color: "var(--textMain)", fontSize: 20, cursor: "pointer" },
+  settingsSelect: { width: "100%", padding: 10, borderRadius: 8, marginBottom: 12, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--textMain)" },
+  settingsAction: { width: "100%", border: 0, borderRadius: 8, padding: 11, marginTop: 8, background: "var(--primary)", color: "#fff", cursor: "pointer" },
   welcome: {
     flex: 1,
     display: "flex",

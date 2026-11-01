@@ -143,7 +143,7 @@
 //     socket.join(userId);
 //     try {
 //       await User.findByIdAndUpdate(userId, { online: true, lastSeen: null });
-//       io.emit("userOnline", userId);
+//       io.emit("userOnline", normalizedUserId);
 //     } catch (err) {
 //       console.error("Error updating user on join:", err.message);//     }
 //   });
@@ -274,11 +274,13 @@ io.on("connection", (socket) => {
     }
     
     console.log(`👤 [DEBUG] User ${userId} joining room: ${userId}`);
-    socket.join(userId);
-    
+    const normalizedUserId = String(userId?._id || userId?.userId || userId);
+    if (!mongoose.Types.ObjectId.isValid(normalizedUserId)) return;
+    socket.join(normalizedUserId);
+    socket.data.userId = normalizedUserId;
+
     try {
-      console.log(`👤 [DEBUG] Updating user ${userId} status to online...`);
-      await User.findByIdAndUpdate(userId, { online: true, lastSeen: null });
+      await User.findByIdAndUpdate(normalizedUserId, { online: true, lastSeen: null });
       console.log(`✅ [DEBUG] User ${userId} marked as online`);
       
       io.emit("userOnline", userId);
@@ -338,11 +340,20 @@ io.on("connection", (socket) => {
   });
 
   socket.on("typing", ({ from, to }) => {
-    console.log("⌨️ [DEBUG] Socket 'typing' event:", { from, to, socketId: socket.id });
-    if (to) {
-      io.to(to).emit("peerTyping", from);
-      console.log(`✅ [DEBUG] 'peerTyping' emitted to user: ${to}`);
-    }
+    if (to && from && String(from) === String(socket.data.userId)) io.to(String(to)).emit("peerTyping", String(from));
+  });
+  socket.on("typing:stop", ({ from, to }) => {
+    if (to && from && String(from) === String(socket.data.userId)) io.to(String(to)).emit("peerTypingStop", String(from));
+  });
+  socket.on("group:typing", ({ groupId, from, typing } = {}) => {
+    if (!groupId || String(from) !== String(socket.data.userId) || String(socket.data.groupId) !== String(groupId)) return;
+    socket.to("group:" + String(groupId)).emit("group:typing", { groupId: String(groupId), from: String(from), typing: !!typing });
+  });
+  socket.on("recording:request", ({ to, from } = {}) => {
+    if (to && from && String(from) === String(socket.data.userId)) io.to(String(to)).emit("recording:request", { from: String(from) });
+  });
+  socket.on("recording:consent", ({ to, from, accepted } = {}) => {
+    if (to && from && String(from) === String(socket.data.userId)) io.to(String(to)).emit("recording:consent", { from: String(from), accepted: !!accepted });
   });
 
   // One-to-one call invitation and lifecycle signaling.
@@ -404,30 +415,16 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", async () => {
-    console.log("🔌 [DEBUG] Socket disconnect event:", {
-      socketId: socket.id,
-      rooms: [...socket.rooms],
-      timestamp: new Date().toISOString()
-    });
-    
-    const rooms = [...socket.rooms].filter(r => r !== socket.id);
-    console.log(`🔌 [DEBUG] User rooms to process for offline status:`, rooms);
-    
-    for (const id of rooms) {
-      try {
-        console.log(`🔌 [DEBUG] Updating user ${id} to offline...`);
-        await User.findByIdAndUpdate(id, {
-          online: false,
-          lastSeen: new Date(),
-        });
-        console.log(`✅ [DEBUG] User ${id} marked as offline`);
-        
-        io.emit("userOffline", id);
-        console.log(`📢 [DEBUG] Broadcasted 'userOffline' event for userId: ${id}`);
-      } catch (err) {
-        console.error(`❌ [DEBUG] Error updating user ${id} on disconnect:`, err.message);
-        console.error("❌ [DEBUG] Error stack:", err.stack);
-      }
+    const id = socket.data.userId;
+    if (!id) return;
+    try {
+      const remaining = await io.in(String(id)).fetchSockets();
+      if (remaining.length) return;
+      const lastSeen = new Date();
+      await User.findByIdAndUpdate(id, { online: false, lastSeen });
+      io.emit("userOffline", { userId: String(id), lastSeen });
+    } catch (err) {
+      console.error("[PRESENCE_DISCONNECT]", err.message);
     }
   });
   // Catch-all for unknown events

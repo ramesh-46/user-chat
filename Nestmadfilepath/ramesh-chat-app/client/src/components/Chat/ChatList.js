@@ -52,13 +52,6 @@ export default function ChatList({ current, onPick, socket }) {
   /* hide list when a chat is selected on mobile */
   const hidden = isMobile && current;
 
-  // Request notification permission once
-  useEffect(() => {
-    if (Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
-
   // Handle chat selection
   const handlePick = (p) => {
     // Remove unread for this peer

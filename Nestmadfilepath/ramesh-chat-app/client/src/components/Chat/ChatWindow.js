@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import { fetchMessages, sendMessage, blockUser, unblockUser, deleteDirectMessage } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import MessageInput from "./MessageInput";
-import CallUI from "../Call/CallButton";
+
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -34,6 +34,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   const { user } = useContext(AuthContext);
   const [msgs, setMsgs] = useState([]);
   const [typing, setTyping] = useState(false);
+  const typingTimeout = useRef(null);
   const [online, setOnline] = useState(peer?.online || false);
   const [last, setLast] = useState(peer?.lastSeen || new Date());
   const [isUserBlocked, setIsUserBlocked] = useState(false);
@@ -114,7 +115,14 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     const typingH = (id) => {
       if (id === peerId) {
         setTyping(true);
-        setTimeout(() => setTyping(false), 1500);
+        clearTimeout(typingTimeout.current);
+        typingTimeout.current = setTimeout(() => setTyping(false), 1800);
+      }
+    };
+    const typingStopH = (id) => {
+      if (id === peerId) {
+        clearTimeout(typingTimeout.current);
+        setTyping(false);
       }
     };
 
@@ -125,10 +133,11 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       }
     };
 
-    const offlineH = (id) => {
-      if (id === peerId) {
+    const offlineH = (payload) => {
+      const id = payload?.userId || payload;
+      if (String(id) === String(peerId)) {
         setOnline(false);
-        setLast(new Date());
+        setLast(payload?.lastSeen || new Date());
       }
     };
 
@@ -139,6 +148,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     socket.on("receiveMessage", recv);
     socket.on("direct:message-deleted", deletedH);
     socket.on("peerTyping", typingH);
+    socket.on("peerTypingStop", typingStopH);
     socket.on("userOnline", onlineH);
     socket.on("userOffline", offlineH);
 
@@ -146,6 +156,8 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       socket.off("receiveMessage", recv);
       socket.off("direct:message-deleted", deletedH);
       socket.off("peerTyping", typingH);
+      socket.off("peerTypingStop", typingStopH);
+      clearTimeout(typingTimeout.current);
       socket.off("userOnline", onlineH);
       socket.off("userOffline", offlineH);
     };
@@ -267,7 +279,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       <div style={{ ...S.head, background: ACCENT20, color: "var(--textMain)" }}>
         {isMobile && <button style={S.back} onClick={() => onBack()}>←</button>}
         <div style={headLeftStyle}>{peer.mobile || peer.username}</div>
-        <CallUI peer={peer} />
+
         <button
           style={{
             backgroundColor: isUserBlocked ? "red" : "green",
@@ -347,7 +359,8 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
               {m.text && <span style={{ textTransform: "none" }}>{linkifyText(m.text)}</span>}
               {m.file && m.fileType === "image" && <img src={fileURL(m.file)} alt="sent" style={S.thumbnail} onClick={() => window.open(fileURL(m.file), "_blank")} />}
               {m.file && m.fileType === "video" && <video style={S.thumbnail} controls onClick={() => window.open(fileURL(m.file), "_blank")}><source src={fileURL(m.file)} type="video/mp4" /></video>}
-              {m.file && m.fileType === "audio" && <audio controls style={S.audioPlayer}><source src={fileURL(m.file)} type="audio/webm" /></audio>}
+              {m.file && (m.fileType === "audio" || m.mime?.startsWith("audio/")) && <audio controls style={S.audioPlayer}><source src={fileURL(m.file)} type={m.mime || "audio/webm"} /></audio>}
+              {m.file && !["image", "video", "audio"].includes(m.fileType) && !m.mime?.startsWith("image/") && !m.mime?.startsWith("video/") && !m.mime?.startsWith("audio/") && <a href={fileURL(m.file)} target="_blank" rel="noopener noreferrer" download style={{ display: "inline-block", marginTop: 8, color: "var(--primary)" }}>📎 Download attachment</a>
               <div style={{ fontSize: 10, opacity: 0.6, textAlign: "right", marginTop: 5 }}>
                 {dayjs(m.createdAt).format("DD MMM, hh:mm A")}
               </div>
@@ -383,7 +396,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
 
       <MessageInput
         onSend={send}
-        onTyping={() => socket.emit("typing", { from: userId, to: peerId })}
+        onTyping={() => { socket.emit("typing", { from: userId, to: peerId }); clearTimeout(typingTimeout.current); typingTimeout.current = setTimeout(() => socket.emit("typing:stop", { from: userId, to: peerId }), 1200); }}
         disabled={isUserBlocked}
         placeholder={isUserBlocked ? "This user is blocked" : "Type a message"}
       />

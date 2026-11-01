@@ -21,11 +21,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowed = /^(image\/(jpeg|png|gif|webp)|video\/(mp4|webm|quicktime))$/i.test(file.mimetype);
-    cb(allowed ? null : new Error("Only image and video media are supported"), allowed);
-  }
+  limits: { fileSize: 100 * 1024 * 1024 },
+  fileFilter: (_req, _file, cb) => cb(null, true)
 });
 
 const validId = (id) => mongoose.Types.ObjectId.isValid(id);
@@ -77,7 +74,7 @@ router.post("/:groupId/messages", upload.single("file"), async (req, res) => {
       groupId: group._id,
       text,
       file: req.file ? path.basename(req.file.filename) : undefined,
-      fileType: req.file ? (req.file.mimetype.startsWith("video/") ? "video" : "image") : undefined,
+      fileType: req.file ? (req.file.mimetype.startsWith("image/") ? "image" : req.file.mimetype.startsWith("video/") ? "video" : req.file.mimetype.startsWith("audio/") ? "audio" : "document") : undefined,
       mime: req.file?.mimetype,
       viewOnce: !!(viewOnce && req.file),
     });
@@ -91,7 +88,7 @@ router.post("/:groupId/messages", upload.single("file"), async (req, res) => {
     }});
   } catch (error) {
     if (req.file) fs.promises.unlink(req.file.path).catch(() => {});
-    if (error instanceof multer.MulterError) return res.status(413).json({ success: false, error: "Media is too large (50 MB maximum)" });
+    if (error instanceof multer.MulterError) return res.status(413).json({ success: false, error: "File is too large (100 MB maximum)" });
     console.error("[GROUP_MESSAGE_SEND]", error);
     return res.status(500).json({ success: false, error: error.message || "Unable to send group message" });
   }

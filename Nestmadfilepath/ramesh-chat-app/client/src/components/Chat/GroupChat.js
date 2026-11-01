@@ -3,7 +3,7 @@ import dayjs from "dayjs";
 import {
   fetchGroups, createGroup, fetchGroupMessages, sendGroupMessage,
   deleteGroupMessage, fetchGroupMedia, addGroupMember, promoteGroupAdmin, demoteGroupAdmin,
-  removeGroupMember, deleteGroup, leaveGroup
+  removeGroupMember, deleteGroup, leaveGroup, findUser
 } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
@@ -28,6 +28,9 @@ export default function GroupChat({ onBack }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [mediaUrls, setMediaUrls] = useState({});
+  const [typingUser, setTypingUser] = useState("");
+  const typingTimer = React.useRef(null);
+  const mediaUrlsRef = React.useRef({});
 
   const myId = String(user?._id || user?.userId || "");
   const adminIds = useMemo(() => (active?.admins || [active?.admin]).map(x => String(x?._id || x)).filter(Boolean), [active]);
@@ -64,7 +67,8 @@ export default function GroupChat({ onBack }) {
         if (token && mounted) socket.emit("group:join", { groupId: active._id, token });
       } catch (e) { console.error("Group socket authentication failed:", e); }
     };
-    join();
+    if (socket.connected) join();
+    socket.on("connect", join);
     loadMessages(active);
     const onMessage = (message) => {
       if (String(message.groupId) === String(active._id)) {
@@ -75,32 +79,49 @@ export default function GroupChat({ onBack }) {
         }
       }
     };
+    const onTyping = ({ groupId, from, typing }) => {
+      if (String(groupId) !== String(active._id) || String(from) === myId) return;
+      setTypingUser(typing ? "A member is typing…" : "");
+      clearTimeout(typingTimer.current);
+      if (typing) typingTimer.current = setTimeout(() => setTypingUser(""), 1800);
+    };
     const onDeleted = ({ messageId }) => {
       setMessages(prev => prev.map(m => m._id === messageId ? { ...m, deletedForEveryone: true, text: "", file: null } : m));
     };
     socket.on("group:message", onMessage);
     socket.on("group:message-deleted", onDeleted);
+    socket.on("group:typing", onTyping);
     return () => {
       mounted = false;
       socket.emit("group:leave", { groupId: active._id });
+      socket.off("connect", join);
       socket.off("group:message", onMessage);
       socket.off("group:message-deleted", onDeleted);
+      socket.off("group:typing", onTyping);
+      clearTimeout(typingTimer.current);
     };
   }, [active?._id]);
 
-  useEffect(() => () => Object.values(mediaUrls).forEach(url => URL.revokeObjectURL(url)), [mediaUrls]);
+  useEffect(() => () => Object.values(mediaUrlsRef.current).forEach(url => URL.revokeObjectURL(url)), []);
 
   const create = async (e) => {
     e.preventDefault();
     if (!name.trim()) return;
     setBusy(true); setError("");
     try {
-      const ids = memberIds.split(/[ ,\n]+/).map(x => x.trim()).filter(Boolean);
+      const entries = memberIds.split(/[ ,\n]+/).map(x => x.trim()).filter(Boolean);
+      const ids = [];
+      for (const entry of entries) {
+        if (/^[a-f0-9]{24}$/i.test(entry)) { ids.push(entry); continue; }
+        const found = await findUser(entry);
+        if (!found.data?.user?._id) throw new Error(`User not found: ${entry}`);
+        ids.push(found.data.user._id);
+      }
       const res = await createGroup({ name: name.trim(), memberIds: ids });
       await loadGroups();
       setActive(res.data.group);
       setName(""); setMemberIds("");
-    } catch (e) { setError(e.response?.data?.error || "Could not create group."); }
+    } catch (e) { setError(e.response?.data?.error || e.message || "Could not create group."); }
     finally { setBusy(false); }
   };
 
@@ -114,8 +135,9 @@ export default function GroupChat({ onBack }) {
       if (file) fd.append("file", file);
       if (file && viewOnce) fd.append("viewOnce", "true");
       const res = await sendGroupMessage(active._id, fd);
-      setMessages(prev => [...prev, res.data.message]);
+      setMessages(prev => prev.some(m => m._id === res.data.message._id) ? prev : [...prev, res.data.message]);
       setText(""); setFile(null); setViewOnce(false);
+      socket.emit("group:typing", { groupId: active._id, from: myId, typing: false });
       const input = document.getElementById("group-chat-file");
       if (input) input.value = "";
       loadGroups();
@@ -128,6 +150,7 @@ export default function GroupChat({ onBack }) {
       if (mediaUrls[message._id]) return;
       const res = await fetchGroupMedia(message._id);
       const url = URL.createObjectURL(res.data);
+      mediaUrlsRef.current[message._id] = url;
       setMediaUrls(prev => ({ ...prev, [message._id]: url }));
       if (message.viewOnce) {
         setMessages(prev => prev.map(m => m._id === message._id ? { ...m, mediaUnavailable: true, file: null } : m));
@@ -177,7 +200,7 @@ export default function GroupChat({ onBack }) {
         <h3>Groups</h3>
         <form onSubmit={create}>
           <input style={field} placeholder="New group name" value={name} onChange={e => setName(e.target.value)} maxLength={100}/>
-          <textarea style={field} placeholder="Member user IDs (comma separated)" rows={2} value={memberIds} onChange={e => setMemberIds(e.target.value)}/>
+          <textarea style={field} placeholder="Member usernames, mobile numbers or IDs (comma separated)" rows={2} value={memberIds} onChange={e => setMemberIds(e.target.value)}/>
           <button style={button} disabled={busy || !name.trim()}>Create group</button>
         </form>
         <div style={{ marginTop: 12 }}>
@@ -204,6 +227,7 @@ export default function GroupChat({ onBack }) {
           </header>
           {error && <div role="alert" style={{ color: "#c33", padding: 8 }}>{error}</div>}
           <section style={{ flex: 1, overflowY: "auto", padding: 14, display: "flex", flexDirection: "column", gap: 9 }}>
+            {typingUser && <div style={{ fontSize: 12, opacity: .7 }}>{typingUser}</div>}
             {messages.map(m => {
               const senderId = String(m.sender?._id || m.sender);
               const mine = senderId === myId;
@@ -212,8 +236,8 @@ export default function GroupChat({ onBack }) {
                 {m.deletedForEveryone ? <i>This message was deleted</i> : <>
                   {m.text && <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.text}</div>}
                   {m.file && !m.mediaUnavailable && <div style={{ marginTop: 6 }}>
-                    {mediaUrls[m._id] ? (m.fileType === "video" ? <video controls src={mediaUrls[m._id]} style={{ maxWidth: 240 }}/> : <img src={mediaUrls[m._id]} alt="Shared media" style={{ maxWidth: 240, maxHeight: 240 }}/>) :
-                    <button style={button} onClick={() => openMedia(m)}>{m.viewOnce ? "👁 Open view-once media" : "Open media"}</button>}
+                    {mediaUrls[m._id] ? (m.fileType === "video" ? <video controls src={mediaUrls[m._id]} style={{ maxWidth: 240 }}/> : m.fileType === "audio" ? <audio controls src={mediaUrls[m._id]}/> : m.fileType === "image" ? <img src={mediaUrls[m._id]} alt="Shared media" style={{ maxWidth: 240, maxHeight: 240 }}/> : <a href={mediaUrls[m._id]} download style={{ color: "var(--primary)" }}>Download attachment</a>) :
+                    <button style={button} onClick={() => openMedia(m)}>{m.viewOnce ? "👁 Open view-once media" : "Open attachment"}</button>}
                   </div>}
                   {m.mediaUnavailable && <small>Media already viewed or unavailable</small>}
                 </>}
@@ -225,8 +249,8 @@ export default function GroupChat({ onBack }) {
             })}
           </section>
           <form onSubmit={send} style={{ padding: 10, borderTop: "1px solid var(--border)", display: "flex", gap: 7, flexWrap: "wrap" }}>
-            <input style={{ ...field, flex: 1, minWidth: 120 }} placeholder="Message group…" value={text} onChange={e => setText(e.target.value)}/>
-            <input id="group-chat-file" type="file" accept="image/*,video/mp4,video/webm,video/quicktime" onChange={e => setFile(e.target.files?.[0] || null)} style={{ maxWidth: 170 }}/>
+            <input style={{ ...field, flex: 1, minWidth: 120 }} placeholder="Message group…" value={text} onChange={e => { setText(e.target.value); if (active?._id) socket.emit("group:typing", { groupId: active._id, from: myId, typing: !!e.target.value }); }}/>
+            <input id="group-chat-file" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" onChange={e => setFile(e.target.files?.[0] || null)} style={{ maxWidth: 170 }}/>
             {file && <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={viewOnce} onChange={e => setViewOnce(e.target.checked)}/> View once</label>}
             <button style={button} disabled={busy || (!text.trim() && !file)}>Send</button>
           </form>
