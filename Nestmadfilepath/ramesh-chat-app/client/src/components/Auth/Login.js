@@ -47,7 +47,7 @@ export default function Login() {
       provider.setCustomParameters({ prompt: "select_account" });
       const credential = await signInWithPopup(auth, provider);
       const idToken = await credential.user.getIdToken();
-      const res = await apiLoginWithGoogle(idToken);
+      const res = await api.post("/auth/google", { idToken });
       login(res.data);
       nav("/");
     } catch (err) {
