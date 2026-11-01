@@ -246,8 +246,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       .filter((m) => selectedMessages.includes(m._id))
       .map((m) => m.text)
       .filter(Boolean)
-      .join("
-");
+      .join("\n");
     if (texts) navigator.clipboard.writeText(texts).then(() => alert("Copied!"));
     setSelectedMessages([]);
   };
@@ -257,8 +256,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       .filter((m) => selectedMessages.includes(m._id))
       .map((m) => m.text)
       .filter(Boolean)
-      .join("
-");
+      .join("\n");
     if (texts) {
       if (navigator.share) navigator.share({ text: texts }).catch(console.error);
       else alert("Share API not supported.");
@@ -654,8 +652,7 @@ const S = {
 //       .filter((m) => selectedMessages.includes(m._id))
 //       .map((m) => m.text)
 //       .filter(Boolean)
-//       .join("
-");
+//       .join("\n");
 //     if (texts) navigator.clipboard.writeText(texts).then(() => alert("Copied!"));
 //     setSelectedMessages([]);
 //   };
@@ -665,8 +662,7 @@ const S = {
 //       .filter((m) => selectedMessages.includes(m._id))
 //       .map((m) => m.text)
 //       .filter(Boolean)
-//       .join("
-");
+//       .join("\n");
 //     if (texts) {
 //       if (navigator.share) navigator.share({ text: texts }).catch(console.error);
 //       else alert("Share API not supported.");
