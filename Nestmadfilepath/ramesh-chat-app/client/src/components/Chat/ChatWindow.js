@@ -246,8 +246,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       .filter((m) => selectedMessages.includes(m._id))
       .map((m) => m.text)
       .filter(Boolean)
-      .join("
-");
+      .join("\n");
     if (texts) navigator.clipboard.writeText(texts).then(() => alert("Copied!"));
     setSelectedMessages([]);
   };
@@ -257,8 +256,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       .filter((m) => selectedMessages.includes(m._id))
       .map((m) => m.text)
       .filter(Boolean)
-      .join("
-");
+      .join("\n");
     if (texts) {
       if (navigator.share) navigator.share({ text: texts }).catch(console.error);
       else alert("Share API not supported.");
@@ -421,8 +419,8 @@ const S = {
   headRight: { fontSize: "clamp(0.85rem, 2.2vw, 1rem)" },
   typing: { padding: "2px 20px", fontSize: "clamp(0.9rem, 2.3vw, 1rem)", color: "var(--primary)", marginBottom: 8 },
   icon: { marginRight: 4, fontSize: 14 },
-  flow: { flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, scrollbarWidth: "none", msOverflowStyle: "none" },
-  bubble: { maxWidth: "70%", padding: "14px 16px", borderRadius: 14, wordBreak: "break-word", boxShadow: "0 3px 6px rgba(0,0,0,.12)", position: "relative", cursor: "pointer" },
+  flow: { flex: 1, minHeight: 0, padding: "14px 16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, scrollbarWidth: "none", msOverflowStyle: "none" },
+  bubble: { maxWidth: "min(76%, 680px)", padding: "10px 13px", borderRadius: 14, wordBreak: "break-word", boxShadow: "0 3px 6px rgba(0,0,0,.12)", position: "relative", cursor: "pointer" },
   thumbnail: { maxWidth: 220, maxHeight: 220, borderRadius: 10, marginTop: 8, cursor: "zoom-in" },
   audioPlayer: { width: 220, marginTop: 8 },
   toolbarButton: { background: "transparent", color: "white", border: "none", fontSize: 16, cursor: "pointer", padding: "4px 12px" },
@@ -654,8 +652,7 @@ const S = {
 //       .filter((m) => selectedMessages.includes(m._id))
 //       .map((m) => m.text)
 //       .filter(Boolean)
-//       .join("
-");
+//       .join("\n");
 //     if (texts) navigator.clipboard.writeText(texts).then(() => alert("Copied!"));
 //     setSelectedMessages([]);
 //   };
@@ -665,8 +662,7 @@ const S = {
 //       .filter((m) => selectedMessages.includes(m._id))
 //       .map((m) => m.text)
 //       .filter(Boolean)
-//       .join("
-");
+//       .join("\n");
 //     if (texts) {
 //       if (navigator.share) navigator.share({ text: texts }).catch(console.error);
 //       else alert("Share API not supported.");

@@ -4,12 +4,14 @@ export const THEMES = {
   blackPearl: {
     name: "Black Pearl",
     palette: {
-      primary:     "#091C2A", // dark navy bg
-      primarySoft: "#112436",
-      border:      "#1A3345",
-      /* accent (Rose Fog) text */
-      textMain:    "#E1C2B3", // ◎ high-contrast pinkish
-      textLight:   "#B8A7A0"
+      primary:     "#075E54",
+      primarySoft: "#F0F2F5",
+      border:      "#E5E7EB",
+      textMain:    "#17212B",
+      textLight:   "#667781",
+      surface:     "#FFFFFF",
+      surfaceAlt:  "#FFFFFF",
+      chatSelected:"#E8F5F2"
     },
      fonts: { ui: "'Roboto', sans-serif" }
 

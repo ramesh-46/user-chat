@@ -35,6 +35,7 @@ export default function Main() {
   });
   const [showProfile, setShowProfile] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(typeof Notification !== "undefined" && Notification.permission === "granted");
   const [customColor, setCustomColor] = useState(() => localStorage.getItem("chatCustomAccent") || "#7657d5");
@@ -105,29 +106,27 @@ export default function Main() {
           onProfile={() => setShowProfile(true)}
           onGroups={() => { setCurrent(null); setShowGroups(true); }}
           onSettings={() => setShowSettings(true)}
+          onSearchToggle={() => setSearchOpen(value => !value)}
         />
       )}
 
-      {(!isMobile || (!current && !showGroups)) && (
+      {searchOpen && (!isMobile || (!current && !showGroups)) && (
         <div style={S.searchRow}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <SearchBar
-              onFound={(peer) => {
-                setShowGroups(false);
-                setCurrent(peer);
-              }}
-            />
+            <SearchBar onFound={(peer) => {
+              setShowGroups(false);
+              setCurrent(peer);
+              setSearchOpen(false);
+            }} />
           </div>
-          <button
-            onClick={() => {
-              setCurrent(null);
-              setShowGroups((value) => !value);
-            }}
-            style={S.groupsButton}
-          >
-            Groups
-          </button>
+          <button type="button" aria-label="Close search" onClick={() => setSearchOpen(false)} style={S.searchClose}>✕</button>
         </div>
+      )}
+      {(!isMobile || (!current && !showGroups)) && (
+        <nav aria-label="Main sections" style={S.tabs}>
+          <button type="button" onClick={() => { setShowGroups(false); setCurrent(null); }} style={{ ...S.tab, ...( !showGroups ? S.activeTab : {}) }}>Chats</button>
+          <button type="button" onClick={() => { setCurrent(null); setShowGroups(true); }} style={{ ...S.tab, ...( showGroups ? S.activeTab : {}) }}>Groups</button>
+        </nav>
       )}
 
       <div style={S.body}>
@@ -204,17 +203,14 @@ const S = {
     alignItems: "center",
     gap: 8,
     flexShrink: 0,
-    padding: "4px 8px",
+    padding: "8px 12px",
+    background: "#FFFFFF",
+    borderBottom: "1px solid #E5E7EB",
   },
-  groupsButton: {
-    border: 0,
-    borderRadius: 8,
-    padding: "9px 12px",
-    background: "var(--primary)",
-    color: "white",
-    cursor: "pointer",
-    flexShrink: 0,
-  },
+  searchClose: { width: 42, height: 42, border: 0, borderRadius: 12, background: "#F0F2F5", color: "#17212B", cursor: "pointer" },
+  tabs: { display: "flex", gap: 8, padding: "8px 14px", background: "#FFFFFF", borderBottom: "1px solid #E5E7EB", flexShrink: 0 },
+  tab: { border: 0, borderRadius: 999, padding: "8px 18px", background: "#F0F2F5", color: "#667781", fontWeight: 700, cursor: "pointer" },
+  activeTab: { background: "#075E54", color: "#FFFFFF", boxShadow: "0 4px 12px rgba(7,94,84,.2)" },
   body: {
     flex: 1,
     display: "flex",
