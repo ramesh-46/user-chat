@@ -123,7 +123,9 @@ export default function GroupChat({ onBack }) {
         if (!found.data?.user?._id) throw new Error(`User not found: ${entry}`);
         ids.push(found.data.user._id);
       }
-      if (lookupResult?._id) ids.push(String(lookupResult._id));\n      const uniqueIds = [...new Set(ids.filter(id => String(id) !== myId))];\n      const res = await createGroup({ name: name.trim(), memberIds: uniqueIds });
+      if (lookupResult?._id) ids.push(String(lookupResult._id));
+      const uniqueIds = [...new Set(ids.filter(id => String(id) !== myId))];
+      const res = await createGroup({ name: name.trim(), memberIds: uniqueIds });
       await loadGroups();
       setActive(res.data.group);
       setName(""); setMemberIds(""); setSelectedMembers([]); setLookupResult(null); setMemberSearch("");
