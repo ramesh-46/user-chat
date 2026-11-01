@@ -360,7 +360,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
               {m.file && m.fileType === "image" && <img src={fileURL(m.file)} alt="sent" style={S.thumbnail} onClick={() => window.open(fileURL(m.file), "_blank")} />}
               {m.file && m.fileType === "video" && <video style={S.thumbnail} controls onClick={() => window.open(fileURL(m.file), "_blank")}><source src={fileURL(m.file)} type="video/mp4" /></video>}
               {m.file && (m.fileType === "audio" || m.mime?.startsWith("audio/")) && <audio controls style={S.audioPlayer}><source src={fileURL(m.file)} type={m.mime || "audio/webm"} /></audio>}
-              {m.file && !["image", "video", "audio"].includes(m.fileType) && !m.mime?.startsWith("image/") && !m.mime?.startsWith("video/") && !m.mime?.startsWith("audio/") && <a href={fileURL(m.file)} target="_blank" rel="noopener noreferrer" download style={{ display: "inline-block", marginTop: 8, color: "var(--primary)" }}>📎 Download attachment</a>
+              {m.file && !["image", "video", "audio"].includes(m.fileType) && !m.mime?.startsWith("image/") && !m.mime?.startsWith("video/") && !m.mime?.startsWith("audio/") && <a href={fileURL(m.file)} target="_blank" rel="noopener noreferrer" download style={{ display: "inline-block", marginTop: 8, color: "var(--primary)" }}>📎 Download attachment</a>}
               <div style={{ fontSize: 10, opacity: 0.6, textAlign: "right", marginTop: 5 }}>
                 {dayjs(m.createdAt).format("DD MMM, hh:mm A")}
               </div>
