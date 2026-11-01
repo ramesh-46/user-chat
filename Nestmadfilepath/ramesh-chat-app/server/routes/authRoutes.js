@@ -32,7 +32,7 @@ const admin   = require("../config/firebaseAdmin");
 const User    = require("../models/User");
 const router  = express.Router();
 
-const DeletedAccount = require("../models/DeletedAccount");
+// Deleted-account model is intentionally not loaded here; account deletion routes are disabled.
 
 /* helper – safe verify */
 const verifyId = async (token) => {
