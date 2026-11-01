@@ -9,10 +9,10 @@ import { AuthContext } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
 import socket from "../../socket";
 
-const panel = { display: "flex", height: "100%", minHeight: 0, background: "var(--surfaceAlt)", color: "var(--textMain)", fontFamily: "var(--font-ui)" };
-const side = { width: 270, maxWidth: "38%", overflowY: "auto", borderRight: "1px solid var(--border)", padding: 12, boxSizing: "border-box" };
-const button = { border: 0, borderRadius: 8, padding: "8px 10px", cursor: "pointer", background: "var(--primary)", color: "white", margin: 3 };
-const field = { width: "100%", boxSizing: "border-box", padding: 9, margin: "5px 0", borderRadius: 7, border: "1px solid var(--border)", background: "var(--surfaceAlt)", color: "var(--textMain)" };
+const panel = { display: "flex", height: "100%", minHeight: 0, minWidth: 0, overflow: "hidden", background: "var(--surfaceAlt)", color: "var(--textMain)", fontFamily: "var(--font-ui)" };
+const side = { width: 300, minWidth: 230, maxWidth: "38%", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRight: "1px solid var(--border)", padding: 14, boxSizing: "border-box", background: "var(--surfaceAlt)" };
+const button = { border: 0, borderRadius: 12, padding: "10px 14px", cursor: "pointer", background: "var(--primary)", color: "white", margin: 3, fontWeight: 700, boxShadow: "0 5px 14px color-mix(in srgb, var(--primary) 22%, transparent)" };
+const field = { width: "100%", boxSizing: "border-box", padding: "11px 13px", margin: "6px 0", borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--textMain)", boxShadow: "inset 0 1px 2px rgba(15,23,42,.035)" };
 
 export default function GroupChat({ onBack }) {
   const { user } = useContext(AuthContext);
