@@ -118,6 +118,57 @@ router.post("/signup", async (req, res) => {
 //   }
 // });
 
+/* ---------- GOOGLE LOGIN ---------- { idToken } */
+router.post("/google", async (req, res) => {
+  try {
+    const { idToken } = req.body;
+    if (!idToken) return res.status(400).json({ error: "Missing Google sign-in token" });
+
+    const decoded = await verifyId(idToken);
+    if (!decoded || !decoded.email || decoded.email_verified !== true) {
+      return res.status(401).json({ error: "Google account could not be verified" });
+    }
+
+    // Match existing accounts by Firebase UID first, then verified email.
+    // This keeps existing MongoDB chat history and profile records.
+    let user = await User.findOne({
+      $or: [{ firebaseUid: decoded.uid }, { email: decoded.email.toLowerCase() }]
+    });
+
+    if (!user) {
+      const base = (decoded.email.split("@")[0] || "user")
+        .toLowerCase()
+        .replace(/[^a-z0-9_.-]/g, "")
+        .slice(0, 24) || "user";
+      let username = base;
+      let suffix = 1;
+      while (await User.findOne({ username })) {
+        username = `${base}${suffix++}`;
+      }
+
+      user = await User.create({
+        firebaseUid: decoded.uid,
+        email: decoded.email.toLowerCase(),
+        name: decoded.name || "",
+        username,
+        avatar: decoded.picture || "",
+      });
+    } else {
+      // Keep the existing account/profile intact; only fill missing Firebase identity details.
+      if (!user.firebaseUid) user.firebaseUid = decoded.uid;
+      if (!user.email) user.email = decoded.email.toLowerCase();
+      if (!user.name && decoded.name) user.name = decoded.name;
+      if (!user.avatar && decoded.picture) user.avatar = decoded.picture;
+      await user.save();
+    }
+
+    return res.json(user);
+  } catch (e) {
+    console.error("Google login error:", e.message);
+    return res.status(500).json({ error: "Google login failed. Please try again." });
+  }
+});
+
 /* ---------- LOGIN ----------  { username, password } */
 router.post("/login", async (req, res) => {
   try {
