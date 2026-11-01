@@ -102,7 +102,10 @@ export function useCall(userId) {
     };
     connection.onconnectionstatechange = () => {
       if (["failed", "closed"].includes(connection.connectionState)) cleanup();
-      if (connection.connectionState === "connected") setCallState("connected");
+      if (connection.connectionState === "connected") {
+        clearTimeout(timeoutRef.current);
+        setCallState("connected");
+      }
     };
     return (async () => {
       if (offer) {
@@ -285,6 +288,7 @@ export function useCall(userId) {
       if (!sdp || !pc.current) return;
       try {
         await pc.current.setRemoteDescription(new RTCSessionDescription(sdp));
+        clearTimeout(timeoutRef.current);
         for (const candidate of pendingIce.current.splice(0)) {
           try { await pc.current.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) {}
         }
