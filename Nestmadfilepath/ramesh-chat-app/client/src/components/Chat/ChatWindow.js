@@ -168,7 +168,6 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     try {
       const res = await sendMessage(fd);
       const message = res.data.message;
-      socket.emit("sendMessage", message);
       setMsgs((prev) => {
         if (!prev.some((msg) => msg._id === message._id)) return [...prev, message];
         return prev;
@@ -197,7 +196,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     }
   };
 
-  const fileURL = (p) => `https://blackpearlbackend.onrender.com${p}`;
+  const fileURL = (p) => `https://user-chat-9luh.onrender.com${p}`;
 
   // ---- selection logic ----
   const toggleSelectMessage = (id) => {
@@ -619,7 +618,7 @@ const S = {
 //     }
 //   };
 
-//   const fileURL = (p) => `https://blackpearlbackend.onrender.com${p}`;
+//   const fileURL = (p) => `https://user-chat-9luh.onrender.com${p}`;
 
 //   // ---- selection logic ----
 //   const toggleSelectMessage = (id) => {

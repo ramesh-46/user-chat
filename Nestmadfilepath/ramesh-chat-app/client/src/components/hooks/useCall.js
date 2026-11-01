@@ -15,7 +15,7 @@ export function useCall(userId) {
 
   // Initialize socket lazily
   if (typeof window !== "undefined" && socket.current === null) {
-    socket.current = io("https://blackpearlbackend.onrender.com", {
+    socket.current = io("https://user-chat-9luh.onrender.com", {
       transports: ["websocket", "polling"],
     });
   }

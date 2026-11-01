@@ -330,6 +330,16 @@ router.post("/messages", upload.single("file"), async (req, res) => {
       createdAt: msg.createdAt
     });
 
+    // Broadcast only after MongoDB confirms the message was saved.
+    const io = req.app.get("io");
+    if (io) {
+      const payload = msg.toObject();
+      io.to(String(receiver)).emit("receiveMessage", payload);
+      io.to(String(sender)).emit("receiveMessage", payload);
+      io.to(String(receiver)).emit("refreshConversations");
+      io.to(String(sender)).emit("refreshConversations");
+    }
+
     res.json({ success: true, message: msg });
     console.log("📤 [DEBUG] Response sent successfully");
   } catch (err) {
