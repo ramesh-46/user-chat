@@ -129,10 +129,7 @@ router.post("/login", async (req, res) => {
     const userDoc = await User.findOne({ username: username.toLowerCase() });
     if (!userDoc) return res.status(404).json({ error: "User not found" });
 
-    /* 2. sign‑in with Firebase email/password */
-    const { email } = userDoc;
-    const fbUser = await admin.auth().getUserByEmail(email); // test email exists
-    // we can’t verify password on server; just trust client Firebase login
+    /* 2. sign‑in with Firebase email/password */    // Client-side Firebase email/password authentication is completed before this endpoint. Return the matching chat user without an unnecessary Admin OAuth lookup.
     res.json(userDoc);
   } catch (e) {
     console.error(e);
