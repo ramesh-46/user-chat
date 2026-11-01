@@ -29,7 +29,8 @@ export function useCall(userId) {
   const [cameraEnabled, setCameraEnabled] = useState(true);
   const [cameraFacing, setCameraFacing] = useState("user");
   const [recording, setRecording] = useState(false);
-  const [recordingPaused, setRecordingPaused] = useState(false);\n  const [recordingSaved, setRecordingSaved] = useState(false);
+  const [recordingPaused, setRecordingPaused] = useState(false);
+  const [recordingSaved, setRecordingSaved] = useState(false);
   const [recordingRequest, setRecordingRequest] = useState(null);
 
   const getLocalStream = useCallback(() => localStream.current, []);
