@@ -107,10 +107,10 @@ export default function ChatList({ current, onPick, socket }) {
   };
 
   return (
-    <aside style={{ ...styles.panel, width: isMobile ? "100%" : 340, display: hidden ? "none" : "flex" }}>
+    <aside style={{ ...styles.panel, width: isMobile ? "100%" : current ? 340 : "100%", display: hidden ? "none" : "flex" }}>
       <div style={styles.heading}>
         <div><strong style={styles.headingTitle}>Chats</strong><div style={styles.subheading}>Your recent conversations</div></div>
-        <span style={styles.total}>{orderedPeers.length}</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={styles.total}>{orderedPeers.length}</span><button type="button" title="Import phone contacts" onClick={importPhoneContacts} disabled={contactImporting} style={styles.importButton}>{contactImporting ? "…" : "＋ Contacts"}</button></div>
       </div>
       {contactImportMessage && <div role="status" style={styles.contactHint}>{contactImportMessage}</div>}
       <div style={styles.list}>
