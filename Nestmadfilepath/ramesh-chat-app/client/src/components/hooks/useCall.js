@@ -241,9 +241,13 @@ export function useCall(userId) {
         const link = document.createElement("a");
         link.href = url;
         link.download = `call-recording-${Date.now()}.webm`;
+        document.body.appendChild(link);
         link.click();
-        URL.revokeObjectURL(url);
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60000);
         recordedChunks.current = [];
+        setRecordingSaved(true);
+        window.setTimeout(() => setRecordingSaved(false), 6000);
       };
       instance.start(1000);
       recorder.current = instance;
@@ -257,6 +261,7 @@ export function useCall(userId) {
 
   const requestRecording = useCallback(() => {
     if (!peerId) return;
+    recordingRequestPending.current = true;
     socket.emit("recording:request", { to: peerId, from: String(userId) });
   }, [peerId, userId]);
 
@@ -266,11 +271,17 @@ export function useCall(userId) {
     setRecordingRequest(null);
   }, [recordingRequest, userId]);
 
+  const pauseRecording = useCallback(() => {
+    if (!recorder.current || recorder.current.state === "inactive") return;
+    if (recorder.current.state === "recording") { recorder.current.pause(); setRecordingPaused(true); }
+    else if (recorder.current.state === "paused") { recorder.current.resume(); setRecordingPaused(false); }
+  }, []);
+
   const stopRecording = useCallback(() => {
     if (recorder.current && recorder.current.state !== "inactive") recorder.current.stop();
     recorder.current = null;
     setRecording(false);
-    setRecordingConsent(false);
+    setRecordingPaused(false);
   }, []);
 
   useEffect(() => {
