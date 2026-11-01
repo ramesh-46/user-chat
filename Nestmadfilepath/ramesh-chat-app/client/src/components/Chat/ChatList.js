@@ -125,6 +125,7 @@ export default function ChatList({ current, onPick, socket }) {
           const preview = peer.lastText || (peer.lastFileType ? "📎 Attachment" : "Start a conversation");
           return (
             <motion.button key={peer._id} type="button" onClick={() => handlePick(peer)}
+              whileHover={{ scale: 1.005 }}
               whileTap={{ scale: .985 }}
               style={{ ...styles.chat, background: selected ? "var(--chatSelected, color-mix(in srgb, var(--primary) 16%, var(--surfaceAlt)))" : "transparent" }}>
               <div style={styles.avatarWrap}>
@@ -151,7 +152,7 @@ export default function ChatList({ current, onPick, socket }) {
 
 const styles = {
   panel: { flexShrink: 0, height: "100%", minHeight: 0, flexDirection: "column", overflow: "hidden", background: "var(--surfaceAlt)", borderRight: "1px solid var(--border)", boxSizing: "border-box", color: "var(--textMain)" },
-  heading: { minHeight: 70, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border)", boxSizing: "border-box" },
+  heading: { minHeight: 70, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #E5E7EB", background: "#FFFFFF", boxSizing: "border-box" },
   headingTitle: { fontSize: 22, letterSpacing: "-.4px" },
   subheading: { color: "var(--textLight)", fontSize: 12, marginTop: 3 },
   importButton: { border: "1px solid var(--border)", borderRadius: 18, padding: "6px 9px", background: "var(--surface)", color: "var(--textMain)", fontSize: 11, fontWeight: 700, cursor: "pointer" },
@@ -159,7 +160,7 @@ const styles = {
   total: { borderRadius: 20, padding: "4px 9px", background: "var(--primarySoft)", color: "var(--textMain)", fontSize: 12, fontWeight: 700 },
   list: { overflowY: "auto", flex: 1, minHeight: 0, padding: "4px 0" },
   empty: { textAlign: "center", padding: 32, color: "var(--textLight)", fontSize: 14 },
-  chat: { width: "100%", minHeight: 78, display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", border: 0, borderBottom: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "var(--textMain)", boxSizing: "border-box" },
+  chat: { width: "calc(100% - 16px)", minHeight: 74, display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", margin: "3px 8px", border: "1px solid transparent", borderRadius: 14, textAlign: "left", cursor: "pointer", color: "var(--textMain)", boxSizing: "border-box", transition: "background .18s ease, box-shadow .18s ease, transform .18s ease" },
   avatarWrap: { position: "relative", flexShrink: 0, width: 50, height: 50 },
   avatar: { width: 50, height: 50, borderRadius: "50%", objectFit: "cover" },
   avatarFallback: { width: 50, height: 50, borderRadius: "50%", display: "grid", placeItems: "center", background: "linear-gradient(135deg, var(--primary), var(--primarySoft))", color: "#fff", fontWeight: 800, fontSize: 17 },
