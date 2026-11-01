@@ -16,6 +16,7 @@ const messageSchema = new Schema(
     deletedAt: Date,
     viewOnce: { type: Boolean, default: false },
     openedBy: [{ type: Schema.Types.ObjectId, ref: "User" }],
+    readBy: [{ type: Schema.Types.ObjectId, ref: "User", index: true }],
     createdAt: { type: Date, default: Date.now, index: true }
   },
   { versionKey: false }
