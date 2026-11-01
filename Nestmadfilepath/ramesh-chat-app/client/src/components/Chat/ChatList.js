@@ -25,7 +25,8 @@ export default function ChatList({ current, onPick, socket }) {
     try { return JSON.parse(localStorage.getItem(cacheKey) || "[]"); } catch (_) { return []; }
   });
   const [loading, setLoading] = useState(peers.length === 0);
-  const [contactImporting, setContactImporting] = useState(false);\n  const [contactImportMessage, setContactImportMessage] = useState("");
+  const [contactImporting, setContactImporting] = useState(false);
+  const [contactImportMessage, setContactImportMessage] = useState("");
 
   const load = async () => {
     if (!userId) return;
