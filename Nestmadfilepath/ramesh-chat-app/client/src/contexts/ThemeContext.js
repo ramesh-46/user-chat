@@ -11,7 +11,7 @@ import { THEMES } from "../themes";
 export const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
-  const [themeKey, setThemeKey] = useState("blackPearl");
+  const [themeKey, setThemeKey] = useState(() => localStorage.getItem("suraChatTheme") || "blackPearl");
   const theme = THEMES[themeKey];
 
   /* push css vars + derived mixes */
@@ -59,7 +59,7 @@ export function ThemeProvider({ children }) {
     () => ({
       themeKey,
       theme,
-      setTheme: (k) => k in THEMES && setThemeKey(k),
+      setTheme: (k) => { if (k in THEMES) { localStorage.setItem("suraChatTheme", k); setThemeKey(k); } },
     }),
     [themeKey, theme]
   );
