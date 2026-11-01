@@ -14,6 +14,7 @@ import { AuthContext } from "../../contexts/AuthContext";
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const { login } = useContext(AuthContext);
@@ -67,9 +68,9 @@ export default function Login() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={styles.wrap}>
       <div style={styles.card}>
-        <div style={styles.logoMark}>BP</div>
+        <div style={styles.logoMark}>S</div>
         <p style={styles.eyebrow}>PRIVATE • CONNECTED • SECURE</p>
-        <h2 style={styles.h2}>BLACK PEARL CHAT</h2>
+        <h2 style={styles.h2}>SURA CHAT</h2>
         <p style={styles.subtitle}>Welcome back. Sign in to continue your conversations.</p>
 
         <button
@@ -96,7 +97,7 @@ export default function Login() {
         <label style={styles.label}>PASSWORD</label>
         <input
           style={styles.input}
-          type="password"
+          type={showPassword ? "text" : "password"}
           placeholder="Enter your password"
           autoComplete="current-password"
           value={password}
@@ -104,6 +105,7 @@ export default function Login() {
           onKeyDown={(e) => e.key === "Enter" && handleLogin()}
           disabled={loading || googleLoading}
         />
+        <button type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? "Hide password" : "Show password"} style={{ ...styles.link, display: "block", marginTop: -8, marginBottom: 12, border: 0, background: "transparent", cursor: "pointer" }}>{showPassword ? "Hide password" : "Show password"} ◉</button>
 
         <button style={styles.btn} onClick={handleLogin} disabled={loading || googleLoading}>
           {loading ? "SIGNING IN..." : "LOG IN"}
@@ -113,7 +115,7 @@ export default function Login() {
           <Link style={styles.link} to="/forgot">FORGOT PASSWORD?</Link>
         </p>
         <p style={styles.footer}>
-          NEW TO BLACK PEARL? <Link style={styles.link} to="/signup">CREATE ACCOUNT</Link>
+          NEW TO SURA CHAT? <Link style={styles.link} to="/signup">CREATE ACCOUNT</Link>
         </p>
       </div>
     </motion.div>
