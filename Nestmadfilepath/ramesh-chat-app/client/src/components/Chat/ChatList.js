@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState, useContext } from "react";
-import { fetchChatList } from "../../api";
+import { fetchChatList, findUser } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import { motion } from "framer-motion";
 
@@ -24,7 +24,7 @@ export default function ChatList({ current, onPick, socket }) {
   const [peers, setPeers] = useState(() => {
     try { return JSON.parse(localStorage.getItem(cacheKey) || "[]"); } catch (_) { return []; }
   });
-  const [loading, setLoading] = useState(peers.length === 0);
+  const [loading, setLoading] = useState(peers.length === 0);\n  const [contactImporting, setContactImporting] = useState(false);\n  const [contactImportMessage, setContactImportMessage] = useState("");
 
   const load = async () => {
     if (!userId) return;
@@ -64,6 +64,37 @@ export default function ChatList({ current, onPick, socket }) {
     };
   }, [socket, userId]);
 
+  const importPhoneContacts = async () => {
+    if (!navigator.contacts?.select) {
+      setContactImportMessage("Contact import is supported in some Android browsers. You can still search by username, email or phone.");
+      return;
+    }
+    setContactImporting(true);
+    setContactImportMessage("");
+    try {
+      const picked = await navigator.contacts.select(["name", "tel"], { multiple: true });
+      const savedNames = JSON.parse(localStorage.getItem("savedChatContactNames:" + userId) || "{}");
+      for (const contact of picked) {
+        const phone = contact.tel?.[0]?.replace(/[^+0-9]/g, "");
+        const displayName = contact.name?.[0];
+        if (!phone || !displayName) continue;
+        try {
+          let found;
+          try { found = await findUser(phone); } catch (_) {}
+          if (!found?.data?.user?._id && phone.replace(/\D/g, "").length > 10) {
+            found = await findUser(phone.replace(/\D/g, "").slice(-10));
+          }
+          if (found?.data?.user?._id) savedNames[String(found.data.user._id)] = displayName;
+        } catch (_) {}
+      }
+      localStorage.setItem("savedChatContactNames:" + userId, JSON.stringify(savedNames));
+      setPeers((items) => items.map((peer) => ({ ...peer, contactName: savedNames[String(peer._id)] || peer.contactName })));
+      setContactImportMessage("Contacts matched with existing accounts.");
+    } catch (error) {
+      if (error.name !== "AbortError") setContactImportMessage("Unable to import contacts. Check browser contact access.");
+    } finally { setContactImporting(false); }
+  };
+
   const orderedPeers = useMemo(() => [...peers].sort((a, b) =>
     new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
   ), [peers]);
@@ -80,13 +111,13 @@ export default function ChatList({ current, onPick, socket }) {
         <div><strong style={styles.headingTitle}>Chats</strong><div style={styles.subheading}>Your recent conversations</div></div>
         <span style={styles.total}>{orderedPeers.length}</span>
       </div>
-      <div style={styles.list}>
+      {contactImportMessage && <div role="status" style={styles.contactHint}>{contactImportMessage}</div>}\n      <div style={styles.list}>
         {loading && orderedPeers.length === 0 && <div style={styles.empty}>Loading your chats…</div>}
         {!loading && orderedPeers.length === 0 && <div style={styles.empty}>No conversations yet. Search for someone to start chatting.</div>}
         {orderedPeers.map((peer) => {
           const selected = String(current?._id) === String(peer._id);
           const unread = Number(peer.unreadCount || 0);
-          const displayName = peer.name || peer.username || peer.email || peer.mobile || "User";
+          const savedNames = (() => { try { return JSON.parse(localStorage.getItem("savedChatContactNames:" + userId) || "{}"); } catch (_) { return {}; } })();\n          const displayName = savedNames[String(peer._id)] || peer.contactName || peer.name || peer.username || peer.email || peer.mobile || "User";
           const preview = peer.lastText || (peer.lastFileType ? "📎 Attachment" : "Start a conversation");
           return (
             <motion.button key={peer._id} type="button" onClick={() => handlePick(peer)}
@@ -119,7 +150,7 @@ const styles = {
   heading: { minHeight: 70, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border)", boxSizing: "border-box" },
   headingTitle: { fontSize: 22, letterSpacing: "-.4px" },
   subheading: { color: "var(--textLight)", fontSize: 12, marginTop: 3 },
-  total: { borderRadius: 20, padding: "4px 9px", background: "var(--primarySoft)", color: "var(--textMain)", fontSize: 12, fontWeight: 700 },
+  importButton: { border: "1px solid var(--border)", borderRadius: 18, padding: "6px 9px", background: "var(--surface)", color: "var(--textMain)", fontSize: 11, fontWeight: 700, cursor: "pointer" },\n  contactHint: { padding: "7px 14px", color: "var(--textLight)", fontSize: 11, background: "var(--surface)" },\n  total: { borderRadius: 20, padding: "4px 9px", background: "var(--primarySoft)", color: "var(--textMain)", fontSize: 12, fontWeight: 700 },
   list: { overflowY: "auto", flex: 1, minHeight: 0, padding: "4px 0" },
   empty: { textAlign: "center", padding: 32, color: "var(--textLight)", fontSize: 14 },
   chat: { width: "100%", minHeight: 78, display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", border: 0, borderBottom: "1px solid var(--border)", textAlign: "left", cursor: "pointer", color: "var(--textMain)", boxSizing: "border-box" },
