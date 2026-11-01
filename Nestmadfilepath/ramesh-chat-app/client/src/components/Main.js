@@ -30,12 +30,19 @@ export default function Main() {
   const { user, logout } = useContext(AuthContext);
   const { theme, themeKey, setTheme } = useContext(ThemeContext);
 
-  const [current, setCurrent] = useState(() => {\n    try { return JSON.parse(localStorage.getItem("lastOpenChat") || "null"); } catch (_) { return null; }\n  });
+  const [current, setCurrent] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("lastOpenChat") || "null"); } catch (_) { return null; }
+  });
   const [showProfile, setShowProfile] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(typeof Notification !== "undefined" && Notification.permission === "granted");
-  const isMobile = useIsMobile();\n\n  useEffect(() => {\n    if (current?._id) localStorage.setItem("lastOpenChat", JSON.stringify(current));\n    else localStorage.removeItem("lastOpenChat");\n  }, [current]);
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (current?._id) localStorage.setItem("lastOpenChat", JSON.stringify(current));
+    else localStorage.removeItem("lastOpenChat");
+  }, [current]);
 
   // AuthContext stores the Mongo user document. Older sessions may contain
   // userId instead of _id, so support both without changing the login flow.
