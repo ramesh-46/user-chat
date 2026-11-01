@@ -32,18 +32,14 @@ const admin   = require("../config/firebaseAdmin");
 const User    = require("../models/User");
 const router  = express.Router();
 
-// Deleted-account model is intentionally not loaded here; account deletion routes are disabled.
+const DeletedAccount = require("../models/DeletedAccount");
 
-/* Verify Firebase ID tokens using the shared Admin SDK instance. */
+/* helper – safe verify */
 const verifyId = async (token) => {
-  if (typeof token !== "string" || !token.trim()) return null;
-  try {
-    return await admin.auth().verifyIdToken(token.trim());
-  } catch (error) {
-    console.warn("[AUTH] Firebase ID-token verification failed:", error.code || error.message);
-    return null;
-  }
+  try { return await admin.auth().verifyIdToken(token); }
+  catch { return null; }
 };
+const bcrypt = require("bcrypt");
 
 /* ---------- SIGN‑UP ----------  { idToken, username, password } */
 
