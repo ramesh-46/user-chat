@@ -96,10 +96,14 @@
 // const mongoose = require("mongoose");
 // const { Server } = require("socket.io");
 // const path = require("path");
-// // Shared Firebase Admin singleton. Routes and Socket.IO use this same instance.
-const admin = require("./config/firebaseAdmin");
+// // Firebase Admin SDK
+// const admin = require("firebase-admin");
+// if (!admin.apps.length) {
+//   const serviceAccount = require("./serviceAccount.json");
+//   admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
+// }
 
-// Models and Routes
+// // Models and Routes
 // const User = require("./models/User");
 // const authRoutes = require("./routes/authRoutes");
 // const chatRoutes = require("./routes/chatRoutes");
