@@ -44,7 +44,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   const flowRef = useRef();
   const isMobile = useIsMobile();
   const notificationAudio = useRef(new Audio("/ping.mp3"));
-  const userId = user?._id?.toString();
+  const userId = String(user?._id || user?.userId || "");
   const peerId = peer?._id?.toString();
   const lastSoundTime = useRef(0);
 
