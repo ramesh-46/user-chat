@@ -185,29 +185,19 @@ const DeletedAccount = require("../models/DeletedAccount");
 
 /* 🔎 User search – by mobile OR username */
 router.get("/users", async (req, res) => {
-  console.log("🔍 [DEBUG] GET /api/users - Request received");
-  console.log("🔍 [DEBUG] Query params:", req.query);
-  
-  const { mobile, username } = req.query;
-  const query = mobile ? { mobile } : email ? { email: email.toLowerCase() } : { username: username?.toLowerCase() };
-  
-  console.log("🔍 [DEBUG] Search query:", JSON.stringify(query));
-  
   try {
-    const user = await User.findOne(query);
-    console.log("🔍 [DEBUG] User found:", user ? `Yes (ID: ${user._id})` : "No");
-    if (user) {      console.log("🔍 [DEBUG] User details:", { 
-        _id: user._id, 
-        username: user.username, 
-        mobile: user.mobile 
-      });
+    const mobile = String(req.query.mobile || "").trim();
+    const email = String(req.query.email || "").trim().toLowerCase();
+    const username = String(req.query.username || "").trim().toLowerCase();
+    if (!mobile && !email && !username) {
+      return res.status(400).json({ success: false, message: "Enter a username, email or mobile number." });
     }
-    
-    res.json({ success: !!user, user });
-    console.log("🔍 [DEBUG] Response sent: success =", !!user);
+    const query = mobile ? { mobile } : email ? { email } : { username };
+    const user = await User.findOne(query).select("_id username name email mobile avatar online lastSeen");
+    return res.json({ success: !!user, user });
   } catch (err) {
-    console.error("❌ [DEBUG] Error in /users:", err);
-    res.status(500).json({ error: "Failed to search user" });
+    console.error("[USER_LOOKUP]", err);
+    return res.status(500).json({ success: false, message: "Unable to search for this user." });
   }
 });
 
