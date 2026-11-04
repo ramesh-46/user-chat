@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState, useContext } from "react";
 import { fetchChatList, findUser } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
-import { motion } from "framer-motion";
 
 const useIsMobile = () => {
   const [mobile, setMobile] = useState(window.innerWidth <= 768);
@@ -16,15 +15,29 @@ const useIsMobile = () => {
 const initials = (peer) => (peer?.name || peer?.username || peer?.email || "?")
   .trim().split(/[\s._-]+/).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("");
 
-export default function ChatList({ current, onPick, socket }) {
+const formatTime = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  if (sameDay) return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+  return d.toLocaleDateString([], { day: "numeric", month: "short" });
+};
+
+export default function ChatList({ current, onPick, socket, refreshKey = 0, markAllReadKey = 0, onOpenGroups }) {
   const { user } = useContext(AuthContext);
   const userId = String(user?._id || user?.userId || "");
   const isMobile = useIsMobile();
   const cacheKey = "chatlist:" + userId;
+
   const [peers, setPeers] = useState(() => {
     try { return JSON.parse(localStorage.getItem(cacheKey) || "[]"); } catch (_) { return []; }
   });
   const [loading, setLoading] = useState(peers.length === 0);
+  const [filter, setFilter] = useState("all"); // all | unread | groups
   const [contactImporting, setContactImporting] = useState(false);
   const [contactImportMessage, setContactImportMessage] = useState("");
 
@@ -42,7 +55,13 @@ export default function ChatList({ current, onPick, socket }) {
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, [userId]);
+  useEffect(() => { load(); }, [userId, refreshKey]);
+
+  // "Mark all as read" from the header menu: clears unread badges locally.
+  useEffect(() => {
+    if (markAllReadKey > 0) setPeers((items) => items.map((p) => ({ ...p, unreadCount: 0 })));
+  }, [markAllReadKey]);
+
   useEffect(() => {
     if (!socket) return;
     const refresh = () => load();
@@ -97,79 +116,139 @@ export default function ChatList({ current, onPick, socket }) {
     } finally { setContactImporting(false); }
   };
 
+  const savedNames = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem("savedChatContactNames:" + userId) || "{}"); } catch (_) { return {}; }
+  }, [userId, contactImporting]);
+
   const orderedPeers = useMemo(() => [...peers].sort((a, b) =>
     new Date(b.lastMessageAt || 0).getTime() - new Date(a.lastMessageAt || 0).getTime()
   ), [peers]);
 
-  const hidden = isMobile && !!current;
+  const filtered = useMemo(() => {
+    if (filter === "unread") return orderedPeers.filter((p) => Number(p.unreadCount || 0) > 0);
+    if (filter === "groups") return orderedPeers.filter((p) => p.isGroup || p.group);
+    return orderedPeers;
+  }, [orderedPeers, filter]);
+
   const handlePick = (peer) => {
     setPeers((items) => items.map((item) => String(item._id) === String(peer._id) ? { ...item, unreadCount: 0 } : item));
     onPick(peer);
   };
 
+  const FILTERS = [
+    { key: "all", label: "All" },
+    { key: "unread", label: "Unread" },
+    { key: "groups", label: "Groups" },
+  ];
+
   return (
-    <aside style={{ ...styles.panel, width: isMobile ? "100%" : 350, display: hidden ? "none" : "flex" }}>
-      <div style={styles.heading}>
-        <div><strong style={styles.headingTitle}>Chats</strong><div style={styles.subheading}>Your recent conversations</div></div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={styles.total}>{orderedPeers.length}</span><button type="button" title="Import phone contacts" onClick={importPhoneContacts} disabled={contactImporting} style={styles.importButton}>{contactImporting ? "…" : "＋ Contacts"}</button></div>
+    <div style={{ ...styles.wrap, width: isMobile ? "100%" : "100%", display: "flex" }}>
+      {/* Filter chips */}
+      <div style={styles.filters} role="tablist" aria-label="Chat filters">
+        {FILTERS.map((f) => (
+          <button key={f.key} type="button" role="tab" aria-selected={filter === f.key}
+            onClick={() => { if (f.key === "groups" && onOpenGroups) { setFilter("all"); onOpenGroups(); } else setFilter(f.key); }}
+            style={{ ...styles.chip, ...(filter === f.key ? styles.chipActive : {}) }}>
+            {f.label}
+            {f.key === "unread" && orderedPeers.some((p) => Number(p.unreadCount || 0) > 0) && (
+              <span style={styles.chipCount}>{orderedPeers.filter((p) => Number(p.unreadCount || 0) > 0).length}</span>
+            )}
+          </button>
+        ))}
+        <button type="button" title="Import phone contacts" onClick={importPhoneContacts}
+          disabled={contactImporting} style={styles.importBtn}>
+          {contactImporting ? "…" : "＋ Contacts"}
+        </button>
       </div>
+
       {contactImportMessage && <div role="status" style={styles.contactHint}>{contactImportMessage}</div>}
+
       <div style={styles.list}>
-        {loading && orderedPeers.length === 0 && <div style={styles.empty}>Loading your chats…</div>}
-        {!loading && orderedPeers.length === 0 && <div style={styles.empty}>No conversations yet. Search for someone to start chatting.</div>}
-        {orderedPeers.map((peer) => {
+        {loading && filtered.length === 0 && <div style={styles.empty}>Loading your chats…</div>}
+        {!loading && filtered.length === 0 && (
+          <div style={styles.empty}>
+            {filter === "unread" ? "No unread messages 🎉" : filter === "groups" ? "No group conversations yet." : "No conversations yet. Search for someone to start chatting."}
+          </div>
+        )}
+        {filtered.map((peer) => {
           const selected = String(current?._id) === String(peer._id);
           const unread = Number(peer.unreadCount || 0);
-          const savedNames = (() => { try { return JSON.parse(localStorage.getItem("savedChatContactNames:" + userId) || "{}"); } catch (_) { return {}; } })();
           const displayName = savedNames[String(peer._id)] || peer.contactName || peer.name || peer.username || peer.email || peer.mobile || "User";
           const preview = peer.lastText || (peer.lastFileType ? "📎 Attachment" : "Start a conversation");
+          const avatarUrl = peer.profileImage || peer.profilePic || peer.avatar?.url;
+          const time = formatTime(peer.lastMessageAt);
           return (
-            <motion.button key={peer._id} type="button" onClick={() => handlePick(peer)}
-              whileHover={{ scale: 1.005 }}
-              whileTap={{ scale: .985 }}
-              style={{ ...styles.chat, background: selected ? "var(--chatSelected, color-mix(in srgb, var(--primary) 16%, var(--surfaceAlt)))" : "transparent" }}>
+            <button type="button" key={peer._id} onClick={() => handlePick(peer)}
+              style={{ ...styles.item, ...(selected ? styles.itemSelected : {}) }}>
               <div style={styles.avatarWrap}>
-                {peer.avatar ? <img src={peer.avatar} alt="" style={styles.avatar}/> : <div style={styles.avatarFallback}>{initials(peer)}</div>}
-                <span title={peer.online ? "Online" : "Offline"} style={{ ...styles.presence, background: peer.online ? "#20c878" : "#9aa2ad" }}/>
+                {avatarUrl
+                  ? <img src={avatarUrl} alt="" style={styles.avatarImg} />
+                  : <div style={styles.avatarFallback}>{initials(peer)}</div>}
+                {peer.online && <span style={styles.onlineDot} title="Online" />}
               </div>
-              <div style={styles.details}>
-                <div style={styles.topline}>
-                  <strong style={styles.name}>{displayName}</strong>
-                  <span style={styles.time}>{peer.lastMessageAt ? new Date(peer.lastMessageAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}</span>
+              <div style={styles.itemBody}>
+                <div style={styles.itemRow}>
+                  <span style={styles.itemName}>{displayName}</span>
+                  <span style={styles.itemTime}>{time}</span>
                 </div>
-                <div style={styles.bottomline}>
-                  <span style={styles.preview}>{preview}</span>
-                  {unread > 0 && !selected && <span style={styles.unread}>{unread > 99 ? "99+" : unread}</span>}
+                <div style={styles.itemRow}>
+                  <span style={{ ...styles.itemPreview, ...(unread > 0 ? styles.itemPreviewUnread : {}) }}>{preview}</span>
+                  {unread > 0 && <span style={styles.badge}>{unread > 99 ? "99+" : unread}</span>}
                 </div>
               </div>
-            </motion.button>
+            </button>
           );
         })}
       </div>
-    </aside>
+    </div>
   );
 }
 
 const styles = {
-  panel: { flexShrink: 0, height: "100%", minHeight: 0, flexDirection: "column", overflow: "hidden", background: "var(--surfaceAlt)", borderRight: "1px solid var(--border)", boxSizing: "border-box", color: "var(--textMain)" },
-  heading: { minHeight: 76, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border)", background: "#FFFFFF", boxSizing: "border-box" },
-  headingTitle: { fontSize: 22, letterSpacing: "-.5px", color: "#242432" },
-  subheading: { color: "var(--textLight)", fontSize: 12, marginTop: 3 },
-  importButton: { border: "1px solid var(--border)", borderRadius: 18, padding: "6px 9px", background: "var(--surface)", color: "var(--textMain)", fontSize: 11, fontWeight: 700, cursor: "pointer" },
-  contactHint: { padding: "7px 14px", color: "var(--textLight)", fontSize: 11, background: "var(--surface)" },
-  total: { borderRadius: 20, padding: "4px 9px", background: "var(--primarySoft)", color: "var(--textMain)", fontSize: 12, fontWeight: 700 },
-  list: { overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", flex: 1, minHeight: 0, padding: "6px 0 12px" },
-  empty: { textAlign: "center", padding: 32, color: "var(--textLight)", fontSize: 14 },
-  chat: { width: "calc(100% - 16px)", minHeight: 76, display: "flex", alignItems: "center", gap: 12, padding: "10px 13px", margin: "3px 8px", border: "1px solid transparent", borderRadius: 15, textAlign: "left", cursor: "pointer", color: "var(--textMain)", boxSizing: "border-box", transition: "background .18s ease, box-shadow .18s ease, transform .18s ease" },
-  avatarWrap: { position: "relative", flexShrink: 0, width: 48, height: 48 },
-  avatar: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover" },
-  avatarFallback: { width: 48, height: 48, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--primary)", color: "#fff", fontWeight: 800, fontSize: 17 },
-  presence: { position: "absolute", width: 12, height: 12, borderRadius: "50%", right: 0, bottom: 1, border: "2px solid var(--surfaceAlt)" },
-  details: { minWidth: 0, flex: 1 },
-  topline: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  name: { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 15, fontWeight: 700 },
-  time: { color: "var(--textLight)", fontSize: 11, flexShrink: 0 },
-  bottomline: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6 },
-  preview: { minWidth: 0, color: "var(--textLight)", fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
-  unread: { flexShrink: 0, minWidth: 20, height: 20, padding: "0 5px", borderRadius: 12, display: "grid", placeItems: "center", background: "#20b96b", color: "#fff", fontSize: 11, fontWeight: 800 },
+  wrap: { flex: 1, minHeight: 0, flexDirection: "column", overflow: "hidden" },
+  filters: { display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", flexShrink: 0, borderBottom: "1px solid var(--border)" },
+  chip: {
+    border: "1px solid var(--border)", borderRadius: 999, padding: "7px 14px", fontSize: 13,
+    background: "var(--surface)", color: "var(--textLight)", fontWeight: 600, transition: "all .2s ease", cursor: "pointer",
+  },
+  chipActive: { background: "var(--primary)", borderColor: "var(--primary)", color: "#fff" },
+  chipCount: {
+    marginLeft: 6, background: "rgba(255,255,255,.25)", borderRadius: 999, padding: "1px 6px", fontSize: 11,
+  },
+  importBtn: {
+    marginLeft: "auto", border: "1px solid var(--border)", borderRadius: 999, padding: "7px 12px",
+    background: "var(--surface)", color: "var(--textMain)", fontSize: 12, fontWeight: 600, cursor: "pointer",
+  },
+  contactHint: { padding: "8px 16px", fontSize: 12, color: "var(--textLight)", background: "var(--chatSelected)", flexShrink: 0 },
+  list: { flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 8px" },
+  item: {
+    display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
+    padding: "11px 10px", border: 0, borderRadius: 14, background: "transparent",
+    transition: "background .2s ease", cursor: "pointer", minWidth: 0,
+  },
+  itemSelected: { background: "var(--chatSelected)" },
+  avatarWrap: { position: "relative", width: 48, height: 48, flexShrink: 0 },
+  avatarImg: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover" },
+  avatarFallback: {
+    width: 48, height: 48, borderRadius: "50%", display: "grid", placeItems: "center",
+    background: "var(--chatSelected)", color: "var(--primary)", fontWeight: 700, fontSize: 16,
+  },
+  onlineDot: {
+    position: "absolute", right: 0, bottom: 0, width: 12, height: 12, borderRadius: "50%",
+    background: "var(--success, #35C77A)", border: "2px solid var(--surface)",
+  },
+  itemBody: { flex: 1, minWidth: 0 },
+  itemRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  itemName: { fontWeight: 600, fontSize: 15, color: "var(--textMain)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  itemTime: { fontSize: 11, color: "var(--textLight)", flexShrink: 0 },
+  itemPreview: {
+    fontSize: 13, color: "var(--textLight)", whiteSpace: "nowrap",
+    overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
+  },
+  itemPreviewUnread: { color: "var(--textMain)", fontWeight: 600 },
+  badge: {
+    flexShrink: 0, background: "var(--primary)", color: "#fff", borderRadius: 999,
+    fontSize: 11, fontWeight: 700, padding: "2px 7px", minWidth: 20, textAlign: "center",
+  },
+  empty: { padding: "28px 18px", textAlign: "center", color: "var(--textLight)", fontSize: 13 },
 };
