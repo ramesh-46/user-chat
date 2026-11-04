@@ -257,7 +257,8 @@ export default function GroupChat({ onBack }) {
       </aside>
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {!active ? <div style={{ margin: "auto", opacity: .7 }}>Select a group or create a new one.</div> : <>
-          <header style={{ padding: 12, borderBottom: "1px solid var(--border)" }}>
+          <header style={{ padding: 12, borderBottom: "1px solid #EAE5F6", background: "linear-gradient(110deg,#F1EDFF,#FFFFFF 75%)" }}>
+            {mobileLayout && <button type="button" onClick={() => setActive(null)} style={{ ...button, margin: "0 0 8px", padding: "7px 11px", background: "#F2EEFF", color: "#604BC8", boxShadow: "none" }}>← Groups</button>}
             <strong>{active.name}</strong><div style={{ fontSize: 12, opacity: .7 }}>{active.members?.length || 0} members</div>
             {isAdmin && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
               <input style={{ ...field, maxWidth: 220, margin: 0 }} placeholder="Member user ID" value={adminTarget} onChange={e => setAdminTarget(e.target.value)}/>
