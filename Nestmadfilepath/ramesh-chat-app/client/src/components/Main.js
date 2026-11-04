@@ -28,7 +28,7 @@ const useIsMobile = () => {
 
 export default function Main() {
   const { user, logout } = useContext(AuthContext);
-  const { theme, themeKey, setTheme } = useContext(ThemeContext);
+  const { theme, themeKey, setTheme, customColor, setCustomColor } = useContext(ThemeContext);
 
   const [current, setCurrent] = useState(() => {
     try { return JSON.parse(localStorage.getItem("lastOpenChat:" + String(user?._id || user?.userId || "guest")) || "null"); } catch (_) { return null; }
@@ -155,6 +155,8 @@ export default function Main() {
             <select value={themeKey} onChange={(event) => setTheme(event.target.value)} style={S.settingsSelect}>
               {Object.entries(THEMES).map(([key, item]) => <option key={key} value={key}>{item.name || key}</option>)}
             </select>
+            <label style={{ display: "block", margin: "10px 0 6px", fontSize: 13 }}>Your accent colour</label>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}><input aria-label="Choose custom theme colour" type="color" value={customColor || "#8065F5"} onChange={(event) => setCustomColor(event.target.value)} style={{ width: 48, height: 38, border: "1px solid var(--border)", borderRadius: 8, background: "#fff", cursor: "pointer" }} /><code style={{ color: "var(--textLight)" }}>{customColor || "#8065F5"}</code><button type="button" onClick={() => setCustomColor("")} style={{ marginLeft: "auto", border: "1px solid var(--border)", background: "#fff", color: "var(--textMain)", borderRadius: 8, padding: "8px 10px" }}>Reset</button></div>
             <p>Notifications</p>
             <button style={S.settingsAction} onClick={async () => {
               if (typeof Notification === "undefined") return alert("Notifications are not supported in this browser.");
@@ -173,6 +175,7 @@ export default function Main() {
 const S = {
   wrap: {
     height: "100dvh",
+    paddingLeft: 72,
     minHeight: 0,
     display: "flex",
     flexDirection: "column",
@@ -183,6 +186,8 @@ const S = {
   },
   searchRow: {
     display: "flex",
+    width: 350,
+    maxWidth: "100%",
     alignItems: "center",
     gap: 8,
     flexShrink: 0,
@@ -191,11 +196,12 @@ const S = {
     borderBottom: "1px solid var(--border)",
   },
   searchClose: { width: 42, height: 42, border: 0, borderRadius: 12, background: "#F0F2F5", color: "#17212B", cursor: "pointer" },
-  tabs: { display: "flex", gap: 8, padding: "8px 14px", background: "var(--surfaceAlt)", borderBottom: "1px solid var(--border)", flexShrink: 0 },
+  tabs: { display: "flex", gap: 8, width: 350, maxWidth: "100%", padding: "10px 14px", background: "var(--surfaceAlt)", borderBottom: "1px solid var(--border)", flexShrink: 0 },
   tab: { border: "1px solid var(--border)", borderRadius: 999, padding: "9px 18px", background: "var(--surface)", color: "var(--textMain)", fontWeight: 700, cursor: "pointer" },
   activeTab: { background: "var(--primary)", color: "var(--surfaceAlt)", borderColor: "var(--primary)", boxShadow: "0 4px 12px rgba(0,0,0,.12)" },
   body: {
     flex: 1,
+    width: "100%",
     display: "flex",
     minHeight: 0,
     overflow: "hidden",
