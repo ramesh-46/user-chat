@@ -63,39 +63,9 @@ export default function SearchBar({ onFound }) {
   );
 }
 
-/* --------------- theme-aware, responsive styles --------------- */
+/* Premium purple search surface */
 const S = {
-  box: {
-    display: "flex",
-    padding: 18,
-    background: "var(--primarySoft)",
-    borderBottom: "1px solid var(--border)",
-    fontFamily: "var(--font-ui)",
-    gap: 10,
-    boxSizing: "border-box",
-  },
-
-  inp: {
-    flex: 1,
-    padding: "14px 16px",
-    borderRadius: 10,
-    border: "1px solid var(--border)",
-    fontSize: "clamp(1rem, 2.5vw, 1.15rem)",
-    outline: "none",
-    fontFamily: "var(--font-ui)",
-    background: "#fff",
-    color: "var(--textMain)",
-  },
-
-  btn: {
-    padding: "14px 20px",
-    border: "none",
-    borderRadius: 10,
-    background: "white",
-    color: "var(--primarySoft)",
-    fontWeight: 600,
-    fontSize: "clamp(1rem, 2.5vw, 1.15rem)",
-    fontFamily: "var(--font-ui)",
-    cursor: "pointer",
-  },
+  box: { display: "flex", alignItems: "center", padding: "14px 18px", background: "#FFFFFF", borderBottom: "1px solid #ECE8F5", fontFamily: "var(--font-ui)", gap: 10, boxSizing: "border-box" },
+  inp: { flex: 1, minWidth: 0, padding: "13px 16px", borderRadius: 14, border: "1px solid #E5E0F0", fontSize: 14, outline: "none", fontFamily: "var(--font-ui)", background: "#F8F7FC", color: "#302B45" },
+  btn: { padding: "13px 20px", border: "none", borderRadius: 13, background: "linear-gradient(135deg, #8065F5, #6D50E8)", color: "#FFFFFF", fontWeight: 700, fontSize: 14, fontFamily: "var(--font-ui)", cursor: "pointer", boxShadow: "0 6px 16px rgba(128,101,245,.2)" },
 };
