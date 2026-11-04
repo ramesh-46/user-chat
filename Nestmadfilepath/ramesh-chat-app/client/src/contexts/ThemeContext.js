@@ -12,7 +12,8 @@ export const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [themeKey, setThemeKey] = useState(() => localStorage.getItem("suraChatTheme") || "blackPearl");
-  const theme = THEMES[themeKey];
+  const theme = THEMES[themeKey] || THEMES.blackPearl;
+  const [customColor, setCustomColorState] = useState(() => localStorage.getItem("suraChatCustomColor") || "");
 
   /* push css vars + derived mixes */
   const pushCssVars = useCallback(() => {
@@ -24,6 +25,8 @@ export function ThemeProvider({ children }) {
       root.style.setProperty(`--${k}`, v)
     );
     root.style.setProperty("--font-ui", fonts.ui);
+    root.style.setProperty("--primary", customColor || palette.primary);
+    root.style.setProperty("--primary-rgb", customColor || palette.primary);
 
     /* derived mixes */
     root.style.setProperty(
@@ -40,7 +43,7 @@ export function ThemeProvider({ children }) {
       "--panel",
       `color-mix(in srgb, var(--primary) 20%, var(--primarySoft))`
     );
-  }, [theme]);
+  }, [theme, customColor]);
 
   /* responsive base font-size */
   const setBaseFont = useCallback(() => {
@@ -60,8 +63,10 @@ export function ThemeProvider({ children }) {
       themeKey,
       theme,
       setTheme: (k) => { if (k in THEMES) { localStorage.setItem("suraChatTheme", k); setThemeKey(k); } },
+      customColor,
+      setCustomColor: (value) => { const safe = /^#[0-9A-Fa-f]{6}$/.test(value) ? value : ""; localStorage.setItem("suraChatCustomColor", safe); setCustomColorState(safe); },
     }),
-    [themeKey, theme]
+    [themeKey, theme, customColor]
   );
 
   return (
