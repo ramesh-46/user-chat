@@ -89,7 +89,7 @@ export default function Main() {
   }, [userId]);
 
   return (
-    <div style={S.wrap}>
+    <div style={{ ...S.wrap, paddingLeft: isMobile ? 0 : 72, paddingTop: isMobile && !current && !showGroups ? 58 : 0 }}>
       {(!isMobile || (!current && !showGroups)) && (
         <Navbar
           logout={logout}
@@ -135,7 +135,7 @@ export default function Main() {
                 socket={socket}
                 onBack={() => setCurrent(null)}
               />
-            ) : null}
+            ) : (!isMobile ? <div style={S.welcome}><div><div style={{ fontSize: 42, marginBottom: 14 }}>✦</div><strong style={{ color: "var(--textMain)", fontSize: 20 }}>Your conversations, all in one place</strong><p style={{ fontSize: 13, marginTop: 8 }}>Select a chat to start messaging securely.</p></div></div> : null)}
           </>
         )}
       </div>
