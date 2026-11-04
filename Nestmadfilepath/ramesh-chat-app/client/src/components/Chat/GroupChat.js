@@ -22,6 +22,7 @@ export default function GroupChat({ onBack }) {
   const [selectedGroupMessages, setSelectedGroupMessages] = useState([]);
   const groupTouchTimer = React.useRef(null);
   const groupLongPressTriggered = React.useRef(false);
+  const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [memberIds, setMemberIds] = useState("");
   const [contacts, setContacts] = useState([]);
@@ -133,6 +134,7 @@ export default function GroupChat({ onBack }) {
       const res = await createGroup({ name: name.trim(), memberIds: uniqueIds });
       await loadGroups();
       setActive(res.data.group);
+      setCreating(false);
       setName(""); setMemberIds(""); setSelectedMembers([]); setLookupResult(null); setMemberSearch("");
     } catch (e) { setError(e.response?.data?.error || e.message || "Could not create group."); }
     finally { setBusy(false); }
@@ -223,33 +225,36 @@ export default function GroupChat({ onBack }) {
 
   return (
     <div style={{ ...panel, flexDirection: mobileLayout ? "column" : "row", overflow: "hidden" }}>
-      <aside style={{ ...side, width: mobileLayout ? "100%" : 320, maxWidth: mobileLayout ? "100%" : 320, maxHeight: mobileLayout ? "48dvh" : "100%", flexShrink: 0 }}>
-        <button style={{ ...button, background: "transparent", color: "var(--textMain)", border: "1px solid var(--border)" }} onClick={onBack}>← Back to chats</button>
-        <h3>Groups</h3>
-        <form onSubmit={create}>
-          <input style={field} placeholder="New group name" value={name} onChange={e => setName(e.target.value)} maxLength={100}/>
-          <input style={field} placeholder="Add by username, email or mobile number" value={memberSearch} onChange={e => { setMemberSearch(e.target.value); setLookupResult(null); }}/>
-          <button type="button" style={{ ...button, width: "100%" }} disabled={!memberSearch.trim()} onClick={async () => { try { const result = await findUser(memberSearch.trim()); if (!result.data?.user?._id) throw new Error("No account found for that username, email or mobile number."); setLookupResult(result.data.user); setSelectedMembers(prev => [...new Set([...prev, String(result.data.user._id)])]); } catch (error) { setError(error.response?.data?.error || error.message || "User not found."); } }}>Find and add person</button>
-          {lookupResult && <div style={{ padding: 8, borderRadius: 8, background: "var(--primarySoft)", margin: "5px 0" }}>Added: {lookupResult.name || lookupResult.username || lookupResult.email}</div>}
-          <div style={{ marginTop: 8, border: "1px solid var(--border)", borderRadius: 10, padding: 8, maxHeight: 170, overflowY: "auto" }}>
-            <strong style={{ fontSize: 13 }}>Your available chats</strong>
-            {contacts.map(contact => <label key={contact._id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 2px", cursor: "pointer", borderBottom: "1px solid var(--border)" }}>
-              <input type="checkbox" checked={selectedMembers.includes(String(contact._id))} onChange={e => setSelectedMembers(prev => e.target.checked ? [...new Set([...prev, String(contact._id)])] : prev.filter(id => id !== String(contact._id)))}/>
-              <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{contact.name || contact.username || contact.email || contact.mobile}</span>
-              <small style={{ marginLeft: "auto", opacity: .65 }}>{contact.mobile || ""}</small>
-            </label>)}
-            {!contacts.length && <small style={{ opacity: .7 }}>No existing chats yet. Search by username, email or mobile above.</small>}
-          </div>
-          <button style={{ ...button, width: "100%", padding: 11 }} disabled={busy || !name.trim()}>Create group ({selectedMembers.length} selected)</button>
-        </form>
-        <div style={{ marginTop: 12 }}>
-          {groups.map(g => <button key={g._id} onClick={() => setActive(g)} style={{ ...field, textAlign: "left", cursor: "pointer", borderColor: active?._id === g._id ? "var(--primary)" : "var(--border)" }}>
-            <strong>{g.name}</strong><div style={{ fontSize: 12, opacity: .7 }}>{g.members?.length || 0} members · {g.admins?.length || 1} admins</div>
-          </button>)}
-          {!groups.length && <p style={{ opacity: .7 }}>No groups yet. Create one above.</p>}
+      <aside style={{ ...side, width: mobileLayout ? "100%" : 320, maxWidth: mobileLayout ? "100%" : 320, display: mobileLayout && active ? "none" : "block" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 18 }}>
+          <div><div style={{ fontSize: 22, fontWeight: 800, color: "#302B45" }}>Groups</div><div style={{ fontSize: 12, color: "#918AA5", marginTop: 3 }}>Your group conversations</div></div>
+          <button type="button" style={{ ...button, margin: 0, padding: "10px 13px" }} onClick={() => { setCreating(true); setActive(null); setError(""); }}>＋ Create group</button>
         </div>
+        <button type="button" style={{ ...button, background: "#F2EEFF", color: "#604BC8", boxShadow: "none", border: "1px solid #E5DFFC", margin: "0 0 14px", width: "100%" }} onClick={onBack}>← Back to chats</button>
+        {error && !active && <div role="alert" style={{ color: "#C34B62", background: "#FFF0F2", borderRadius: 10, padding: 10, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+        {creating ? (
+          <form onSubmit={create} style={{ background: "#FFFFFF", border: "1px solid #ECE8F5", borderRadius: 18, padding: 16, boxShadow: "0 8px 24px rgba(55,42,110,.05)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}><strong>Create a new group</strong><button type="button" onClick={() => { setCreating(false); setError(""); }} style={{ border: 0, background: "#F3F0FA", color: "#655B7D", borderRadius: 9, padding: "6px 10px", cursor: "pointer" }}>✕</button></div>
+            <input style={field} placeholder="Group name" value={name} onChange={e => setName(e.target.value)} maxLength={100}/>
+            <input style={field} placeholder="Find by username, email or mobile" value={memberSearch} onChange={e => { setMemberSearch(e.target.value); setLookupResult(null); }}/>
+            <button type="button" style={{ ...button, width: "100%" }} disabled={!memberSearch.trim()} onClick={async () => { try { const result = await findUser(memberSearch.trim()); if (!result.data?.user?._id) throw new Error("No account found for that username, email or mobile number."); setLookupResult(result.data.user); setSelectedMembers(prev => [...new Set([...prev, String(result.data.user._id)])]); } catch (error) { setError(error.response?.data?.error || error.message || "User not found."); } }}>＋ Find and add person</button>
+            {lookupResult && <div style={{ padding: 9, borderRadius: 10, background: "#F2EEFF", color: "#5E49C8", margin: "8px 0", fontSize: 13 }}>Added: {lookupResult.name || lookupResult.username || lookupResult.email}</div>}
+            <div style={{ marginTop: 12, border: "1px solid #ECE8F5", borderRadius: 12, padding: 10, maxHeight: 230, overflowY: "auto" }}><strong style={{ fontSize: 13 }}>Select people from your chats</strong>
+              {contacts.map(contact => <label key={contact._id} style={{ display: "flex", alignItems: "center", gap: 9, padding: "9px 2px", cursor: "pointer", borderBottom: "1px solid #F0EDF6" }}><input type="checkbox" checked={selectedMembers.includes(String(contact._id))} onChange={e => setSelectedMembers(prev => e.target.checked ? [...new Set([...prev, String(contact._id)])] : prev.filter(id => id !== String(contact._id)))}/><span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "#302B45" }}>{contact.name || contact.username || contact.email || contact.mobile}</span><small style={{ marginLeft: "auto", color: "#918AA5" }}>{contact.mobile || ""}</small></label>)}
+              {!contacts.length && <small style={{ color: "#918AA5" }}>No chats yet. Use the search above to add someone.</small>}
+            </div>
+            <div style={{ fontSize: 12, color: "#827A98", margin: "10px 0" }}>{selectedMembers.length} people selected</div>
+            <button type="submit" style={{ ...button, width: "100%", padding: 12 }} disabled={busy || !name.trim()}>{busy ? "Creating…" : "Create group"}</button>
+          </form>
+        ) : (
+          <div><div style={{ fontSize: 12, fontWeight: 700, color: "#918AA5", letterSpacing: ".08em", textTransform: "uppercase", padding: "2px 4px 10px" }}>All groups · {groups.length}</div>
+            {groups.map(g => { const selected = String(active?._id) === String(g._id); return <button type="button" key={g._id} onClick={() => { setActive(g); setCreating(false); }} style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left", padding: "12px 10px", marginBottom: 6, border: selected ? "1px solid #D8CEFF" : "1px solid transparent", borderRadius: 14, background: selected ? "#F2EEFF" : "#FFFFFF", cursor: "pointer", boxShadow: selected ? "0 4px 14px rgba(128,101,245,.09)" : "none" }}>
+              <span style={{ width: 46, height: 46, flexShrink: 0, borderRadius: 15, display: "grid", placeItems: "center", background: "linear-gradient(135deg,#EEE9FF,#DDD4FF)", color: "#7258E8", fontSize: 20 }}>👥</span><span style={{ minWidth: 0, flex: 1 }}><strong style={{ display: "block", color: "#302B45", fontSize: 14, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.name || "Untitled group"}</strong><small style={{ display: "block", color: "#918AA5", marginTop: 4 }}>{g.members?.length || 0} members · {g.admins?.length || 1} admins</small></span><span style={{ color: "#A69BBE", fontSize: 19 }}>›</span>
+            </button>; })}
+            {!groups.length && <div style={{ textAlign: "center", padding: "42px 18px", color: "#918AA5", background: "#FFFFFF", border: "1px dashed #DDD6EC", borderRadius: 16 }}><div style={{ fontSize: 34, marginBottom: 10 }}>👥</div><strong style={{ display: "block", color: "#51486A", marginBottom: 5 }}>No groups yet</strong><span style={{ fontSize: 13 }}>Create a group to start chatting with multiple people.</span></div>}
+          </div>
+        )}
       </aside>
-
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
         {!active ? <div style={{ margin: "auto", opacity: .7 }}>Select a group or create a new one.</div> : <>
           <header style={{ padding: 12, borderBottom: "1px solid var(--border)" }}>
