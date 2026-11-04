@@ -9,8 +9,8 @@ import { AuthContext } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
 import socket from "../../socket";
 
-const panel = { display: "flex", height: "100%", minHeight: 0, minWidth: 0, overflow: "hidden", background: "#F8F7FC", color: "#302B45", fontFamily: "var(--font-ui)" };
-const side = { width: 300, minWidth: 230, maxWidth: "38%", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRight: "1px solid var(--border)", padding: 14, boxSizing: "border-box", background: "#FFFFFF", boxShadow: "inset -1px 0 0 #ECE8F5" };
+const panel = { display: "flex", height: "100%", minHeight: 0, minWidth: 0, width: "100%", overflow: "hidden", background: "#F8F7FC", color: "#302B45", fontFamily: "var(--font-ui)" };
+const side = { width: 300, minWidth: 230, maxWidth: "38%", flex: "0 0 320px", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRight: "1px solid var(--border)", padding: 14, boxSizing: "border-box", background: "#FFFFFF", boxShadow: "inset -1px 0 0 #ECE8F5" };
 const button = { border: 0, borderRadius: 12, padding: "10px 14px", cursor: "pointer", background: "linear-gradient(135deg, #8065F5, #6D50E8)", color: "white", margin: 3, fontWeight: 700, boxShadow: "0 5px 14px rgba(128,101,245,.2)" };
 const field = { width: "100%", boxSizing: "border-box", padding: "11px 13px", margin: "6px 0", borderRadius: 12, border: "1px solid var(--border)", background: "#FFFFFF", color: "#302B45", boxShadow: "0 2px 8px rgba(55,42,110,.035)" };
 
@@ -29,7 +29,7 @@ export default function GroupChat({ onBack }) {
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [lookupResult, setLookupResult] = useState(null);
-  const [mobileLayout, setMobileLayout] = useState(window.innerWidth <= 700);
+  const [mobileLayout, setMobileLayout] = useState(window.innerWidth <= 768);
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
   const [viewOnce, setViewOnce] = useState(false);
@@ -225,7 +225,7 @@ export default function GroupChat({ onBack }) {
 
   return (
     <div style={{ ...panel, flexDirection: mobileLayout ? "column" : "row", overflow: "hidden" }}>
-      <aside style={{ ...side, width: mobileLayout ? "100%" : 320, maxWidth: mobileLayout ? "100%" : 320, display: mobileLayout && active ? "none" : "block" }}>
+      <aside style={{ ...side, width: mobileLayout ? "100%" : 320, minWidth: mobileLayout ? 0 : 230, maxWidth: mobileLayout ? "100%" : 320, flex: mobileLayout ? "1 1 auto" : "0 0 320px", height: "100%", display: mobileLayout && active ? "none" : "block" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 18 }}>
           <div><div style={{ fontSize: 22, fontWeight: 800, color: "#302B45" }}>Groups</div><div style={{ fontSize: 12, color: "#918AA5", marginTop: 3 }}>Your group conversations</div></div>
           <button type="button" style={{ ...button, margin: 0, padding: "10px 13px" }} onClick={() => { setCreating(true); setActive(null); setError(""); }}>＋ Create group</button>
@@ -255,7 +255,7 @@ export default function GroupChat({ onBack }) {
           </div>
         )}
       </aside>
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <main style={{ flex: 1, display: mobileLayout && !active ? "none" : "flex", flexDirection: "column", minWidth: 0, minHeight: 0, height: "100%", width: "100%", overflow: "hidden" }}>
         {!active ? <div style={{ margin: "auto", opacity: .7 }}>Select a group or create a new one.</div> : <>
           <header style={{ padding: 12, borderBottom: "1px solid #EAE5F6", background: "linear-gradient(110deg,#F1EDFF,#FFFFFF 75%)" }}>
             {mobileLayout && <button type="button" onClick={() => setActive(null)} style={{ ...button, margin: "0 0 8px", padding: "7px 11px", background: "#F2EEFF", color: "#604BC8", boxShadow: "none" }}>← Groups</button>}
