@@ -276,8 +276,8 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   };
 
   const ACCENT20 = "color-mix(in srgb, var(--primary) 20%, var(--primarySoft))";
-  const mineStyle = { background: "#a5eeadff", color: "black" };
-  const otherStyle = { background: "#FFFFFF", color: "black" };
+  const mineStyle = { background: "var(--primary)", color: "#FFFFFF" };
+  const otherStyle = { background: "#F1F0F6", color: "#242432" };
   const headLeftStyle = { ...S.headLeft, fontSize: isMobile ? "0.8rem" : S.headLeft.fontSize };
   const headRightStyle = { ...S.headRight, fontSize: isMobile ? "0.7rem" : S.headRight.fontSize };
 
@@ -343,7 +343,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
                 ...S.bubble,
                 ...(mine ? mineStyle : otherStyle),
                 alignSelf: mine ? "flex-end" : "flex-start",
-                backgroundColor: selected ? "#a0cfff" : (mine ? mineStyle.background : otherStyle.background),
+                backgroundColor: selected ? "var(--primarySoft)" : (mine ? mineStyle.background : otherStyle.background),
                 position: "relative",
               }}
               initial={{ opacity: 0, y: 20 }}
@@ -413,7 +413,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
 
 const S = {
   win: { flex: 1, display: "flex", flexDirection: "column", background: "var(--surfaceAlt)", height: "100%", overflow: "hidden", fontFamily: "var(--font-ui)" },
-  head: { padding: "16px 20px", fontWeight: 700, display: "flex", alignItems: "center", gap: 12 },
+  head: { minHeight: 72, padding: "12px 22px", fontWeight: 700, display: "flex", alignItems: "center", gap: 12, background: "#FFFFFF", borderBottom: "1px solid var(--border)", boxShadow: "0 2px 10px rgba(30,25,70,.035)" },
   back: { border: "none", background: "transparent", fontSize: "1.6rem", cursor: "pointer", lineHeight: 1, color: "var(--textMain)" },
   headLeft: { fontSize: "clamp(1rem, 2.5vw, 1.25rem)", flex: 1 },
   headRight: { fontSize: "clamp(0.85rem, 2.2vw, 1rem)" },
@@ -787,8 +787,8 @@ const S = {
 //   headRight: { fontSize: "clamp(0.85rem, 2.2vw, 1rem)" },
 //   typing: { padding: "2px 20px", fontSize: "clamp(0.9rem, 2.3vw, 1rem)", color: "var(--primary)", marginBottom: 8 },
 //   icon: { marginRight: 4, fontSize: 14 },
-//   flow: { flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, scrollbarWidth: "none", msOverflowStyle: "none" },
-//   bubble: { maxWidth: "70%", padding: "14px 16px", borderRadius: 14, wordBreak: "break-word", boxShadow: "0 3px 6px rgba(0,0,0,.12)", position: "relative", cursor: "pointer" },
+//   flow: { flex: 1, minHeight: 0, padding: "24px clamp(14px, 4vw, 42px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, scrollbarWidth: "none", msOverflowStyle: "none", background: "#FAF9FD" },
+//   bubble: { maxWidth: "min(72%, 560px)", padding: "11px 15px", borderRadius: 18, wordBreak: "break-word", boxShadow: "0 2px 8px rgba(30,25,70,.06)", position: "relative", cursor: "pointer", lineHeight: 1.5 },
 //   thumbnail: { maxWidth: 220, maxHeight: 220, borderRadius: 10, marginTop: 8, cursor: "zoom-in" },
 //   audioPlayer: { width: 220, marginTop: 8 },
 //   toolbarButton: { background: "transparent", color: "white", border: "none", fontSize: 16, cursor: "pointer", padding: "4px 12px" },
