@@ -108,7 +108,7 @@ export default function ChatList({ current, onPick, socket }) {
   };
 
   return (
-    <aside style={{ ...styles.panel, width: isMobile ? "100%" : current ? 340 : "100%", display: hidden ? "none" : "flex" }}>
+    <aside style={{ ...styles.panel, width: isMobile ? "100%" : 350, display: hidden ? "none" : "flex" }}>
       <div style={styles.heading}>
         <div><strong style={styles.headingTitle}>Chats</strong><div style={styles.subheading}>Your recent conversations</div></div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}><span style={styles.total}>{orderedPeers.length}</span><button type="button" title="Import phone contacts" onClick={importPhoneContacts} disabled={contactImporting} style={styles.importButton}>{contactImporting ? "…" : "＋ Contacts"}</button></div>
@@ -152,18 +152,18 @@ export default function ChatList({ current, onPick, socket }) {
 
 const styles = {
   panel: { flexShrink: 0, height: "100%", minHeight: 0, flexDirection: "column", overflow: "hidden", background: "var(--surfaceAlt)", borderRight: "1px solid var(--border)", boxSizing: "border-box", color: "var(--textMain)" },
-  heading: { minHeight: 70, padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid #E5E7EB", background: "#FFFFFF", boxSizing: "border-box" },
-  headingTitle: { fontSize: 22, letterSpacing: "-.4px" },
+  heading: { minHeight: 76, padding: "16px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: "1px solid var(--border)", background: "#FFFFFF", boxSizing: "border-box" },
+  headingTitle: { fontSize: 22, letterSpacing: "-.5px", color: "#242432" },
   subheading: { color: "var(--textLight)", fontSize: 12, marginTop: 3 },
   importButton: { border: "1px solid var(--border)", borderRadius: 18, padding: "6px 9px", background: "var(--surface)", color: "var(--textMain)", fontSize: 11, fontWeight: 700, cursor: "pointer" },
   contactHint: { padding: "7px 14px", color: "var(--textLight)", fontSize: 11, background: "var(--surface)" },
   total: { borderRadius: 20, padding: "4px 9px", background: "var(--primarySoft)", color: "var(--textMain)", fontSize: 12, fontWeight: 700 },
   list: { overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", flex: 1, minHeight: 0, padding: "6px 0 12px" },
   empty: { textAlign: "center", padding: 32, color: "var(--textLight)", fontSize: 14 },
-  chat: { width: "calc(100% - 16px)", minHeight: 68, display: "flex", alignItems: "center", gap: 12, padding: "9px 13px", margin: "3px 8px", border: "1px solid transparent", borderRadius: 15, textAlign: "left", cursor: "pointer", color: "var(--textMain)", boxSizing: "border-box", transition: "background .18s ease, box-shadow .18s ease, transform .18s ease" },
-  avatarWrap: { position: "relative", flexShrink: 0, width: 50, height: 50 },
-  avatar: { width: 50, height: 50, borderRadius: "50%", objectFit: "cover" },
-  avatarFallback: { width: 50, height: 50, borderRadius: "50%", display: "grid", placeItems: "center", background: "linear-gradient(135deg, var(--primary), var(--primarySoft))", color: "#fff", fontWeight: 800, fontSize: 17 },
+  chat: { width: "calc(100% - 16px)", minHeight: 76, display: "flex", alignItems: "center", gap: 12, padding: "10px 13px", margin: "3px 8px", border: "1px solid transparent", borderRadius: 15, textAlign: "left", cursor: "pointer", color: "var(--textMain)", boxSizing: "border-box", transition: "background .18s ease, box-shadow .18s ease, transform .18s ease" },
+  avatarWrap: { position: "relative", flexShrink: 0, width: 48, height: 48 },
+  avatar: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover" },
+  avatarFallback: { width: 48, height: 48, borderRadius: "50%", display: "grid", placeItems: "center", background: "var(--primary)", color: "#fff", fontWeight: 800, fontSize: 17 },
   presence: { position: "absolute", width: 12, height: 12, borderRadius: "50%", right: 0, bottom: 1, border: "2px solid var(--surfaceAlt)" },
   details: { minWidth: 0, flex: 1 },
   topline: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
