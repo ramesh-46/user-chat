@@ -285,7 +285,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     <div style={{ ...S.win, width: isMobile ? "100%" : "auto" }}>
       <div style={{ ...S.head, background: ACCENT20, color: "var(--textMain)" }}>
         {isMobile && <button style={S.back} onClick={() => onBack()}>←</button>}
-        <div style={headLeftStyle}>{peer.mobile || peer.username}</div>
+        <div style={headLeftStyle}>{peer.name || peer.username || peer.mobile || peer.email || "Chat"}</div>
 
         <button
           style={{
