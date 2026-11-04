@@ -1,15 +1,15 @@
 export const THEMES = {
   blackPearl: {
-    name: "Light",
+    name: "Purple (Default)",
     palette: {
-      primary: "#111111",
-      primarySoft: "#F4F4F4",
-      border: "#E5E5E5",
-      textMain: "#111111",
-      textLight: "#666666",
+      primary: "#8065F5",
+      primarySoft: "#F5F3FF",
+      border: "#ECEAF4",
+      textMain: "#242432",
+      textLight: "#888895",
       surface: "#FFFFFF",
       surfaceAlt: "#FFFFFF",
-      chatSelected: "#EEEEEE"
+      chatSelected: "#F0EBFF"
     },
     fonts: { ui: "'Inter', 'Roboto', sans-serif" }
   },
