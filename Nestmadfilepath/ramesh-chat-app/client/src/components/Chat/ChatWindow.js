@@ -276,8 +276,8 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   };
 
   const ACCENT20 = "color-mix(in srgb, var(--primary) 20%, var(--primarySoft))";
-  const mineStyle = { background: "var(--primary)", color: "#FFFFFF" };
-  const otherStyle = { background: "#F1F0F6", color: "#242432" };
+  const mineStyle = { background: "linear-gradient(135deg, #8065F5 0%, #6D50E8 100%)", color: "#FFFFFF" };
+  const otherStyle = { background: "#FFFFFF", color: "#302B45", border: "1px solid #ECE8F7" };
   const headLeftStyle = { ...S.headLeft, fontSize: isMobile ? "0.8rem" : S.headLeft.fontSize };
   const headRightStyle = { ...S.headRight, fontSize: isMobile ? "0.7rem" : S.headRight.fontSize };
 
@@ -314,16 +314,16 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       {showBlockDialog && (
         <div style={{
           position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-          backgroundColor: "black", color: "white", fontFamily: "var(--font-ui)",
+          backgroundColor: "#FFFFFF", color: "#302B45", border: "1px solid #E8E2FA", boxShadow: "0 24px 70px rgba(45,35,90,.22)", fontFamily: "var(--font-ui)",
           padding: "20px", borderRadius: "10px", zIndex: 1000, textAlign: "center"
         }}>
           <p style={{ fontWeight: "bold", fontSize: isMobile ? "0.9rem" : "1rem", margin: "10px 0" }}>
             Are you sure you want to block this user?
           </p>
-          <button style={{ backgroundColor: "red", color: "white", border: "none", padding: "8px 16px", margin: 5, borderRadius: 4, cursor: "pointer", fontWeight: "bold" }} onClick={handleBlockUser}>
+          <button style={{ backgroundColor: "#E85D75", color: "white", border: "none", padding: "8px 16px", margin: 5, borderRadius: 4, cursor: "pointer", fontWeight: "bold" }} onClick={handleBlockUser}>
             Yes, Block
           </button>
-          <button style={{ backgroundColor: "green", color: "white", border: "none", padding: "8px 16px", margin: 5, borderRadius: 4, cursor: "pointer", fontWeight: "bold" }} onClick={() => setShowBlockDialog(false)}>
+          <button style={{ backgroundColor: "#8065F5", color: "white", border: "none", padding: "8px 16px", margin: 5, borderRadius: 4, cursor: "pointer", fontWeight: "bold" }} onClick={() => setShowBlockDialog(false)}>
             Cancel
           </button>
         </div>
@@ -390,7 +390,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       {selectedMessages.length > 0 && (
         <div style={{
           position: "fixed", bottom: 0, left: 0, right: 0,
-          backgroundColor: "#333", color: "white", display: "flex",
+          backgroundColor: "#302B45", color: "white", display: "flex",
           justifyContent: "space-around", padding: "8px 0", zIndex: 100
         }}>
           <button onClick={copySelected} style={S.toolbarButton}>📋 Copy</button>
@@ -412,15 +412,15 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
 }
 
 const S = {
-  win: { flex: 1, display: "flex", flexDirection: "column", background: "var(--surfaceAlt)", height: "100%", overflow: "hidden", fontFamily: "var(--font-ui)" },
-  head: { minHeight: 72, padding: "12px 22px", fontWeight: 700, display: "flex", alignItems: "center", gap: 12, background: "#FFFFFF", borderBottom: "1px solid var(--border)", boxShadow: "0 2px 10px rgba(30,25,70,.035)" },
+  win: { flex: 1, display: "flex", flexDirection: "column", background: "#F8F7FC", height: "100%", overflow: "hidden", fontFamily: "var(--font-ui)" },
+  head: { minHeight: 72, padding: "12px 22px", fontWeight: 700, display: "flex", alignItems: "center", gap: 12, background: "linear-gradient(110deg, #F1EDFF 0%, #FFFFFF 72%)", borderBottom: "1px solid #EAE5F6", boxShadow: "0 3px 16px rgba(55,42,110,.045)" },
   back: { border: "none", background: "transparent", fontSize: "1.6rem", cursor: "pointer", lineHeight: 1, color: "var(--textMain)" },
   headLeft: { fontSize: "clamp(1rem, 2.5vw, 1.25rem)", flex: 1 },
   headRight: { fontSize: "clamp(0.85rem, 2.2vw, 1rem)" },
   typing: { padding: "2px 20px", fontSize: "clamp(0.9rem, 2.3vw, 1rem)", color: "var(--primary)", marginBottom: 8 },
   icon: { marginRight: 4, fontSize: 14 },
-  flow: { flex: 1, minHeight: 0, padding: "14px 16px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 10, scrollbarWidth: "none", msOverflowStyle: "none" },
-  bubble: { maxWidth: "min(76%, 680px)", padding: "10px 13px", borderRadius: 14, wordBreak: "break-word", boxShadow: "0 3px 6px rgba(0,0,0,.12)", position: "relative", cursor: "pointer" },
+  flow: { flex: 1, minHeight: 0, padding: "22px clamp(14px, 3vw, 34px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, scrollbarWidth: "none", msOverflowStyle: "none" },
+  bubble: { maxWidth: "min(76%, 680px)", padding: "11px 15px", borderRadius: 18, wordBreak: "break-word", boxShadow: "0 5px 16px rgba(50,40,100,.075)", position: "relative", cursor: "pointer" },
   thumbnail: { maxWidth: 220, maxHeight: 220, borderRadius: 10, marginTop: 8, cursor: "zoom-in" },
   audioPlayer: { width: 220, marginTop: 8 },
   toolbarButton: { background: "transparent", color: "white", border: "none", fontSize: 16, cursor: "pointer", padding: "4px 12px" },
@@ -709,16 +709,16 @@ const S = {
 //       {showBlockDialog && (
 //         <div style={{
 //           position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-//           backgroundColor: "black", color: "white", fontFamily: "var(--font-ui)",
+//           backgroundColor: "#FFFFFF", color: "#302B45", border: "1px solid #E8E2FA", boxShadow: "0 24px 70px rgba(45,35,90,.22)", fontFamily: "var(--font-ui)",
 //           padding: "20px", borderRadius: "10px", zIndex: 1000, textAlign: "center"
 //         }}>
 //           <p style={{ fontWeight: "bold", fontSize: isMobile ? "0.9rem" : "1rem", margin: "10px 0" }}>
 //             Are you sure you want to block this user?
 //           </p>
-//           <button style={{ backgroundColor: "red", color: "white", border: "none", padding: "8px 16px", margin: 5, borderRadius: 4, cursor: "pointer", fontWeight: "bold" }} onClick={handleBlockUser}>
+//           <button style={{ backgroundColor: "#E85D75", color: "white", border: "none", padding: "8px 16px", margin: 5, borderRadius: 4, cursor: "pointer", fontWeight: "bold" }} onClick={handleBlockUser}>
 //             Yes, Block
 //           </button>
-//           <button style={{ backgroundColor: "green", color: "white", border: "none", padding: "8px 16px", margin: 5, borderRadius: 4, cursor: "pointer", fontWeight: "bold" }} onClick={() => setShowBlockDialog(false)}>
+//           <button style={{ backgroundColor: "#8065F5", color: "white", border: "none", padding: "8px 16px", margin: 5, borderRadius: 4, cursor: "pointer", fontWeight: "bold" }} onClick={() => setShowBlockDialog(false)}>
 //             Cancel
 //           </button>
 //         </div>
@@ -760,7 +760,7 @@ const S = {
 //       {selectedMessages.length > 0 && (
 //         <div style={{
 //           position: "fixed", bottom: 0, left: 0, right: 0,
-//           backgroundColor: "#333", color: "white", display: "flex",
+//           backgroundColor: "#302B45", color: "white", display: "flex",
 //           justifyContent: "space-around", padding: "8px 0", zIndex: 100
 //         }}>
 //           <button onClick={copySelected} style={S.toolbarButton}>📋 Copy</button>
@@ -780,7 +780,7 @@ const S = {
 // }
 
 // const S = {
-//   win: { flex: 1, display: "flex", flexDirection: "column", background: "var(--surfaceAlt)", height: "100%", overflow: "hidden", fontFamily: "var(--font-ui)" },
+//   win: { flex: 1, display: "flex", flexDirection: "column", background: "#F8F7FC", height: "100%", overflow: "hidden", fontFamily: "var(--font-ui)" },
 //   head: { padding: "16px 20px", fontWeight: 700, display: "flex", alignItems: "center", gap: 12 },
 //   back: { border: "none", background: "transparent", fontSize: "1.6rem", cursor: "pointer", lineHeight: 1, color: "var(--textMain)" },
 //   headLeft: { fontSize: "clamp(1rem, 2.5vw, 1.25rem)", flex: 1 },
