@@ -119,7 +119,7 @@ export default function Main() {
       )}
 
       {/* MIDDLE – conversation list column */}
-      {(!isMobile || !current) && (
+      {(!isMobile || !current) && section !== "groups" && (
         <section style={{ ...S.listCol, display: (isMobile && current) ? "none" : "flex" }} aria-label="Conversations">
           <header style={S.listHeader}>
             <div>
@@ -152,25 +152,23 @@ export default function Main() {
             </div>
           )}
 
-          {section === "groups" ? (
-            <GroupChat onBack={() => setSection("chats")} />
-          ) : (
-            <ChatList
-              current={current}
-              onPick={setCurrent}
-              socket={socket}
-              refreshKey={refreshKey}
-              markAllReadKey={markAllReadKey}
-              onOpenGroups={openGroups}
-            />
-          )}
+          <ChatList
+            current={current}
+            onPick={setCurrent}
+            socket={socket}
+            refreshKey={refreshKey}
+            markAllReadKey={markAllReadKey}
+            onOpenGroups={openGroups}
+          />
         </section>
       )}
 
       {/* RIGHT – active conversation (desktop) */}
       {!isMobile && (
-        <main style={S.convCol} aria-label="Conversation">
-          {current ? (
+        <main style={{ ...S.convCol, ...(section === "groups" ? { gridColumn: "2 / 4", width: "100%", minWidth: 0 } : {}) }} aria-label={section === "groups" ? "Group conversations" : "Conversation"}>
+          {section === "groups" ? (
+            <GroupChat onBack={openChats} />
+          ) : current ? (
             <ChatWindow peer={current} socket={socket} onBack={() => setCurrent(null)} />
           ) : section === "groups" ? null : (
             <div style={S.welcome}>
@@ -182,8 +180,15 @@ export default function Main() {
         </main>
       )}
 
+      {/* Mobile: full-screen group conversations */}
+      {isMobile && section === "groups" && (
+        <main style={S.convColMobile} aria-label="Group conversations">
+          <GroupChat onBack={openChats} />
+        </main>
+      )}
+
       {/* Mobile: full-screen conversation */}
-      {isMobile && current && (
+      {isMobile && current && section !== "groups" && (
         <main style={S.convColMobile} aria-label="Conversation">
           <ChatWindow peer={current} socket={socket} onBack={() => setCurrent(null)} />
         </main>
