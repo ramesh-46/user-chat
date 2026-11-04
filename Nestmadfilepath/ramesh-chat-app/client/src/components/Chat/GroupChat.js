@@ -9,10 +9,10 @@ import { AuthContext } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
 import socket from "../../socket";
 
-const panel = { display: "flex", height: "100%", minHeight: 0, minWidth: 0, overflow: "hidden", background: "var(--surfaceAlt)", color: "var(--textMain)", fontFamily: "var(--font-ui)" };
-const side = { width: 300, minWidth: 230, maxWidth: "38%", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRight: "1px solid var(--border)", padding: 14, boxSizing: "border-box", background: "var(--surfaceAlt)" };
-const button = { border: 0, borderRadius: 12, padding: "10px 14px", cursor: "pointer", background: "var(--primary)", color: "white", margin: 3, fontWeight: 700, boxShadow: "0 5px 14px color-mix(in srgb, var(--primary) 22%, transparent)" };
-const field = { width: "100%", boxSizing: "border-box", padding: "11px 13px", margin: "6px 0", borderRadius: 12, border: "1px solid var(--border)", background: "var(--surface)", color: "var(--textMain)", boxShadow: "inset 0 1px 2px rgba(15,23,42,.035)" };
+const panel = { display: "flex", height: "100%", minHeight: 0, minWidth: 0, overflow: "hidden", background: "#F8F7FC", color: "#302B45", fontFamily: "var(--font-ui)" };
+const side = { width: 300, minWidth: 230, maxWidth: "38%", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRight: "1px solid var(--border)", padding: 14, boxSizing: "border-box", background: "#FFFFFF", boxShadow: "inset -1px 0 0 #ECE8F5" };
+const button = { border: 0, borderRadius: 12, padding: "10px 14px", cursor: "pointer", background: "linear-gradient(135deg, #8065F5, #6D50E8)", color: "white", margin: 3, fontWeight: 700, boxShadow: "0 5px 14px rgba(128,101,245,.2)" };
+const field = { width: "100%", boxSizing: "border-box", padding: "11px 13px", margin: "6px 0", borderRadius: 12, border: "1px solid var(--border)", background: "#FFFFFF", color: "#302B45", boxShadow: "0 2px 8px rgba(55,42,110,.035)" };
 
 export default function GroupChat({ onBack }) {
   const { user } = useContext(AuthContext);
@@ -265,7 +265,7 @@ export default function GroupChat({ onBack }) {
             {!isAdmin && <button style={button} onClick={() => closeGroup("leave")}>Leave group</button>}
           </header>
           {error && <div role="alert" style={{ color: "#c33", padding: 8 }}>{error}</div>}
-          <section style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10, background: "#F0F2F5" }}>
+          <section style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 10, background: "#F8F7FC" }}>
             {typingUser && <div style={{ fontSize: 12, opacity: .7 }}>{typingUser}</div>}
             {messages.map(m => {
               const senderId = String(m.sender?._id || m.sender);
@@ -277,7 +277,7 @@ export default function GroupChat({ onBack }) {
                 onTouchEnd={() => clearTimeout(groupTouchTimer.current)}
                 onTouchMove={() => clearTimeout(groupTouchTimer.current)}
                 onClick={() => { if (groupLongPressTriggered.current) { groupLongPressTriggered.current = false; return; } if (selectedGroupMessages.length) toggleGroupMessage(m._id); }}
-                style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "min(78%, 680px)", padding: "10px 13px", borderRadius: 16, background: selected ? "#DCEBFF" : mine ? "#D9FDD3" : "#FFFFFF", color: "#17212B", border: selected ? "2px solid #5B9CF5" : "1px solid #E5E7EB", boxShadow: "0 2px 8px rgba(15,23,42,.06)", cursor: "default", animation: "bpFadeUp .18s ease both" }}>
+                style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "min(78%, 680px)", padding: "10px 13px", borderRadius: 16, background: selected ? "#DDD5FF" : mine ? "#EAE5FF" : "#FFFFFF", color: "#302B45", border: selected ? "2px solid #8065F5" : "1px solid #ECE8F5", boxShadow: "0 2px 8px rgba(15,23,42,.06)", cursor: "default", animation: "bpFadeUp .18s ease both" }}>
                 <div style={{ fontSize: 11, opacity: .7 }}>{m.sender?.username || (mine ? "You" : "Member")} · {dayjs(m.createdAt).format("DD MMM, hh:mm A")}</div>
                 {m.deletedForEveryone ? <i>This message was deleted</i> : <>
                   {m.text && <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.text}</div>}
@@ -291,13 +291,13 @@ export default function GroupChat({ onBack }) {
               </article>;
             })}
           </section>
-          {selectedGroupMessages.length > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#17212B", color: "#FFFFFF" }}>
+          {selectedGroupMessages.length > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#302B45", color: "#FFFFFF" }}>
             <strong style={{ marginRight: "auto" }}>{selectedGroupMessages.length} selected</strong>
             <button type="button" style={{ ...button, background: "#334155" }} onClick={() => deleteSelectedGroupMessages(false)}>Delete for me</button>
             <button type="button" style={{ ...button, background: "#B83232" }} onClick={() => deleteSelectedGroupMessages(true)}>Delete for everyone</button>
             <button type="button" style={{ ...button, background: "#475569" }} onClick={() => setSelectedGroupMessages([])}>Cancel</button>
           </div>}
-          <form onSubmit={send} style={{ padding: 12, borderTop: "1px solid #E5E7EB", display: "flex", gap: 8, flexWrap: "wrap", background: "#FFFFFF" }}>
+          <form onSubmit={send} style={{ padding: 12, borderTop: "1px solid #ECE8F5", display: "flex", gap: 8, flexWrap: "wrap", background: "#FFFFFF" }}>
             <input style={{ ...field, flex: 1, minWidth: 120 }} placeholder="Message group…" value={text} onChange={e => { setText(e.target.value); if (active?._id) socket.emit("group:typing", { groupId: active._id, from: myId, typing: !!e.target.value }); }}/>
             <input id="group-chat-file" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" onChange={e => setFile(e.target.files?.[0] || null)} style={{ maxWidth: 170 }}/>
             {file && <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={viewOnce} onChange={e => setViewOnce(e.target.checked)}/> View once</label>}
