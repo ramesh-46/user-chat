@@ -16,7 +16,7 @@ self.addEventListener("notificationclick", (event) => {
   event.notification.close();
   const info = event.notification.data || {};
   const target = new URL(info.url || "/", self.location.origin);
-  if (info.type === "incoming_call" && info.from) { target.searchParams.set("callFrom", info.from); target.searchParams.set("callMode", info.mode || "audio"); }
+  if (info.type === "incoming_call" && info.senderId) { target.searchParams.set("callFrom", info.senderId); target.searchParams.set("callMode", info.mode || "audio"); }
   else if (info.type === "group_message" && info.groupId) target.searchParams.set("openGroup", info.groupId);
   else if (info.senderId) target.searchParams.set("openChat", info.senderId);
   event.waitUntil((async () => {
