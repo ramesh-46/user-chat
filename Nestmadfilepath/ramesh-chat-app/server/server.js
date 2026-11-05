@@ -417,18 +417,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("webrtc-answer", (data) => {
-    console.log("📞 [DEBUG] WebRTC 'webrtc-answer' event:", {
-      from: data?.from,      to: data?.to,
-      socketId: socket.id,
-      hasSdp: !!data?.sdp
-    });
+    console.log("📞 [DEBUG] WebRTC answer received:", { from: data?.from, to: data?.to, hasSdp: !!data?.sdp });
     if (data?.to && String(data.from) === String(socket.data.userId || "")) {
-      const target = String(data.to);
-      const payload = { from: data.from, to: target, candidate: data.candidate };
-      const queued = pendingIce.get(target) || [];
-      queued.push({ payload, expiresAt: Date.now() + CALL_TTL_MS });
-      pendingIce.set(target, queued.slice(-40));
-      io.to(target).emit("webrtc-ice", payload);
+      io.to(String(data.to)).emit("webrtc-answer", { from: data.from, to: String(data.to), sdp: data.sdp });
     }
   });
 
