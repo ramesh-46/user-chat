@@ -206,9 +206,9 @@ export default function ChatList({ current, onPick, socket, refreshKey = 0, mark
 
 const styles = {
   wrap: { flex: 1, minHeight: 0, flexDirection: "column", overflow: "hidden" },
-  filters: { display: "flex", alignItems: "center", gap: 8, padding: "10px 16px", flexShrink: 0, borderBottom: "1px solid var(--border)" },
+  filters: { display: "flex", alignItems: "center", gap: 7, padding: "12px 16px", flexShrink: 0, borderBottom: "1px solid var(--border)", overflowX: "auto", scrollbarWidth: "none" },
   chip: {
-    border: "1px solid var(--border)", borderRadius: 999, padding: "7px 14px", fontSize: 13,
+    border: "1px solid var(--border)", borderRadius: 999, padding: "8px 15px", fontSize: 12,
     background: "var(--surface)", color: "var(--textLight)", fontWeight: 600, transition: "all .2s ease", cursor: "pointer",
   },
   chipActive: { background: "var(--primary)", borderColor: "var(--primary)", color: "#fff" },
@@ -220,17 +220,17 @@ const styles = {
     background: "var(--surface)", color: "var(--textMain)", fontSize: 12, fontWeight: 600, cursor: "pointer",
   },
   contactHint: { padding: "8px 16px", fontSize: 12, color: "var(--textLight)", background: "var(--chatSelected)", flexShrink: 0 },
-  list: { flex: 1, minHeight: 0, overflowY: "auto", padding: "6px 8px" },
+  list: { flex: 1, minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", padding: "9px 10px 18px" },
   item: {
     display: "flex", alignItems: "center", gap: 12, width: "100%", textAlign: "left",
-    padding: "11px 10px", border: 0, borderRadius: 14, background: "transparent",
+    padding: "12px 11px", border: "1px solid transparent", borderRadius: 16, background: "transparent",
     transition: "background .2s ease", cursor: "pointer", minWidth: 0,
   },
-  itemSelected: { background: "var(--chatSelected)" },
-  avatarWrap: { position: "relative", width: 48, height: 48, flexShrink: 0 },
-  avatarImg: { width: 48, height: 48, borderRadius: "50%", objectFit: "cover" },
+  itemSelected: { background: "var(--chatSelected)", borderColor: "var(--border)" },
+  avatarWrap: { position: "relative", width: 50, height: 50, flexShrink: 0 },
+  avatarImg: { width: 50, height: 50, borderRadius: "50%", objectFit: "cover" },
   avatarFallback: {
-    width: 48, height: 48, borderRadius: "50%", display: "grid", placeItems: "center",
+    width: 50, height: 50, borderRadius: "50%", display: "grid", placeItems: "center",
     background: "var(--chatSelected)", color: "var(--primary)", fontWeight: 700, fontSize: 16,
   },
   onlineDot: {
@@ -239,10 +239,10 @@ const styles = {
   },
   itemBody: { flex: 1, minWidth: 0 },
   itemRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 },
-  itemName: { fontWeight: 600, fontSize: 15, color: "var(--textMain)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  itemName: { fontWeight: 650, fontSize: 14, color: "var(--textMain)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   itemTime: { fontSize: 11, color: "var(--textLight)", flexShrink: 0 },
   itemPreview: {
-    fontSize: 13, color: "var(--textLight)", whiteSpace: "nowrap",
+    fontSize: 12, color: "var(--textLight)", whiteSpace: "nowrap",
     overflow: "hidden", textOverflow: "ellipsis", minWidth: 0,
   },
   itemPreviewUnread: { color: "var(--textMain)", fontWeight: 600 },
