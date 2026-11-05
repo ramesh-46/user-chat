@@ -422,9 +422,13 @@ io.on("connection", (socket) => {
       socketId: socket.id,
       hasSdp: !!data?.sdp
     });
-    if (data?.to) {
-      io.to(data.to).emit("webrtc-answer", { from: socket.id, ...data });
-      console.log(`✅ [DEBUG] WebRTC answer forwarded to: ${data.to}`);
+    if (data?.to && String(data.from) === String(socket.data.userId || "")) {
+      const target = String(data.to);
+      const payload = { from: data.from, to: target, candidate: data.candidate };
+      const queued = pendingIce.get(target) || [];
+      queued.push({ payload, expiresAt: Date.now() + CALL_TTL_MS });
+      pendingIce.set(target, queued.slice(-40));
+      io.to(target).emit("webrtc-ice", payload);
     }
   });
 
