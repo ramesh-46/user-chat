@@ -5,9 +5,9 @@ async function sendPushToUsers(userIds, payload) {
   try {
     const ids = [...new Set((userIds || []).map(String).filter(Boolean))];
     if (!ids.length) return;
-    const users = await User.find({ _id: { $in: ids } }).select("_id fcmToken fcmTokens");
+    const users = await User.find({ _id: { $in: ids } }).select("_id fcmTokens");
     const jobs = [];
-    for (const user of users) for (const token of new Set([...(user.fcmTokens || []), user.fcmToken].filter(Boolean))) jobs.push({ userId: String(user._id), token });
+    for (const user of users) for (const token of new Set((user.fcmTokens || []).filter(Boolean))) jobs.push({ userId: String(user._id), token });
     if (!jobs.length) return;
     const response = await admin.messaging().sendEach(jobs.map(({ token }) => ({
       token,
@@ -19,7 +19,7 @@ async function sendPushToUsers(userIds, payload) {
       if (!r.success && ["messaging/registration-token-not-registered", "messaging/invalid-registration-token"].includes(r.error?.code)) invalid.push(jobs[i].token);
       else if (!r.success) console.warn("[PUSH_SEND]", r.error?.code || r.error?.message);
     });
-    if (invalid.length) await User.updateMany({}, { $pull: { fcmTokens: { $in: invalid }, fcmToken: { $in: invalid } } });
+    if (invalid.length) await User.updateMany({}, { $pull: { fcmTokens: { $in: invalid } } });
   } catch (error) { console.error("[PUSH_DELIVERY]", error.code || error.message); }
 }
 const sendPushToUser = (id, payload) => sendPushToUsers([id], payload);
