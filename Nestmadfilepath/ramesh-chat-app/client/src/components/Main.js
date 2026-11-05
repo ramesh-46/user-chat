@@ -14,7 +14,7 @@ import { THEMES } from "../themes";
 import CallButton from "./Call/CallButton";
 
 const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
@@ -47,6 +47,26 @@ export default function Main() {
   const [fabOpen, setFabOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [markAllReadKey, setMarkAllReadKey] = useState(0);
+  const navigationRef = React.useRef({});
+  navigationRef.current = { current, section, showProfile, showSettings, searchOpen };
+
+  // Keep browser Back inside the current Sura Chat section instead of leaving the app.
+  useEffect(() => {
+    window.history.pushState({ suraChat: true }, "", window.location.href);
+    const handleAppBack = () => {
+      const nav = navigationRef.current;
+      if (nav.showProfile) setShowProfile(false);
+      else if (nav.showSettings) setShowSettings(false);
+      else if (nav.searchOpen) setSearchOpen(false);
+      else if (nav.current) setCurrent(null);
+      else if (nav.section === "groups") setSection("chats");
+      else return;
+      window.history.pushState({ suraChat: true }, "", window.location.href);
+    };
+    window.addEventListener("popstate", handleAppBack);
+    return () => window.removeEventListener("popstate", handleAppBack);
+  }, []);
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     typeof Notification !== "undefined" && Notification.permission === "granted"
   );
@@ -90,7 +110,7 @@ export default function Main() {
   );
 
   return (
-    <div style={{ ...S.shell, gridTemplateColumns: isMobile ? "1fr" : "72px 352px 1fr" }}>
+    <div style={{ ...S.shell, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : "76px minmax(300px, 380px) minmax(0, 1fr)" }}>
       {/* LEFT – icon navigation sidebar (desktop) */}
       {!isMobile && (
         <aside style={S.navbar} aria-label="Main navigation">
