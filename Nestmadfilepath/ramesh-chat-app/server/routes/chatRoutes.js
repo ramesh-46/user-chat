@@ -339,7 +339,7 @@ router.post("/messages", upload.single("file"), async (req, res) => {
       title: senderUser?.name || senderUser?.username || "New message",
       body: text ? String(text).slice(0, 120) : (fileType ? `Sent a ${fileType}` : "Sent an attachment"),
       ttl: 3600,
-      data: { type: "message", from: sender, url: "/", tag: `message-${sender}` }
+      data: { type: "message", senderId: sender, url: "/", tag: `message-${sender}` }
     });
 
     // Broadcast only after MongoDB confirms the message was saved.
