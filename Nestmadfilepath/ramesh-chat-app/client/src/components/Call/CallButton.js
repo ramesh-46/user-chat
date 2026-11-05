@@ -40,7 +40,7 @@ export default function CallButton({ peer }) {
   }, []);
 
   const name = displayName(incomingPeer, peer);
-  const avatar = incomingPeer?.avatar?.url || incomingPeer?.avatar || peer?.profileImage || peer?.profilePic || peer?.avatar?.url;
+  const avatar = incomingPeer?.avatar?.url || (typeof incomingPeer?.avatar === "string" ? incomingPeer.avatar : "") || peer?.profileImage || peer?.profilePic || peer?.avatar?.url;
   const time = `${Math.floor(elapsed / 60).toString().padStart(2, "0")}:${(elapsed % 60).toString().padStart(2, "0")}`;
   const start = (mode) => call(peer?._id || peer?.userId, peer, mode);
   const active = callState !== "idle";
@@ -86,7 +86,7 @@ export default function CallButton({ peer }) {
               <div style={styles.avatarLarge}>{avatar ? <img src={avatar} alt="" style={styles.avatarImage} /> : initials(name)}</div>
               <h2 style={styles.personName}>{name}</h2>
               <p style={styles.callSub}>{callState === "incoming" ? "Incoming voice call" : callState === "calling" ? "Ringing…" : callState === "connected" ? "Voice call in progress" : "Call ended"}</p>
-              <div style={styles.audioWave}><i /><i /><i /><i /><i /><i /><i /></div>
+              <div style={styles.audioWave}>{[12, 22, 30, 18, 27, 15, 24].map((height, index) => <i key={index} style={{ ...styles.waveBar, height }} />)}</div>
             </div>
           )}
 
@@ -154,7 +154,7 @@ const styles = {
   personName: { fontSize: "clamp(23px, 4vw, 32px)", fontWeight: 650, margin: "24px 0 5px", textAlign: "center", zIndex: 1 },
   callSub: { margin: 0, color: "rgba(255,255,255,.65)", fontSize: 14, zIndex: 1 },
   audioWave: { display: "flex", alignItems: "center", gap: 5, height: 34, marginTop: 34, opacity: .8 },
-  audioWave: { display: "flex", alignItems: "center", gap: 5, height: 34, marginTop: 34, opacity: .8 },
+  waveBar: { display: "block", width: 4, borderRadius: 4, background: "linear-gradient(180deg,#9edacb,#5b8db6)" },
   videoStage: { position: "relative", flex: 1, minHeight: 0, width: "100%", overflow: "hidden", background: "radial-gradient(ellipse at center,#17243a,#05080f 70%)" },
   remoteVideo: { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", background: "#05080f" },
   videoWaiting: { position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, background: "rgba(5,8,15,.72)", zIndex: 1 },
