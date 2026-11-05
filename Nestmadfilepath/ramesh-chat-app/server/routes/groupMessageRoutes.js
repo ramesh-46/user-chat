@@ -87,7 +87,7 @@ router.post("/:groupId/messages", upload.single("file"), async (req, res) => {
       title: group.name || "New group message",
       body: `${req.user.name || req.user.username}: ${String(text || (req.file ? "Sent an attachment" : "New message")).slice(0, 100)}`,
       ttl: 3600,
-      data: { type: "group_message", from: String(req.user._id), groupId: String(group._id), url: "/", tag: `group-${group._id}` }
+      data: { type: "group_message", senderId: String(req.user._id), groupId: String(group._id), url: "/", tag: `group-${group._id}` }
     });
     req.app.get("io")?.to("group:" + String(group._id)).emit("group:message", populatedMessage);
     return res.status(201).json({ success: true, message: {
