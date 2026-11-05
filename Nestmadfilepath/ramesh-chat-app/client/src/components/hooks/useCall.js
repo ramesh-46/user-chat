@@ -369,7 +369,7 @@ export function useCall(userId) {
 
 
   return {
-    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera, switchMediaMode, getNetworkStats, switchMediaMode, getNetworkStats,
+    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera, switchMediaMode, getNetworkStats,
     requestRecording, acceptRecording, stopRecording, pauseRecording,
     callState, incomingPeer, mediaMode, isMuted, cameraEnabled, recording,
     recordingRequest, recordingPaused, recordingSaved, getLocalStream, getRemoteStream, localVersion, remoteVersion,

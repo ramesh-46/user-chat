@@ -10,7 +10,7 @@ const initials = (name) => String(name || "SC").trim().split(/\s+/).slice(0, 2).
 export default function CallButton({ peer }) {
   const { user } = useContext(AuthContext);
   const {
-    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera, switchMediaMode, getNetworkStats, switchMediaMode, getNetworkStats,
+    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera, switchMediaMode, getNetworkStats,
     requestRecording, acceptRecording, stopRecording, pauseRecording,
     callState, incomingPeer, mediaMode, isMuted, cameraEnabled, recording,
     recordingRequest, recordingPaused, recordingSaved, getLocalStream, getRemoteStream, localVersion, remoteVersion,
@@ -19,8 +19,6 @@ export default function CallButton({ peer }) {
   const remoteVideo = useRef(null);
   const remoteAudio = useRef(null);
   const [elapsed, setElapsed] = useState(0);
-  const [network, setNetwork] = useState({ mbps: 0, rtt: null });
-  const previousBytes = useRef({ value: 0, at: 0 });
   const [network, setNetwork] = useState({ mbps: 0, rtt: null });
   const previousBytes = useRef({ value: 0, at: 0 });
 
@@ -123,7 +121,7 @@ export default function CallButton({ peer }) {
               <div style={styles.controlGrid}>
                 <Control label={isMuted ? "Unmute" : "Mute"} icon={isMuted ? "◌" : "♩"} active={isMuted} onClick={toggleMute} />
                 <Control label={mediaMode === "video" ? "Switch to audio" : "Switch to video"} icon={mediaMode === "video" ? "☎" : "▣"} onClick={switchMediaMode} />
-                <Control label={mediaMode === "video" ? "Switch to audio" : "Switch to video"} icon={mediaMode === "video" ? "☎" : "▣"} onClick={switchMediaMode} />
+
                 {mediaMode === "video" && <>
                   <Control label={cameraEnabled ? "Camera off" : "Camera on"} icon="▣" active={!cameraEnabled} onClick={toggleCamera} />
                   <Control label="Flip camera" icon="↻" onClick={switchCamera} />

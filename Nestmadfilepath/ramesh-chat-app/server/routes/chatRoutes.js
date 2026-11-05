@@ -74,8 +74,6 @@ const { sendPushToUser } = require("../services/pushNotifications");
 //       fileType,
 //       mime,
 //       content: content ? JSON.parse(content) : null,
-      replyTo: replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null,
-      replyTo: replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null,
 //     });
 
 //     res.json({ success: true, message: msg });
@@ -325,6 +323,7 @@ router.post("/messages", upload.single("file"), async (req, res) => {
       fileType,
       mime,
       content: content ? JSON.parse(content) : null,
+      replyTo: replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null,
     });
     
     console.log("📤 [DEBUG] Message created successfully:", {
