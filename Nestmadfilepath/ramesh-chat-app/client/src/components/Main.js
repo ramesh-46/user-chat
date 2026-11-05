@@ -13,7 +13,7 @@ import socket from "../socket";
 import { THEMES } from "../themes";
 import CallButton from "./Call/CallButton";
 import { getFCMToken } from "../firebase";
-import { saveFCMToken } from "../api";
+import { saveFCMToken, fetchChatList } from "../api";
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
@@ -97,6 +97,26 @@ export default function Main() {
     return () => { cancelled = true; };
   }, [userId]);
 
+  // Open the sender conversation from a notification tap.
+  useEffect(() => {
+    if (!userId) return;
+    const params = new URLSearchParams(window.location.search);
+    const senderId = params.get("openChat");
+    const groupId = params.get("openGroup");
+    if (groupId) setSection("groups");
+    if (!senderId) return;
+    let cancelled = false;
+    fetchChatList(userId).then((response) => {
+      if (cancelled) return;
+      const peers = response.data?.users || [];
+      const peer = peers.find((item) => String(item._id) === String(senderId));
+      if (peer) { setSection("chats"); setCurrent(peer); }
+    }).catch((error) => console.warn("[PUSH] Could not open notified conversation:", error));
+    params.delete("openChat"); params.delete("openGroup");
+    const query = params.toString();
+    window.history.replaceState(window.history.state, "", window.location.pathname + (query ? "?" + query : "") + window.location.hash);
+    return () => { cancelled = true; };
+  }, [userId]);
   const showListOnly = !isMobile || (!current && section !== "groups-mobile");
   const openGroups = () => { setCurrent(null); setSection("groups"); };
   const openChats = () => { setSection("chats"); };
