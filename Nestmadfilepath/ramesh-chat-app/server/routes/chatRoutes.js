@@ -53,7 +53,7 @@ const { sendPushToUser } = require("../services/pushNotifications");
 // // POST /api/messages  (already exists)
 // router.post("/messages", upload.single("file"), async (req, res) => {
 //   try {
-//     const { sender, receiver, text, content, fileType } = req.body;
+//     const { sender, receiver, text, content, fileType, replyTo } = req.body;
 
 //     if (!sender || !receiver) {
 //       return res.status(400).json({ error: "Sender and receiver are required" });
@@ -169,7 +169,7 @@ const { sendPushToUser } = require("../services/pushNotifications");
 //   const { u1, u2 } = req.params;
 //   const msgs = await Message.find({
 //     $or: [{ sender: u1, receiver: u2 }, { sender: u2, receiver: u1 }]
-//   }).sort("createdAt");
+//   }).populate("replyTo", "text sender").sort("createdAt");
 //   res.json({ success: true, messages: msgs });
 // });
 
@@ -276,7 +276,7 @@ router.post("/messages", upload.single("file"), async (req, res) => {
   }
   
   try {
-    const { sender, receiver, text, content, fileType } = req.body;
+    const { sender, receiver, text, content, fileType, replyTo } = req.body;
 
     if (!sender || !receiver) {
       console.warn("⚠️ [DEBUG] Missing sender or receiver in request");
@@ -323,6 +323,7 @@ router.post("/messages", upload.single("file"), async (req, res) => {
       fileType,
       mime,
       content: content ? JSON.parse(content) : null,
+      replyTo: replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null,
     });
     
     console.log("📤 [DEBUG] Message created successfully:", {
@@ -598,7 +599,7 @@ router.get("/messages/:u1/:u2", async (req, res) => {
       ],
       deletedFor: { $ne: u1 },
       deletedForEveryone: { $ne: true },
-    }).sort("createdAt");
+    }).populate("replyTo", "text sender").sort("createdAt");
     
     console.log("📜 [DEBUG] Messages found:", msgs.length);
     console.log("📜 [DEBUG] Messages preview (first 5):", msgs.slice(0, 5).map(m => ({

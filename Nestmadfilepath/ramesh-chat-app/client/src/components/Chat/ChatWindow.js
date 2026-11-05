@@ -49,7 +49,13 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   const peerId = peer?._id?.toString();
   const lastSoundTime = useRef(0);
 
-  const [longPressActivated, setLongPressActivated] = useState(false); // first long-press done
+  const [contextMessage, setContextMessage] = useState(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [messageSearch, setMessageSearch] = useState("");
+  const [searchDate, setSearchDate] = useState("");
+  const [searchKind, setSearchKind] = useState("all");
+  const [searchSender, setSearchSender] = useState("all");
+  const [replyTo, setReplyTo] = useState(null);
   const touchTimeout = useRef(null);
 
   // join socket room
@@ -184,9 +190,11 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     if (file) fd.append("file", file);
     if (fileType) fd.append("fileType", fileType);
     if (content) fd.append("content", content);
+    if (replyTo?._id) fd.append("replyTo", replyTo._id);
     try {
       const res = await sendMessage(fd);
       const message = res.data.message;
+      setReplyTo(null);
       setMsgs((prev) => prev.map((item) => item._id === pendingId ? message : item)
         .filter((item, index, items) => items.findIndex((entry) => entry._id === item._id) === index));
     } catch (error) {
@@ -275,6 +283,17 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     }
   };
 
+  const visibleMessages = msgs.filter((message) => {
+    const query = messageSearch.trim().toLowerCase();
+    const matchesText = !query || String(message.text || "").toLowerCase().includes(query);
+    const matchesDate = !searchDate || dayjs(message.createdAt).format("YYYY-MM-DD") === searchDate;
+    const isMine = String(message.sender?._id || message.sender) === userId;
+    const matchesSender = searchSender === "all" || (searchSender === "me" ? isMine : !isMine);
+    const hasAttachment = !!message.file || !!message.fileType;
+    const matchesKind = searchKind === "all" || (searchKind === "attachments" ? hasAttachment : !hasAttachment);
+    return matchesText && matchesDate && matchesSender && matchesKind;
+  });
+
   const ACCENT20 = "color-mix(in srgb, var(--primary) 20%, var(--primarySoft))";
   const mineStyle = { background: "linear-gradient(135deg, #8065F5 0%, #6D50E8 100%)", color: "#FFFFFF" };
   const otherStyle = { background: "#FFFFFF", color: "#302B45", border: "1px solid #ECE8F7" };
@@ -331,9 +350,12 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
 
       {typing && <div style={S.typing}><i className="fas fa-pen-nib" style={S.icon} /> … typing</div>}
 
+      <div style={{ display: "flex", justifyContent: "flex-end", padding: "6px 14px 0" }}><button type="button" onClick={() => setSearchOpen(v => !v)} style={{ border: 0, background: "transparent", color: "var(--primary)", cursor: "pointer", fontSize: 13 }}>⌕ Search messages</button></div>
+      {searchOpen && <div style={{ display: "flex", flexWrap: "wrap", gap: 7, padding: "8px 14px", background: "rgba(255,255,255,.72)" }}><input aria-label="Search message text" placeholder="Search text…" value={messageSearch} onChange={e => setMessageSearch(e.target.value)} style={{ flex: "1 1 150px", minWidth: 0, border: "1px solid #ddd6ed", borderRadius: 9, padding: 8 }} /><input aria-label="Filter by date" type="date" value={searchDate} onChange={e => setSearchDate(e.target.value)} style={{ border: "1px solid #ddd6ed", borderRadius: 9, padding: 7 }} /><select aria-label="Filter by sender" value={searchSender} onChange={e => setSearchSender(e.target.value)} style={{ border: "1px solid #ddd6ed", borderRadius: 9, padding: 7 }}><option value="all">Everyone</option><option value="me">You</option><option value="them">Contact</option></select><select aria-label="Filter by type" value={searchKind} onChange={e => setSearchKind(e.target.value)} style={{ border: "1px solid #ddd6ed", borderRadius: 9, padding: 7 }}><option value="all">All messages</option><option value="attachments">Attachments</option><option value="text">Text only</option></select><button type="button" onClick={() => { setMessageSearch(""); setSearchDate(""); setSearchKind("all"); setSearchSender("all"); }} style={{ border: 0, background: "#eee9ff", borderRadius: 8, padding: "7px 10px", color: "#5d4ac5" }}>Clear</button></div>}
+
       {/* Message Flow */}
       <div ref={flowRef} style={S.flow} onScroll={handleScroll}>
-        {msgs.map((m) => {
+        {visibleMessages.map((m) => {
           const mine = m.sender.toString() === userId;
           const selected = selectedMessages.includes(m._id);
           return (
@@ -348,21 +370,13 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
               }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              onTouchStart={isMobile ? () => {
-                if (!longPressActivated) {
-                  touchTimeout.current = setTimeout(() => {
-                    toggleSelectMessage(m._id);
-                    setLongPressActivated(true);
-                  }, 3000); // first long press 3 sec
-                } else {
-                  toggleSelectMessage(m._id); // subsequent taps auto-select
-                }
-              } : undefined}
-              onTouchEnd={isMobile ? () => {
-                clearTimeout(touchTimeout.current);
-              } : undefined}
+              onTouchStart={isMobile ? () => { touchTimeout.current = setTimeout(() => setContextMessage(m), 550); } : undefined}
+              onTouchMove={isMobile ? () => clearTimeout(touchTimeout.current) : undefined}
+              onTouchEnd={isMobile ? () => clearTimeout(touchTimeout.current) : undefined}
+              onContextMenu={(e) => { e.preventDefault(); setContextMessage(m); }}
               onClick={!isMobile ? (e) => { if (e.ctrlKey || e.metaKey) toggleSelectMessage(m._id); } : undefined}
             >
+              {m.replyTo && <div style={S.replyQuote}><b>Replying to</b><div>{m.replyTo.text || "Message"}</div></div>}
               {m.text && <span style={{ textTransform: "none" }}>{linkifyText(m.text)}</span>}{m.pending && !m.text && <small style={{ opacity: .7 }}>Sending attachment…</small>}{m.pending && <small style={{ display: "block", opacity: .55, textAlign: "right" }}>Sending…</small>}
               {m.file && m.fileType === "image" && <img src={fileURL(m.file)} alt="sent" style={S.thumbnail} onClick={() => window.open(fileURL(m.file), "_blank")} />}
               {m.file && m.fileType === "video" && <video style={S.thumbnail} controls onClick={() => window.open(fileURL(m.file), "_blank")}><source src={fileURL(m.file)} type="video/mp4" /></video>}
@@ -376,6 +390,19 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
         })}
         <div ref={bottom} />
       </div>
+
+      {contextMessage && (
+        <div style={S.contextBackdrop} onClick={() => setContextMessage(null)}>
+          <div role="menu" style={S.contextMenu} onClick={(e) => e.stopPropagation()}>
+            <button type="button" style={S.contextAction} onClick={() => { setReplyTo(contextMessage); setContextMessage(null); }}>↩ Reply</button>
+            <button type="button" style={S.contextAction} onClick={() => { if (contextMessage.text) navigator.clipboard?.writeText(contextMessage.text).catch(() => {}); setContextMessage(null); }}>▢ Copy</button>
+            <button type="button" style={S.contextAction} onClick={() => { toggleSelectMessage(contextMessage._id); setContextMessage(null); }}>✓ Select</button>
+            <button type="button" style={S.contextAction} onClick={async () => { const m = contextMessage; setContextMessage(null); if (window.confirm("Delete this message for you?")) { await deleteDirectMessage(m._id, false); setMsgs(prev => prev.filter(x => x._id !== m._id)); } }}>Delete for me</button>
+            {String(contextMessage.sender?._id || contextMessage.sender) === userId && <button type="button" style={S.contextAction} onClick={async () => { const m = contextMessage; setContextMessage(null); if (window.confirm("Delete this message for everyone?")) { await deleteDirectMessage(m._id, true); setMsgs(prev => prev.map(x => x._id === m._id ? { ...x, deletedForEveryone: true, text: "", file: null } : x)); } }}>Delete for everyone</button>}
+            <button type="button" style={S.contextCancel} onClick={() => setContextMessage(null)}>Cancel</button>
+          </div>
+        </div>
+      )}
 
       {/* Scroll-down button */}
       {showScrollDown && (
@@ -401,6 +428,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
         </div>
       )}
 
+      {replyTo && <div style={S.replyComposer}><span><b>Replying to:</b> {replyTo.text || "Attachment"}</span><button type="button" onClick={() => setReplyTo(null)}>×</button></div>}
       <MessageInput
         onSend={send}
         onTyping={() => { socket.emit("typing", { from: userId, to: peerId }); clearTimeout(typingTimeout.current); typingTimeout.current = setTimeout(() => socket.emit("typing:stop", { from: userId, to: peerId }), 1200); }}
@@ -424,6 +452,12 @@ const S = {
   thumbnail: { maxWidth: 220, maxHeight: 220, borderRadius: 10, marginTop: 8, cursor: "zoom-in" },
   audioPlayer: { width: 220, marginTop: 8 },
   toolbarButton: { background: "transparent", color: "white", border: "none", fontSize: 16, cursor: "pointer", padding: "4px 12px" },
+  contextBackdrop: { position: "fixed", inset: 0, zIndex: 20000, background: "rgba(8,12,22,.38)", display: "flex", alignItems: "center", justifyContent: "center", padding: 18 },
+  contextMenu: { width: "min(300px, 92vw)", background: "#fff", color: "#202938", borderRadius: 16, padding: 8, boxShadow: "0 18px 55px rgba(0,0,0,.25)", display: "flex", flexDirection: "column" },
+  contextAction: { border: 0, background: "transparent", color: "inherit", textAlign: "left", padding: "13px 14px", borderRadius: 9, fontSize: 14, cursor: "pointer" },
+  contextCancel: { border: 0, background: "#f2f3f6", color: "#202938", padding: "11px", borderRadius: 9, marginTop: 5, cursor: "pointer" },
+  replyQuote: { borderLeft: "3px solid var(--primary)", background: "rgba(0,0,0,.07)", borderRadius: 6, padding: "6px 9px", marginBottom: 7, fontSize: 12 },
+  replyComposer: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "8px 14px", background: "#eee9ff", color: "#302b45", fontSize: 13 },
 };
 
 

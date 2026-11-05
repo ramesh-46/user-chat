@@ -77,7 +77,7 @@ export function useCall(userId) {
       throw new Error("Calls require HTTPS and a browser that supports camera/microphone access.");
     }
     const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true,
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
       video: mode === "video" ? { facingMode: cameraFacing } : false,
     });
     localStream.current = stream;
@@ -218,6 +218,30 @@ export function useCall(userId) {
     }
   }, [cameraFacing, mediaMode, stopTracks]);
 
+  const switchMediaMode = useCallback(async () => {
+    if (!pc.current || !localStream.current || !["connected", "calling"].includes(callState)) return;
+    try {
+      if (mediaMode === "video") {
+        const track = localStream.current.getVideoTracks()[0];
+        if (track) { const sender = pc.current.getSenders().find((item) => item.track?.kind === "video"); if (sender) await sender.replaceTrack(null); localStream.current.removeTrack(track); track.stop(); }
+        setCameraEnabled(false); setMediaMode("audio");
+      } else {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraFacing } });
+        const track = stream.getVideoTracks()[0]; if (!track) throw new Error("Camera is unavailable");
+        const sender = pc.current.getSenders().find((item) => item.track?.kind === "video");
+        if (sender) await sender.replaceTrack(track); else pc.current.addTrack(track, localStream.current);
+        localStream.current.addTrack(track); setCameraEnabled(true); setMediaMode("video"); setLocalVersion((v) => v + 1);
+      }
+    } catch (error) { window.alert(error.message || "Unable to switch call mode on this device."); }
+  }, [callState, cameraFacing, mediaMode]);
+
+  const getNetworkStats = useCallback(async () => {
+    if (!pc.current) return null;
+    try { const stats = await pc.current.getStats(); let bytes = 0; let rtt = null;
+      stats.forEach((item) => { if (item.type === "inbound-rtp" && !item.isRemote && (item.kind === "audio" || item.kind === "video")) bytes += item.bytesReceived || 0; if (item.type === "candidate-pair" && item.state === "succeeded" && item.currentRoundTripTime != null) rtt = Math.round(item.currentRoundTripTime * 1000); });
+      return { bytesReceived: bytes, rtt };
+    } catch (_) { return null; }
+  }, []);
   const startRecording = useCallback(() => {
     if (!localStream.current) return;
     const tracks = [
@@ -345,7 +369,7 @@ export function useCall(userId) {
 
 
   return {
-    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera,
+    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera, switchMediaMode, getNetworkStats,
     requestRecording, acceptRecording, stopRecording, pauseRecording,
     callState, incomingPeer, mediaMode, isMuted, cameraEnabled, recording,
     recordingRequest, recordingPaused, recordingSaved, getLocalStream, getRemoteStream, localVersion, remoteVersion,
