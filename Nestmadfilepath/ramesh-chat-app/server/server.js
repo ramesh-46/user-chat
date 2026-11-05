@@ -380,7 +380,7 @@ io.on("connection", (socket) => {
     const mediaMode = data.mediaMode === "video" ? "video" : "audio";
     pendingCalls.set(to, { from, fromUser, mediaMode, expiresAt: Date.now() + CALL_TTL_MS });
     io.to(to).emit("incomingCall", { from, fromUser, mediaMode });
-    sendPushToUser(to, { title: caller?.name || caller?.username || "Incoming call", body: mediaMode === "video" ? "Incoming video call" : "Incoming voice call", ttl: 60, urgency: "high", data: { type: "incoming_call", from, mode: mediaMode, url: "/", tag: "sura-call-" + from } });
+    sendPushToUser(to, { title: caller?.name || caller?.username || "Incoming call", body: mediaMode === "video" ? "Incoming video call" : "Incoming voice call", ttl: 60, urgency: "high", data: { type: "incoming_call", senderId: from, mode: mediaMode, url: "/", tag: "sura-call-" + from } });
   });
   socket.on("callAccepted", (data = {}) => {
     if (data.to && data.from && String(data.from) === String(socket.data.userId || "")) {
