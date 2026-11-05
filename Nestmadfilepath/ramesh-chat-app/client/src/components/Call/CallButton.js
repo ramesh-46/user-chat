@@ -10,7 +10,7 @@ const initials = (name) => String(name || "SC").trim().split(/\s+/).slice(0, 2).
 export default function CallButton({ peer }) {
   const { user } = useContext(AuthContext);
   const {
-    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera,
+    call, hangup, answer, decline, toggleMute, toggleCamera, switchCamera, switchMediaMode, getNetworkStats, switchMediaMode, getNetworkStats,
     requestRecording, acceptRecording, stopRecording, pauseRecording,
     callState, incomingPeer, mediaMode, isMuted, cameraEnabled, recording,
     recordingRequest, recordingPaused, recordingSaved, getLocalStream, getRemoteStream, localVersion, remoteVersion,
@@ -19,6 +19,10 @@ export default function CallButton({ peer }) {
   const remoteVideo = useRef(null);
   const remoteAudio = useRef(null);
   const [elapsed, setElapsed] = useState(0);
+  const [network, setNetwork] = useState({ mbps: 0, rtt: null });
+  const previousBytes = useRef({ value: 0, at: 0 });
+  const [network, setNetwork] = useState({ mbps: 0, rtt: null });
+  const previousBytes = useRef({ value: 0, at: 0 });
 
   useEffect(() => {
     if (localVideo.current) localVideo.current.srcObject = getLocalStream() || null;
@@ -29,10 +33,20 @@ export default function CallButton({ peer }) {
     if (remoteAudio.current) remoteAudio.current.srcObject = mediaMode === "audio" ? (stream || null) : null;
   }, [getRemoteStream, remoteVersion, callState, mediaMode]);
   useEffect(() => {
-    if (callState !== "connected") { setElapsed(0); return undefined; }
+    if (callState !== "connected") { setElapsed(0); setNetwork({ mbps: 0, rtt: null }); previousBytes.current = { value: 0, at: 0 }; return undefined; }
     const timer = setInterval(() => setElapsed((value) => value + 1), 1000);
     return () => clearInterval(timer);
   }, [callState]);
+  useEffect(() => {
+    if (callState !== "connected") return undefined;
+    const timer = setInterval(async () => {
+      const stats = await getNetworkStats(); if (!stats) return;
+      const now = Date.now(); const prev = previousBytes.current;
+      const mbps = prev.at ? Math.max(0, ((stats.bytesReceived - prev.value) * 8) / ((now - prev.at) * 1000)) : 0;
+      previousBytes.current = { value: stats.bytesReceived, at: now }; setNetwork({ mbps, rtt: stats.rtt });
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [callState, getNetworkStats]);
   useEffect(() => () => {
     [localVideo.current, remoteVideo.current, remoteAudio.current].forEach((element) => {
       if (element) element.srcObject = null;
@@ -62,7 +76,7 @@ export default function CallButton({ peer }) {
         <section style={{ ...styles.panel, ...(mediaMode === "video" ? styles.videoPanel : styles.audioPanel) }} aria-label={`${mediaMode} call`}>
           <header style={styles.topBar}>
             <div style={styles.secureMark}>● <span> SURA CALL</span></div>
-            <div style={styles.callStatus}><span style={styles.statusDot} />{status}</div>
+            <div style={styles.callStatus}><span style={styles.statusDot} />{status}{callState === "connected" && <small style={{ marginLeft: 8, opacity: .75 }}>{network.mbps.toFixed(2)} Mbps{network.rtt != null ? " · " + network.rtt + " ms" : ""}</small>}</div>
             <button type="button" aria-label="End call" title="End call" onClick={hangup} style={styles.topClose}>×</button>
           </header>
 
@@ -108,6 +122,8 @@ export default function CallButton({ peer }) {
             ) : callState === "connected" ? (
               <div style={styles.controlGrid}>
                 <Control label={isMuted ? "Unmute" : "Mute"} icon={isMuted ? "◌" : "♩"} active={isMuted} onClick={toggleMute} />
+                <Control label={mediaMode === "video" ? "Switch to audio" : "Switch to video"} icon={mediaMode === "video" ? "☎" : "▣"} onClick={switchMediaMode} />
+                <Control label={mediaMode === "video" ? "Switch to audio" : "Switch to video"} icon={mediaMode === "video" ? "☎" : "▣"} onClick={switchMediaMode} />
                 {mediaMode === "video" && <>
                   <Control label={cameraEnabled ? "Camera off" : "Camera on"} icon="▣" active={!cameraEnabled} onClick={toggleCamera} />
                   <Control label="Flip camera" icon="↻" onClick={switchCamera} />
