@@ -12,10 +12,21 @@ export default function MessageInput({ onSend, onTyping, theme = "light" }) {
   const [showOptions, setShowOptions] = useState(false);
   const [rec, setRec] = useState(null);
   const [openEm, setOpenEm] = useState(false);
+  const [listening, setListening] = useState(false);
+  const speechRef = useRef(null);
   const chunks = useRef([]);
   const fileRef = useRef();
   const txtRef = useRef();
 
+  const toggleSpeechToText = () => {
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Speech) { window.alert("Voice-to-text is not supported in this browser. Try Chrome."); return; }
+    if (listening) { speechRef.current?.stop(); setListening(false); return; }
+    const recognition = new Speech(); recognition.lang = navigator.language || "en-IN"; recognition.interimResults = false; recognition.continuous = false;
+    recognition.onresult = (event) => { const transcript = Array.from(event.results).map((item) => item[0]?.transcript || "").join(" "); setText((value) => (value ? value + " " : "") + transcript); };
+    recognition.onerror = () => setListening(false); recognition.onend = () => setListening(false);
+    speechRef.current = recognition; setListening(true); recognition.start();
+  };
   const onEmojiClick = useCallback((e) => setText((t) => t + e.emoji), []);
 
   const toggleRec = async () => {
@@ -246,6 +257,7 @@ export default function MessageInput({ onSend, onTyping, theme = "light" }) {
       <button style={styles.iconBtn} onClick={() => setOpenEm((o) => !o)}>
         <FaSmile />
       </button>
+      <button type="button" style={styles.iconBtn} title="Voice to text" aria-label="Voice to text" onClick={toggleSpeechToText}>{listening ? "■" : "🎙️"}</button>
       <div style={styles.inpContainer}>
         <textarea
           ref={txtRef}

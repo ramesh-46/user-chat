@@ -10,6 +10,7 @@ const messageSchema = new Schema(
     fileType: String,
     mime: String,
     content: Schema.Types.Mixed,
+    replyTo: { type: Schema.Types.ObjectId, ref: "Message", default: null },
     starred: { type: Boolean, default: false },
     deletedFor: [{ type: Schema.Types.ObjectId, ref: "User" }],
     deletedForEveryone: { type: Boolean, default: false },
