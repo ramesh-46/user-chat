@@ -12,6 +12,8 @@ import ProfilePanel from "./Accounts/ProfilePanel";
 import socket from "../socket";
 import { THEMES } from "../themes";
 import CallButton from "./Call/CallButton";
+import { getFCMToken } from "../firebase";
+import { saveFCMToken } from "../api";
 
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
@@ -85,20 +87,14 @@ export default function Main() {
     return () => socket.off("connect", joinUserRoom);
   }, [userId]);
 
-  // Opt-in desktop notifications (never auto-prompts).
+  // Refresh the device push token after sign-in when permission was previously granted.
   useEffect(() => {
-    if (!userId) return;
-    const handleNotification = (message) => {
-      const senderId = String(message?.sender?._id || message?.sender || "");
-      if (document.hidden && typeof Notification !== "undefined" &&
-          Notification.permission === "granted" && senderId !== userId) {
-        new Notification("New message", {
-          body: message.text || (message.file ? "Attachment 📎" : "New message"),
-        });
-      }
-    };
-    socket.on("receiveMessage", handleNotification);
-    return () => socket.off("receiveMessage", handleNotification);
+    if (!userId || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    let cancelled = false;
+    getFCMToken(false).then((token) => {
+      if (!cancelled && token) saveFCMToken(token).catch((error) => console.warn("[PUSH] Token sync failed:", error));
+    });
+    return () => { cancelled = true; };
   }, [userId]);
 
   const showListOnly = !isMobile || (!current && section !== "groups-mobile");
@@ -256,8 +252,15 @@ export default function Main() {
             <p style={S.settingsLabel}>Notifications</p>
             <button style={S.settingsAction} onClick={async () => {
               if (typeof Notification === "undefined") return alert("Notifications are not supported in this browser.");
-              const permission = await Notification.requestPermission();
-              setNotificationsEnabled(permission === "granted");
+              const token = await getFCMToken(true);
+              if (token) {
+                await saveFCMToken(token);
+                setNotificationsEnabled(true);
+              } else {
+                setNotificationsEnabled(Notification.permission === "granted");
+                if (Notification.permission !== "granted") alert("Please allow notifications in browser settings, then try again.");
+                else alert("Push notifications could not be registered on this browser.");
+              }
             }}>{notificationsEnabled ? "Notifications enabled" : "Enable notifications"}</button>
             <button style={S.settingsAction} onClick={() => { setShowSettings(false); setShowProfile(true); }}>My Account</button>
             <button style={{ ...S.settingsAction, background: "#E5484D" }} onClick={logout}>Log out</button>
