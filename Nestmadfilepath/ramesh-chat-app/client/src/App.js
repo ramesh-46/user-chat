@@ -19,12 +19,13 @@ export default function App() {
 
   /* show toast whenever FCM arrives while tab is open */
   useEffect(() => {
-    listenForeground(({ notification }) => {
-      toast.info(`${notification.title}: ${notification.body}`, {
-        position: "top-right",
-        autoClose: 3500
-      });
+    const stop = listenForeground((payload) => {
+      const data = payload?.data || {};
+      const title = data.title || payload?.notification?.title || "SURA Chat";
+      const body = data.body || payload?.notification?.body || "You have a new notification";
+      toast.info(title + ": " + body, { position: "top-right", autoClose: 3500 });
     });
+    return stop;
   }, []);
 
   return (

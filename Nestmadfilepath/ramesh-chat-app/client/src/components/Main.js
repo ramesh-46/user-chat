@@ -12,9 +12,11 @@ import ProfilePanel from "./Accounts/ProfilePanel";
 import socket from "../socket";
 import { THEMES } from "../themes";
 import CallButton from "./Call/CallButton";
+import { getFCMToken } from "../firebase";
+import { saveFCMToken, fetchChatList } from "../api";
 
 const useIsMobile = () => {
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024);
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener("resize", handleResize);
@@ -47,6 +49,26 @@ export default function Main() {
   const [fabOpen, setFabOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [markAllReadKey, setMarkAllReadKey] = useState(0);
+  const navigationRef = React.useRef({});
+  navigationRef.current = { current, section, showProfile, showSettings, searchOpen };
+
+  // Keep browser Back inside the current Sura Chat section instead of leaving the app.
+  useEffect(() => {
+    window.history.pushState({ suraChat: true }, "", window.location.href);
+    const handleAppBack = () => {
+      const nav = navigationRef.current;
+      if (nav.showProfile) setShowProfile(false);
+      else if (nav.showSettings) setShowSettings(false);
+      else if (nav.searchOpen) setSearchOpen(false);
+      else if (nav.current) setCurrent(null);
+      else if (nav.section === "groups") setSection("chats");
+      else return;
+      window.history.pushState({ suraChat: true }, "", window.location.href);
+    };
+    window.addEventListener("popstate", handleAppBack);
+    return () => window.removeEventListener("popstate", handleAppBack);
+  }, []);
+
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     typeof Notification !== "undefined" && Notification.permission === "granted"
   );
@@ -65,22 +87,36 @@ export default function Main() {
     return () => socket.off("connect", joinUserRoom);
   }, [userId]);
 
-  // Opt-in desktop notifications (never auto-prompts).
+  // Refresh the device push token after sign-in when permission was previously granted.
   useEffect(() => {
-    if (!userId) return;
-    const handleNotification = (message) => {
-      const senderId = String(message?.sender?._id || message?.sender || "");
-      if (document.hidden && typeof Notification !== "undefined" &&
-          Notification.permission === "granted" && senderId !== userId) {
-        new Notification("New message", {
-          body: message.text || (message.file ? "Attachment 📎" : "New message"),
-        });
-      }
-    };
-    socket.on("receiveMessage", handleNotification);
-    return () => socket.off("receiveMessage", handleNotification);
+    if (!userId || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    let cancelled = false;
+    getFCMToken(false).then((token) => {
+      if (!cancelled && token) saveFCMToken(token).catch((error) => console.warn("[PUSH] Token sync failed:", error));
+    });
+    return () => { cancelled = true; };
   }, [userId]);
 
+  // Open the sender conversation from a notification tap.
+  useEffect(() => {
+    if (!userId) return;
+    const params = new URLSearchParams(window.location.search);
+    const senderId = params.get("openChat");
+    const groupId = params.get("openGroup");
+    if (groupId) setSection("groups");
+    if (!senderId) return;
+    let cancelled = false;
+    fetchChatList(userId).then((response) => {
+      if (cancelled) return;
+      const peers = response.data?.users || [];
+      const peer = peers.find((item) => String(item._id) === String(senderId));
+      if (peer) { setSection("chats"); setCurrent(peer); }
+    }).catch((error) => console.warn("[PUSH] Could not open notified conversation:", error));
+    params.delete("openChat"); params.delete("openGroup");
+    const query = params.toString();
+    window.history.replaceState(window.history.state, "", window.location.pathname + (query ? "?" + query : "") + window.location.hash);
+    return () => { cancelled = true; };
+  }, [userId]);
   const showListOnly = !isMobile || (!current && section !== "groups-mobile");
   const openGroups = () => { setCurrent(null); setSection("groups"); };
   const openChats = () => { setSection("chats"); };
@@ -90,7 +126,7 @@ export default function Main() {
   );
 
   return (
-    <div style={{ ...S.shell, gridTemplateColumns: isMobile ? "1fr" : "72px 352px 1fr" }}>
+    <div style={{ ...S.shell, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : "76px minmax(300px, 380px) minmax(0, 1fr)" }}>
       {/* LEFT – icon navigation sidebar (desktop) */}
       {!isMobile && (
         <aside style={S.navbar} aria-label="Main navigation">
@@ -236,8 +272,15 @@ export default function Main() {
             <p style={S.settingsLabel}>Notifications</p>
             <button style={S.settingsAction} onClick={async () => {
               if (typeof Notification === "undefined") return alert("Notifications are not supported in this browser.");
-              const permission = await Notification.requestPermission();
-              setNotificationsEnabled(permission === "granted");
+              const token = await getFCMToken(true);
+              if (token) {
+                await saveFCMToken(token);
+                setNotificationsEnabled(true);
+              } else {
+                setNotificationsEnabled(Notification.permission === "granted");
+                if (Notification.permission !== "granted") alert("Please allow notifications in browser settings, then try again.");
+                else alert("Push notifications could not be registered on this browser.");
+              }
             }}>{notificationsEnabled ? "Notifications enabled" : "Enable notifications"}</button>
             <button style={S.settingsAction} onClick={() => { setShowSettings(false); setShowProfile(true); }}>My Account</button>
             <button style={{ ...S.settingsAction, background: "#E5484D" }} onClick={logout}>Log out</button>

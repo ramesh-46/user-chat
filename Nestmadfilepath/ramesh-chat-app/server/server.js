@@ -160,6 +160,7 @@ const path = require("path");
 
 // Firebase Admin SDK: use one shared initializer for routes and middleware.
 const admin = require("./config/firebaseAdmin");
+const { sendPushToUser } = require("./services/pushNotifications");
 console.log("✅ Firebase Admin SDK ready");
 
 // Models and Routes
@@ -182,6 +183,10 @@ const io = new Server(server, {
   cors: { origin: "*", methods: ["GET", "POST"] }
 });
 app.set("io", io);
+const pendingCalls = new Map();
+const pendingOffers = new Map();
+const pendingIce = new Map();
+const CALL_TTL_MS = 60000;
 console.log("✅ [DEBUG] Express app and Socket.IO server created");
 
 // MongoDB Connection
@@ -284,6 +289,15 @@ io.on("connection", (socket) => {
       console.log(`✅ [DEBUG] User ${userId} marked as online`);
       
       io.emit("userOnline", userId);
+      const pending = pendingCalls.get(normalizedUserId);
+      if (pending && pending.expiresAt > Date.now()) {
+        socket.emit("incomingCall", { from: pending.from, fromUser: pending.fromUser, mediaMode: pending.mediaMode });
+        const offer = pendingOffers.get(normalizedUserId);
+        if (offer && offer.expiresAt > Date.now()) socket.emit("webrtc-offer", offer.payload);
+        (pendingIce.get(normalizedUserId) || []).forEach((item) => socket.emit("webrtc-ice", item.payload));
+      } else if (pending) {
+        pendingCalls.delete(normalizedUserId); pendingOffers.delete(normalizedUserId); pendingIce.delete(normalizedUserId);
+      }
       console.log(`📢 [DEBUG] Broadcasted 'userOnline' event for userId: ${userId}`);
     } catch (err) {      console.error(`❌ [DEBUG] Error updating user ${userId} on join:`, err.message);
       console.error("❌ [DEBUG] Error stack:", err.stack);
@@ -356,24 +370,35 @@ io.on("connection", (socket) => {
     if (to && from && String(from) === String(socket.data.userId)) io.to(String(to)).emit("recording:consent", { from: String(from), accepted: !!accepted });
   });
 
-  // One-to-one call invitation and lifecycle signaling.
-  socket.on("call", (data = {}) => {
-    if (data.to && data.from) {
-      io.to(String(data.to)).emit("incomingCall", {
-        from: data.from,
-        fromUser: data.fromUser || {},
-        mediaMode: data.mediaMode || "audio"
-      });
-    }
+  // One-to-one call invitation and lifecycle signaling + background push.
+  socket.on("call", async (data = {}) => {
+    const from = String(data.from || "");
+    const to = String(data.to || "");
+    if (!to || !from || from !== String(socket.data.userId || "")) return;
+    const caller = await User.findById(from).select("username name avatar").lean().catch(() => null);
+    const fromUser = caller || data.fromUser || {};
+    const mediaMode = data.mediaMode === "video" ? "video" : "audio";
+    pendingCalls.set(to, { from, fromUser, mediaMode, expiresAt: Date.now() + CALL_TTL_MS });
+    io.to(to).emit("incomingCall", { from, fromUser, mediaMode });
+    sendPushToUser(to, { title: caller?.name || caller?.username || "Incoming call", body: mediaMode === "video" ? "Incoming video call" : "Incoming voice call", ttl: 60, urgency: "high", data: { type: "incoming_call", senderId: from, mode: mediaMode, url: "/", tag: "sura-call-" + from } });
   });
   socket.on("callAccepted", (data = {}) => {
-    if (data.to && data.from) io.to(String(data.to)).emit("callAccepted", { from: data.from });
+    if (data.to && data.from && String(data.from) === String(socket.data.userId || "")) {
+      pendingCalls.delete(String(data.from)); pendingOffers.delete(String(data.from)); pendingIce.delete(String(data.from));
+      io.to(String(data.to)).emit("callAccepted", { from: data.from });
+    }
   });
   socket.on("callDeclined", (data = {}) => {
-    if (data.to && data.from) io.to(String(data.to)).emit("callDeclined", { from: data.from });
+    if (data.to && data.from && String(data.from) === String(socket.data.userId || "")) {
+      pendingCalls.delete(String(data.from)); pendingOffers.delete(String(data.from)); pendingIce.delete(String(data.from));
+      io.to(String(data.to)).emit("callDeclined", { from: data.from });
+    }
   });
   socket.on("callEnded", (data = {}) => {
-    if (data.to && data.from) io.to(String(data.to)).emit("callEnded", { from: data.from });
+    if (data.to && data.from && String(data.from) === String(socket.data.userId || "")) {
+      [String(data.to), String(data.from)].forEach((id) => { pendingCalls.delete(id); pendingOffers.delete(id); pendingIce.delete(id); });
+      io.to(String(data.to)).emit("callEnded", { from: data.from });
+    }
   });
 
   socket.on("webrtc-offer", (data) => {
@@ -383,21 +408,18 @@ io.on("connection", (socket) => {
       socketId: socket.id,
       hasSdp: !!data?.sdp
     });
-    if (data?.to) {
-      io.to(data.to).emit("webrtc-offer", { from: socket.id, ...data });
+    if (data?.to && String(data.from) === String(socket.data.userId || "")) {
+      const payload = { from: data.from, to: String(data.to), sdp: data.sdp };
+      pendingOffers.set(String(data.to), { payload, expiresAt: Date.now() + CALL_TTL_MS });
+      io.to(String(data.to)).emit("webrtc-offer", payload);
       console.log(`✅ [DEBUG] WebRTC offer forwarded to: ${data.to}`);
     }
   });
 
   socket.on("webrtc-answer", (data) => {
-    console.log("📞 [DEBUG] WebRTC 'webrtc-answer' event:", {
-      from: data?.from,      to: data?.to,
-      socketId: socket.id,
-      hasSdp: !!data?.sdp
-    });
-    if (data?.to) {
-      io.to(data.to).emit("webrtc-answer", { from: socket.id, ...data });
-      console.log(`✅ [DEBUG] WebRTC answer forwarded to: ${data.to}`);
+    console.log("📞 [DEBUG] WebRTC answer received:", { from: data?.from, to: data?.to, hasSdp: !!data?.sdp });
+    if (data?.to && String(data.from) === String(socket.data.userId || "")) {
+      io.to(String(data.to)).emit("webrtc-answer", { from: data.from, to: String(data.to), sdp: data.sdp });
     }
   });
 
@@ -408,9 +430,13 @@ io.on("connection", (socket) => {
       socketId: socket.id,
       candidate: data?.candidate ? "present" : "null"
     });
-    if (data?.to) {
-      io.to(data.to).emit("webrtc-ice", { from: socket.id, ...data });
-      console.log(`✅ [DEBUG] WebRTC ICE candidate forwarded to: ${data.to}`);
+    if (data?.to && String(data.from) === String(socket.data.userId || "")) {
+      const target = String(data.to);
+      const payload = { from: data.from, to: target, candidate: data.candidate };
+      const queued = pendingIce.get(target) || [];
+      queued.push({ payload, expiresAt: Date.now() + CALL_TTL_MS });
+      pendingIce.set(target, queued.slice(-40));
+      io.to(target).emit("webrtc-ice", payload);
     }
   });
 

@@ -50,6 +50,15 @@ export default function GroupChat({ onBack }) {
       const res = await fetchGroups();
       const data = Array.isArray(res.data) ? res.data : res.data.groups || [];
       setGroups(data);
+      const requestedGroupId = new URLSearchParams(window.location.search).get("openGroup");
+      if (requestedGroupId) {
+        const requestedGroup = data.find((item) => String(item._id) === String(requestedGroupId));
+        if (requestedGroup) setActive(requestedGroup);
+        const params = new URLSearchParams(window.location.search);
+        params.delete("openGroup");
+        const query = params.toString();
+        window.history.replaceState(window.history.state, "", window.location.pathname + (query ? "?" + query : "") + window.location.hash);
+      }
       if (active) {
         const fresh = data.find(g => String(g._id) === String(active._id));
         if (fresh) setActive(fresh);

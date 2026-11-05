@@ -55,6 +55,7 @@ const userSchema = new Schema(
     about: { type: String },
     avatar: { type: String },
     fcmToken: { type: String },
+    fcmTokens: { type: [String], default: [] },
     password: { type: String },
     recoveryAnswer: { type: String },
     blockList: [{ type: Schema.Types.ObjectId, ref: "User" }],

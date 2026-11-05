@@ -4,6 +4,7 @@
 // const upload  = require("../utils/upload");     // multer config (accepts images & mp4)
 
 // const DeletedAccount = require("../models/DeletedAccount");
+const { sendPushToUser } = require("../services/pushNotifications");
 
 // /* 🔎 User search – by mobile OR username */
 // router.get("/users", async (req, res) => {
@@ -331,6 +332,14 @@ router.post("/messages", upload.single("file"), async (req, res) => {
       hasText: !!msg.text,
       hasFile: !!msg.file,
       createdAt: msg.createdAt
+    });
+
+    const senderUser = await User.findById(sender).select("username name");
+    sendPushToUser(receiver, {
+      title: senderUser?.name || senderUser?.username || "New message",
+      body: text ? String(text).slice(0, 120) : (fileType ? `Sent a ${fileType}` : "Sent an attachment"),
+      ttl: 3600,
+      data: { type: "message", senderId: sender, url: "/", tag: `message-${sender}` }
     });
 
     // Broadcast only after MongoDB confirms the message was saved.

@@ -52,7 +52,7 @@ export const blockUser = (userId, peerId) => api.post(`/block/${userId}/${peerId
 export const unblockUser = (userId, peerId) => api.post(`/unblock/${userId}/${peerId}`);
 export const clearHistory = (userId, peerId) => api.delete(`/settings/history/${userId}/${peerId}`);
 export const deleteChat = (userId, peerId) => api.delete(`/settings/chat/${userId}/${peerId}`);
-export const saveFCMToken = (userId, token) => api.post("/settings/fcmtoken", { userId, token });
+export const saveFCMToken = (token) => api.post("/settings/fcmtoken", { token });
 export const toggleStar = (messageId, starred) => api.put(`/star/${messageId}`, { starred });
 export const pinChat = (userId, peerId) => api.post(`/pin/${userId}/${peerId}`);
 export const deleteDirectMessage = (messageId, forEveryone = false) =>
