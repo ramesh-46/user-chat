@@ -9,6 +9,7 @@ import { AuthContext } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
 import socket from "../../socket";
 import ForwardPicker from "./ForwardPicker";
+import MeetingInviteMessage from "./MeetingInviteMessage";
 
 const panel = { display: "flex", height: "100%", minHeight: 0, minWidth: 0, width: "100%", overflow: "hidden", background: "radial-gradient(circle at 18% 22%, rgba(128,101,245,.055) 0 2px, transparent 2.5px), radial-gradient(circle at 78% 68%, rgba(128,101,245,.045) 0 2px, transparent 2.5px), #F8F7FC", backgroundSize: "34px 34px, 42px 42px, auto", color: "#302B45", fontFamily: "var(--font-ui)" };
 const side = { width: 300, minWidth: 230, maxWidth: "38%", flex: "0 0 320px", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRight: "1px solid var(--border)", padding: 14, boxSizing: "border-box", background: "#FFFFFF", boxShadow: "inset -1px 0 0 #ECE8F5" };
@@ -310,7 +311,7 @@ export default function GroupChat({ onBack }) {
                 style={{ alignSelf: mine ? "flex-end" : "flex-start", maxWidth: "min(78%, 680px)", padding: "10px 13px", borderRadius: 16, background: selected ? "#DDD5FF" : mine ? "#EAE5FF" : "#FFFFFF", color: "#302B45", border: selected ? "2px solid #8065F5" : "1px solid #ECE8F5", boxShadow: "0 2px 8px rgba(15,23,42,.06)", cursor: "default", animation: "bpFadeUp .18s ease both" }}>
                 <div style={{ fontSize: 11, opacity: .7 }}>{m.sender?.username || (mine ? "You" : "Member")} · {dayjs(m.createdAt).format("DD MMM, hh:mm A")}</div>
                 {m.deletedForEveryone ? <i>This message was deleted</i> : <>
-                  {m.text && <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{m.text}</div>}
+                  {m.text && <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}><MeetingInviteMessage text={m.text} /></div>}
                   {m.file && !m.mediaUnavailable && <div style={{ marginTop: 6 }}>
                     {mediaUrls[m._id] ? (m.fileType === "video" ? <video controls src={mediaUrls[m._id]} style={{ maxWidth: 240 }}/> : m.fileType === "audio" ? <audio controls src={mediaUrls[m._id]}/> : m.fileType === "image" ? <img src={mediaUrls[m._id]} alt="Shared media" style={{ maxWidth: 240, maxHeight: 240 }}/> : <a href={mediaUrls[m._id]} download style={{ color: "var(--primary)" }}>Download attachment</a>) :
                     <button style={button} onClick={() => openMedia(m)}>{m.viewOnce ? "👁 Open view-once media" : "Open attachment"}</button>}

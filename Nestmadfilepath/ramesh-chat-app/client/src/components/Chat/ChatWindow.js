@@ -3,6 +3,7 @@ import { fetchMessages, sendMessage, blockUser, unblockUser, deleteDirectMessage
 import { AuthContext } from "../../contexts/AuthContext";
 import MessageInput from "./MessageInput";
 import ForwardPicker from "./ForwardPicker";
+import MeetingInviteMessage from "./MeetingInviteMessage";
 
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
@@ -379,7 +380,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
               onClick={!isMobile ? (e) => { if (e.ctrlKey || e.metaKey) toggleSelectMessage(m._id); } : undefined}
             >
               {m.replyTo && <div style={S.replyQuote}><b>Replying to</b><div>{m.replyTo.text || "Message"}</div></div>}
-              {m.text && <span style={{ textTransform: "none" }}>{linkifyText(m.text)}</span>}
+              {m.text && <span style={{ textTransform: "none" }}><MeetingInviteMessage text={m.text} linkify={linkifyText} /></span>}
               {m.pending && <small style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 8, opacity: .7 }}><span className="sc-mini-loader" /> {m.file ? "Sending attachment" : "Sending"}</small>}
               {m.file && m.fileType === "image" && <img src={fileURL(m.file)} alt="sent" style={S.thumbnail} onClick={() => window.open(fileURL(m.file), "_blank")} />}
               {m.file && m.fileType === "video" && <video style={S.thumbnail} controls onClick={() => window.open(fileURL(m.file), "_blank")}><source src={fileURL(m.file)} type="video/mp4" /></video>}
