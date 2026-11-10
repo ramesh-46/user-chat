@@ -68,7 +68,37 @@
 //   socket.on("webrtc-ice",    data => io.to(data.to).emit("webrtc-ice",    { from: socket.id, ...data }));
 
 //   /* disconnect => mark offline */
-//   socket.on("disconnect", async () => {
+//   // Authenticated native WebRTC meeting rooms (mesh topology).
+  socket.on("meeting:join", async ({ roomId, token, displayName } = {}) => {
+    try {
+      const code=String(roomId||"");
+      if(!/^[a-f0-9]{24,64}$/i.test(code)||!token) throw new Error("Invalid meeting link.");
+      const decoded=await admin.auth().verifyIdToken(token);
+      const member=await User.findOne({firebaseUid:decoded.uid}).select("_id name username").lean();
+      if(!member) throw new Error("Sura Chat account not found.");
+      const room="meeting:"+code;
+      const existing=await io.in(room).fetchSockets();
+      const peers=existing.filter(x=>x.id!==socket.id).map(x=>({socketId:x.id,name:x.data.meetingName||"Participant"}));
+      socket.join(room);socket.data.meetingRoom=room;socket.data.meetingUserId=String(member._id);
+      socket.data.meetingName=String(displayName||member.name||member.username||"Participant").slice(0,60);
+      socket.emit("meeting:joined",{peers});
+      socket.to(room).emit("meeting:peer-joined",{peerId:socket.id,name:socket.data.meetingName});
+    } catch(e) { socket.emit("meeting:error",{message:e.message||"Unable to join meeting."}); }
+  });
+  socket.on("meeting:signal",async({roomId,to,kind,payload}={})=>{
+    const room="meeting:"+String(roomId||"");
+    if(socket.data.meetingRoom!==room||!to||!["offer","answer","ice"].includes(kind)||!payload)return;
+    const members=await io.in(room).fetchSockets();
+    if(!members.some(x=>x.id===String(to)))return;
+    io.to(String(to)).emit("meeting:signal",{from:socket.id,kind,payload});
+  });
+  socket.on("meeting:leave",({roomId}={})=>{
+    const room="meeting:"+String(roomId||"");
+    if(socket.data.meetingRoom!==room)return;
+    socket.to(room).emit("meeting:peer-left",{peerId:socket.id});
+    socket.leave(room);socket.data.meetingRoom=null;socket.data.meetingUserId=null;
+  });
+  socket.on("disconnect", async () => {
 //     console.log("🔌 Socket", socket.id, "disconnected");
 //     const rooms = [...socket.rooms].filter(r => r !== socket.id);
 //     for (const id of rooms) {
@@ -441,6 +471,8 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", async () => {
+    const meetingRoom = socket.data.meetingRoom;
+    if (meetingRoom) socket.to(meetingRoom).emit("meeting:peer-left", { peerId: socket.id });
     const id = socket.data.userId;
     if (!id) return;
     try {

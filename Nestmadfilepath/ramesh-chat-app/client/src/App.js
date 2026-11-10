@@ -8,6 +8,7 @@ import Login   from "./components/Auth/Login";
 import Signup  from "./components/Auth/Signup";
 import Forgot  from "./components/Auth/Forgot";
 import Main    from "./components/Main";
+import MeetingRoom from "./components/Meetings/MeetingRoom";
 
 /* 🔔  foreground push‑toast */
 import { listenForeground } from "./firebase";
@@ -33,6 +34,7 @@ export default function App() {
       <Routes>
         {/* Home  →  chat if logged‑in, otherwise go to login */}
         <Route path="/" element={user ? <Main /> : <Navigate to="/login" />} />
+        <Route path="/meeting/:roomId" element={user ? <MeetingRoom /> : <Navigate to="/login" replace />} />
 
       <Route path="/login"  element={user ? <Navigate to="/" /> : <Login  />} />
 <Route path="/signup" element={user ? <Navigate to="/" /> : <Signup />} />

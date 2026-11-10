@@ -1,111 +1,19 @@
 import React, { useEffect, useMemo, useState, useContext } from "react";
-import { fetchGroups, sendGroupMessage } from "../../api";
+import { useNavigate } from "react-router-dom";
+import { fetchGroups, fetchChatList, sendMessage, sendGroupMessage } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
-
-const makeRoomCode = () => {
-  const bytes = new Uint8Array(12);
-  window.crypto.getRandomValues(bytes);
-  return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
-};
-
-export default function MeetingHub({ onBack }) {
-  const { user } = useContext(AuthContext);
-  const [groups, setGroups] = useState([]);
-  const [selectedGroup, setSelectedGroup] = useState("");
-  const [roomName, setRoomName] = useState("");
-  const [roomCode, setRoomCode] = useState(makeRoomCode);
-  const [error, setError] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    fetchGroups()
-      .then((response) => {
-        if (!active) return;
-        const items = Array.isArray(response.data) ? response.data : response.data?.groups || [];
-        setGroups(items);
-      })
-      .catch((err) => setError(err.response?.data?.error || "Could not load your groups."))
-      .finally(() => active && setLoading(false));
-    return () => { active = false; };
-  }, []);
-
-  const meetingTitle = roomName.trim() || "Sura Chat meeting";
-  const meetingUrl = useMemo(() => `https://meet.jit.si/SuraChat-${roomCode}`, [roomCode]);
-
-  const copyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(meetingUrl);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch (_) {
-      setError("Clipboard access was blocked. Copy the meeting link manually.");
-    }
-  };
-
-  const shareToGroup = async () => {
-    if (!selectedGroup) return setError("Choose a group before sharing.");
-    try {
-      const form = new FormData();
-      form.append("text", `📹 ${meetingTitle}\nJoin meeting: ${meetingUrl}\nMeeting code: SuraChat-${roomCode}`);
-      await sendGroupMessage(selectedGroup, form);
-      setError("");
-      alert("Meeting link shared in the selected group.");
-    } catch (err) {
-      setError(err.response?.data?.error || "Could not share the meeting link.");
-    }
-  };
-
-  return (
-    <div style={styles.page}>
-      <header style={styles.header}>
-        <button type="button" onClick={onBack} style={styles.back}>← Back</button>
-        <div><h1 style={styles.title}>Meetings</h1><p style={styles.subtitle}>Create a room and invite people to join</p></div>
-      </header>
-      <section style={styles.card}>
-        <div style={styles.icon}>▣</div>
-        <h2 style={styles.heading}>Start a video meeting</h2>
-        <p style={styles.help}>Create a shareable meeting room for multiple participants. Anyone with the room link can join.</p>
-        <label style={styles.label}>Meeting name</label>
-        <input value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="Team catch-up" style={styles.input} maxLength={80} />
-        <label style={styles.label}>Meeting code</label>
-        <div style={styles.codeRow}><code style={styles.code}>{`SuraChat-${roomCode}`}</code><button type="button" style={styles.secondary} onClick={() => setRoomCode(makeRoomCode())}>New code</button></div>
-        <div style={styles.actions}>
-          <button type="button" style={styles.primary} onClick={() => window.open(meetingUrl, "_blank", "noopener,noreferrer")}>Join / Start meeting ↗</button>
-          <button type="button" style={styles.secondary} onClick={copyLink}>{copied ? "Copied" : "Copy invite link"}</button>
-        </div>
-        <label style={styles.label}>Share invite to a group</label>
-        {loading ? <p style={styles.help}>Loading groups…</p> : (
-          <div style={styles.shareRow}>
-            <select value={selectedGroup} onChange={(event) => setSelectedGroup(event.target.value)} style={styles.input}>
-              <option value="">Select a group</option>
-              {groups.map((group) => <option key={group._id} value={group._id}>{group.name}</option>)}
-            </select>
-            <button type="button" style={styles.secondary} onClick={shareToGroup} disabled={!selectedGroup}>Share</button>
-          </div>
-        )}
-        {error && <p role="alert" style={styles.error}>{error}</p>}
-        <p style={styles.note}>Meeting rooms use Jitsi Meet as the video provider. For a private room, join as the host and set a room password in the meeting’s security controls before sharing the link. Password enforcement is handled by Jitsi, not by Sura Chat.</p>
-      </section>
-    </div>
-  );
+const makeRoomCode=()=>{const b=new Uint8Array(18);crypto.getRandomValues(b);return Array.from(b,v=>v.toString(16).padStart(2,"0")).join("");};
+export default function MeetingHub({onBack}){
+ const {user}=useContext(AuthContext), navigate=useNavigate();
+ const [roomName,setRoomName]=useState(""),[roomCode,setRoomCode]=useState(makeRoomCode),[people,setPeople]=useState([]),[groups,setGroups]=useState([]);
+ const [selectedPeople,setSelectedPeople]=useState([]),[selectedGroups,setSelectedGroups]=useState([]),[showShare,setShowShare]=useState(false),[loading,setLoading]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
+ const title=roomName.trim()||"Sura Chat meeting", link=useMemo(()=>window.location.origin+"/meeting/"+roomCode,[roomCode]);
+ useEffect(()=>{let live=true;Promise.all([fetchChatList(String(user?._id||user?.userId||"")),fetchGroups()]).then(([c,g])=>{if(!live)return;setPeople(c.data?.users||[]);setGroups(Array.isArray(g.data)?g.data:g.data?.groups||[]);}).catch(()=>live&&setError("Could not load chats and groups."));return()=>{live=false;};},[user]);
+ const toggle=(id,list,set)=>set(list.includes(id)?list.filter(x=>x!==id):[...list,id]);
+ const share=async()=>{if(!selectedPeople.length&&!selectedGroups.length)return setError("Select at least one chat or group.");setLoading(true);setError("");setNotice("");const message="📹 "+title+"\nJoin my Sura Chat meeting: "+link+"\nMeeting code: "+roomCode;try{await Promise.all([...selectedPeople.map(receiver=>{const f=new FormData();f.append("sender",String(user?._id||user?.userId||""));f.append("receiver",receiver);f.append("text",message);return sendMessage(f);}),...selectedGroups.map(id=>{const f=new FormData();f.append("text",message);return sendGroupMessage(id,f);})]);setNotice("Meeting link sent to selected chats and groups.");setShowShare(false);setSelectedPeople([]);setSelectedGroups([]);}catch(e){setError(e.response?.data?.error||"Could not send all invitations.");}finally{setLoading(false);}};
+ const copy=async()=>{try{await navigator.clipboard.writeText(link);setNotice("Meeting link copied.");}catch(_){setError("Copy this link from the box above.");}};
+ return <div style={s.page}><header style={s.header}><button style={s.secondary} onClick={onBack}>← Back</button><div><h1 style={s.title}>Sura Chat Meetings</h1><p style={s.sub}>Multi-person video calls inside your app</p></div></header><section style={s.card}><div style={s.logo}>▣</div><h2>Create a meeting</h2><p style={s.sub}>Your own WebRTC meeting room. No Jitsi or external meeting login.</p><label style={s.label}>Meeting name</label><input style={s.input} value={roomName} onChange={e=>setRoomName(e.target.value)} placeholder="Team catch-up" maxLength={80}/><label style={s.label}>Private meeting link</label><div style={s.link}>{link}</div><div style={s.actions}><button style={s.primary} onClick={()=>navigate("/meeting/"+roomCode)}>Start meeting ↗</button><button style={s.secondary} onClick={copy}>Copy link</button><button style={s.secondary} onClick={()=>{setRoomCode(makeRoomCode());setNotice("");}}>New link</button></div><button style={{...s.primary,width:"100%",marginTop:12}} onClick={()=>setShowShare(v=>!v)}>Share link in Sura Chat</button>
+ {showShare&&<div style={s.share}><h3>Choose chats and groups</h3><div style={s.list}><b style={s.section}>Direct chats</b>{people.length?people.map(p=><label style={s.item} key={p._id}><input type="checkbox" checked={selectedPeople.includes(String(p._id))} onChange={()=>toggle(String(p._id),selectedPeople,setSelectedPeople)}/>{p.name||p.username||p.mobile||"Sura Chat user"}</label>):<p style={s.sub}>No direct chats found.</p>}<b style={s.section}>Groups</b>{groups.length?groups.map(g=><label style={s.item} key={g._id}><input type="checkbox" checked={selectedGroups.includes(String(g._id))} onChange={()=>toggle(String(g._id),selectedGroups,setSelectedGroups)}/>👥 {g.name||"Group"}</label>):<p style={s.sub}>No groups found.</p>}</div><button style={s.primary} disabled={loading} onClick={share}>{loading?"Sending…":"Send meeting link"}</button></div>}
+ {error&&<p style={s.error}>{error}</p>}{notice&&<p style={s.notice}>{notice}</p>}<p style={s.foot}>Participants need to sign in to Sura Chat and allow camera and microphone access. Anyone with the unique link can attempt to join, so share it only with trusted people.</p></section></div>;
 }
-
-const styles = {
-  page: { flex: 1, minWidth: 0, minHeight: 0, overflowY: "auto", background: "var(--primarySoft)", color: "var(--textMain)", padding: "clamp(16px, 3vw, 34px)", fontFamily: "var(--font-ui)" },
-  header: { display: "flex", alignItems: "center", gap: 16, margin: "0 auto 24px", maxWidth: 760 },
-  back: { border: "1px solid var(--border)", borderRadius: 12, padding: "10px 14px", color: "var(--textMain)", background: "var(--surface)", cursor: "pointer" },
-  title: { margin: 0, fontSize: 26 }, subtitle: { margin: "4px 0 0", color: "var(--textLight)", fontSize: 13 },
-  card: { maxWidth: 700, margin: "0 auto", padding: "clamp(18px, 4vw, 30px)", border: "1px solid var(--border)", borderRadius: 22, background: "var(--surface)", boxShadow: "0 16px 50px rgba(35,25,80,.07)" },
-  icon: { width: 54, height: 54, borderRadius: 16, display: "grid", placeItems: "center", color: "#fff", background: "var(--primary)", fontSize: 25 },
-  heading: { margin: "18px 0 6px", fontSize: 21 }, help: { color: "var(--textLight)", lineHeight: 1.6, fontSize: 13 },
-  label: { display: "block", fontSize: 13, fontWeight: 700, margin: "18px 0 7px" },
-  input: { width: "100%", minWidth: 0, boxSizing: "border-box", border: "1px solid var(--border)", borderRadius: 11, padding: "12px 13px", color: "var(--textMain)", background: "var(--surface)" },
-  codeRow: { display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }, code: { flex: 1, padding: 13, borderRadius: 10, background: "var(--primarySoft)", overflowWrap: "anywhere" },
-  actions: { display: "flex", flexWrap: "wrap", gap: 10, marginTop: 18 },
-  primary: { border: 0, borderRadius: 11, padding: "12px 17px", background: "var(--primary)", color: "#fff", fontWeight: 700, cursor: "pointer" },
-  secondary: { border: "1px solid var(--border)", borderRadius: 11, padding: "11px 14px", background: "var(--surface)", color: "var(--textMain)", cursor: "pointer" },
-  shareRow: { display: "flex", gap: 10, alignItems: "center" }, error: { color: "#c33", fontSize: 13 },
-  note: { marginTop: 22, padding: 13, borderRadius: 12, background: "var(--primarySoft)", color: "var(--textLight)", fontSize: 12, lineHeight: 1.6 },
-};
+const s={page:{flex:1,minWidth:0,minHeight:0,overflowY:"auto",background:"var(--primarySoft)",color:"var(--textMain)",padding:"clamp(14px,3vw,32px)",fontFamily:"var(--font-ui)"},header:{display:"flex",alignItems:"center",gap:14,maxWidth:760,margin:"0 auto 22px"},title:{margin:0,fontSize:24},sub:{color:"var(--textLight)",fontSize:13,lineHeight:1.6},card:{maxWidth:700,margin:"0 auto",padding:"clamp(18px,4vw,30px)",border:"1px solid var(--border)",borderRadius:22,background:"var(--surface)"},logo:{width:52,height:52,borderRadius:16,display:"grid",placeItems:"center",background:"var(--primary)",color:"#fff",fontSize:25},label:{display:"block",fontSize:13,fontWeight:700,margin:"18px 0 7px"},input:{width:"100%",boxSizing:"border-box",padding:12,border:"1px solid var(--border)",borderRadius:11,background:"var(--surface)",color:"var(--textMain)"},link:{padding:13,borderRadius:11,background:"var(--primarySoft)",fontSize:13,overflowWrap:"anywhere"},actions:{display:"flex",gap:9,flexWrap:"wrap",marginTop:14},primary:{border:0,borderRadius:11,padding:"12px 16px",background:"var(--primary)",color:"#fff",fontWeight:700,cursor:"pointer"},secondary:{border:"1px solid var(--border)",borderRadius:11,padding:"11px 14px",background:"var(--surface)",color:"var(--textMain)",cursor:"pointer"},share:{marginTop:15,padding:14,border:"1px solid var(--border)",borderRadius:14},list:{maxHeight:270,overflowY:"auto",marginBottom:12},section:{display:"block",padding:"10px 0 5px",fontSize:12,color:"var(--textLight)"},item:{display:"flex",alignItems:"center",gap:10,padding:"9px 3px",borderBottom:"1px solid var(--border)",fontSize:14},foot:{marginTop:20,padding:13,borderRadius:12,background:"var(--primarySoft)",color:"var(--textLight)",fontSize:12,lineHeight:1.6},error:{color:"#c33",fontSize:13},notice:{color:"#218653",fontSize:13}};
