@@ -8,6 +8,7 @@ import SearchBar from "./SearchBar";
 import ChatList from "./Chat/ChatList";
 import ChatWindow from "./Chat/ChatWindow";
 import GroupChat from "./Chat/GroupChat";
+import MeetingHub from "./Meetings/MeetingHub";
 import ProfilePanel from "./Accounts/ProfilePanel";
 import socket from "../socket";
 import { THEMES } from "../themes";
@@ -28,6 +29,7 @@ const useIsMobile = () => {
 const NAV_ITEMS = [
   { key: "chats", icon: "💬", label: "Chats" },
   { key: "groups", icon: "👥", label: "Groups" },
+  { key: "meetings", icon: "▣", label: "Meetings" },
   { key: "contacts", icon: "👤", label: "Contacts" },
 ];
 
@@ -61,7 +63,7 @@ export default function Main() {
       else if (nav.showSettings) setShowSettings(false);
       else if (nav.searchOpen) setSearchOpen(false);
       else if (nav.current) setCurrent(null);
-      else if (nav.section === "groups") setSection("chats");
+      else if (nav.section === "groups" || nav.section === "meetings") setSection("chats");
       else return;
       window.history.pushState({ suraChat: true }, "", window.location.href);
     };
@@ -139,6 +141,7 @@ export default function Main() {
                 onClick={() => {
                   if (item.key === "chats") openChats();
                   else if (item.key === "groups") openGroups();
+                  else if (item.key === "meetings") { setCurrent(null); setSection("meetings"); }
                   else { setSearchOpen(true); openChats(); }
                 }}>
                 {item.icon}
@@ -170,6 +173,7 @@ export default function Main() {
                   <div style={S.dropdown} role="menu">
                     {menuItem("New chat", () => { openChats(); setSearchOpen(true); })}
                     {menuItem("Create group", openGroups)}
+                    {menuItem("Meetings", () => { setCurrent(null); setSection("meetings"); })}
                     {menuItem("Refresh chats", () => setRefreshKey(k => k + 1))}
                     {menuItem("Mark all as read", () => setMarkAllReadKey(k => k + 1))}
                     {menuItem("Chat settings", () => setShowSettings(true))}
@@ -204,6 +208,8 @@ export default function Main() {
         <main style={{ ...S.convCol, ...(section === "groups" ? { gridColumn: "2 / 4", width: "100%", minWidth: 0 } : {}) }} aria-label={section === "groups" ? "Group conversations" : "Conversation"}>
           {section === "groups" ? (
             <GroupChat onBack={openChats} />
+          ) : section === "meetings" ? (
+            <MeetingHub onBack={openChats} />
           ) : current ? (
             <ChatWindow peer={current} socket={socket} onBack={() => setCurrent(null)} />
           ) : section === "groups" ? null : (
@@ -217,6 +223,10 @@ export default function Main() {
       )}
 
       {/* Mobile: full-screen group conversations */}
+      {isMobile && section === "meetings" && (
+        <main style={S.convColMobile} aria-label="Meetings"><MeetingHub onBack={openChats} /></main>
+      )}
+
       {isMobile && section === "groups" && (
         <main style={S.convColMobile} aria-label="Group conversations">
           <GroupChat onBack={openChats} />
@@ -238,6 +248,7 @@ export default function Main() {
               <div style={S.fabMenu}>
                 <button type="button" style={S.fabItem} onClick={() => { setFabOpen(false); setSearchOpen(true); }}>New chat</button>
                 <button type="button" style={S.fabItem} onClick={() => { setFabOpen(false); openGroups(); }}>Create group</button>
+                <button type="button" style={S.fabItem} onClick={() => { setFabOpen(false); setSection("meetings"); }}>Meetings</button>
               </div>
             )}
           </AnimatePresence>

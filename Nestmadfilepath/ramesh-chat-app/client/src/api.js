@@ -47,6 +47,10 @@ export const markConversationRead = (userId, peerId) =>
 export const sendMessage = (formData) =>
   api.post("/messages", formData, { headers: { "Content-Type": "multipart/form-data" } });
 
+// Cloud-synced account appearance preferences
+export const getThemePreferences = () => api.get("/settings/preferences");
+export const saveThemePreferences = (preferences) => api.put("/settings/preferences", preferences);
+
 // Chat settings and message actions
 export const blockUser = (userId, peerId) => api.post(`/block/${userId}/${peerId}`);
 export const unblockUser = (userId, peerId) => api.post(`/unblock/${userId}/${peerId}`);
@@ -57,6 +61,8 @@ export const toggleStar = (messageId, starred) => api.put(`/star/${messageId}`, 
 export const pinChat = (userId, peerId) => api.post(`/pin/${userId}/${peerId}`);
 export const deleteDirectMessage = (messageId, forEveryone = false) =>
   api.delete(`/message-actions/${messageId}`, { params: { forEveryone } });
+export const forwardMessages = (messageIds, recipientIds = [], groupIds = []) =>
+  api.post("/message-actions/forward", { messageIds, recipientIds, groupIds });
 
 // Groups
 export const fetchGroups = () => api.get("/groups");

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useContext } from "react";
 import { fetchMessages, sendMessage, blockUser, unblockUser, deleteDirectMessage, markConversationRead } from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 import MessageInput from "./MessageInput";
+import ForwardPicker from "./ForwardPicker";
 
 import { motion } from "framer-motion";
 import dayjs from "dayjs";
@@ -50,6 +51,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   const lastSoundTime = useRef(0);
 
   const [contextMessage, setContextMessage] = useState(null);
+  const [showForwardPicker, setShowForwardPicker] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [messageSearch, setMessageSearch] = useState("");
   const [searchDate, setSearchDate] = useState("");
@@ -377,7 +379,8 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
               onClick={!isMobile ? (e) => { if (e.ctrlKey || e.metaKey) toggleSelectMessage(m._id); } : undefined}
             >
               {m.replyTo && <div style={S.replyQuote}><b>Replying to</b><div>{m.replyTo.text || "Message"}</div></div>}
-              {m.text && <span style={{ textTransform: "none" }}>{linkifyText(m.text)}</span>}{m.pending && !m.text && <small style={{ opacity: .7 }}>Sending attachment…</small>}{m.pending && <small style={{ display: "block", opacity: .55, textAlign: "right" }}>Sending…</small>}
+              {m.text && <span style={{ textTransform: "none" }}>{linkifyText(m.text)}</span>}
+              {m.pending && <small style={{ display: "inline-flex", alignItems: "center", gap: 6, marginLeft: 8, opacity: .7 }}><span className="sc-mini-loader" /> {m.file ? "Sending attachment" : "Sending"}</small>}
               {m.file && m.fileType === "image" && <img src={fileURL(m.file)} alt="sent" style={S.thumbnail} onClick={() => window.open(fileURL(m.file), "_blank")} />}
               {m.file && m.fileType === "video" && <video style={S.thumbnail} controls onClick={() => window.open(fileURL(m.file), "_blank")}><source src={fileURL(m.file)} type="video/mp4" /></video>}
               {m.file && (m.fileType === "audio" || m.mime?.startsWith("audio/")) && <audio controls style={S.audioPlayer}><source src={fileURL(m.file)} type={m.mime || "audio/webm"} /></audio>}
@@ -422,12 +425,14 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
         }}>
           <button onClick={copySelected} style={S.toolbarButton}>📋 Copy</button>
           <button onClick={shareSelected} style={S.toolbarButton}>📤 Share</button>
+          <button onClick={() => setShowForwardPicker(true)} style={S.toolbarButton}>↗ Forward</button>
           <button onClick={() => deleteSelected(false)} style={S.toolbarButton}>Delete for me</button>
           <button onClick={() => deleteSelected(true)} style={S.toolbarButton}>Delete for everyone</button>
           <button onClick={() => setSelectedMessages([])} style={S.toolbarButton}>❌ Cancel</button>
         </div>
       )}
 
+      {showForwardPicker && <ForwardPicker messageIds={selectedMessages.filter((id) => !String(id).startsWith("pending-"))} onClose={(sent) => { setShowForwardPicker(false); if (sent) setSelectedMessages([]); }} />}
       {replyTo && <div style={S.replyComposer}><span><b>Replying to:</b> {replyTo.text || "Attachment"}</span><button type="button" onClick={() => setReplyTo(null)}>×</button></div>}
       <MessageInput
         onSend={send}
@@ -447,7 +452,7 @@ const S = {
   headRight: { fontSize: "clamp(0.85rem, 2.2vw, 1rem)" },
   typing: { padding: "2px 20px", fontSize: "clamp(0.9rem, 2.3vw, 1rem)", color: "var(--primary)", marginBottom: 8 },
   icon: { marginRight: 4, fontSize: 14 },
-  flow: { flex: 1, minHeight: 0, padding: "22px clamp(14px, 3vw, 34px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, scrollbarWidth: "none", msOverflowStyle: "none" },
+  flow: { flex: 1, minHeight: 0, padding: "22px clamp(14px, 3vw, 34px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, scrollbarWidth: "none", msOverflowStyle: "none", background: "radial-gradient(circle at 18% 22%, rgba(128,101,245,.06) 0 2px, transparent 2.5px), radial-gradient(circle at 78% 68%, rgba(128,101,245,.045) 0 2px, transparent 2.5px), #FAF9FD", backgroundSize: "34px 34px, 42px 42px, auto" },
   bubble: { maxWidth: "min(76%, 680px)", padding: "11px 15px", borderRadius: 18, wordBreak: "break-word", boxShadow: "0 5px 16px rgba(50,40,100,.075)", position: "relative", cursor: "pointer" },
   thumbnail: { maxWidth: 220, maxHeight: 220, borderRadius: 10, marginTop: 8, cursor: "zoom-in" },
   audioPlayer: { width: 220, marginTop: 8 },
@@ -821,7 +826,7 @@ const S = {
 //   headRight: { fontSize: "clamp(0.85rem, 2.2vw, 1rem)" },
 //   typing: { padding: "2px 20px", fontSize: "clamp(0.9rem, 2.3vw, 1rem)", color: "var(--primary)", marginBottom: 8 },
 //   icon: { marginRight: 4, fontSize: 14 },
-//   flow: { flex: 1, minHeight: 0, padding: "24px clamp(14px, 4vw, 42px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, scrollbarWidth: "none", msOverflowStyle: "none", background: "#FAF9FD" },
+//   flow: { flex: 1, minHeight: 0, padding: "24px clamp(14px, 4vw, 42px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, scrollbarWidth: "none", msOverflowStyle: "none", background: "radial-gradient(circle at 18% 22%, rgba(128,101,245,.06) 0 2px, transparent 2.5px), radial-gradient(circle at 78% 68%, rgba(128,101,245,.045) 0 2px, transparent 2.5px), #FAF9FD", backgroundSize: "34px 34px, 42px 42px, auto" },
 //   bubble: { maxWidth: "min(72%, 560px)", padding: "11px 15px", borderRadius: 18, wordBreak: "break-word", boxShadow: "0 2px 8px rgba(30,25,70,.06)", position: "relative", cursor: "pointer", lineHeight: 1.5 },
 //   thumbnail: { maxWidth: 220, maxHeight: 220, borderRadius: 10, marginTop: 8, cursor: "zoom-in" },
 //   audioPlayer: { width: 220, marginTop: 8 },

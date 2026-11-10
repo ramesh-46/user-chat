@@ -51,3 +51,20 @@ img { object-fit: cover; }
 @media (max-width: 767px) {
   body { overflow: auto; }
 }
+
+/* Small, quiet feedback for message and data operations. */
+.sc-mini-loader {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: scMiniSpin .65s linear infinite;
+  vertical-align: -2px;
+  flex: 0 0 auto;
+}
+@keyframes scMiniSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .sc-mini-loader { animation-duration: 1.8s; }
+}

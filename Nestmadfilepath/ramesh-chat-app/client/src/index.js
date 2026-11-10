@@ -32,10 +32,10 @@ dayjs.extend(relativeTime);
 const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(
   <BrowserRouter>
-    <ThemeProvider>       {/* 🎨 global theme wrapper */}
-      <AuthProvider>
+    <AuthProvider>
+      <ThemeProvider>
         <App />
-      </AuthProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </AuthProvider>
   </BrowserRouter>
 );

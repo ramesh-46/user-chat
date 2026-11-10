@@ -8,8 +8,9 @@ import {
 import { AuthContext } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
 import socket from "../../socket";
+import ForwardPicker from "./ForwardPicker";
 
-const panel = { display: "flex", height: "100%", minHeight: 0, minWidth: 0, width: "100%", overflow: "hidden", background: "#F8F7FC", color: "#302B45", fontFamily: "var(--font-ui)" };
+const panel = { display: "flex", height: "100%", minHeight: 0, minWidth: 0, width: "100%", overflow: "hidden", background: "radial-gradient(circle at 18% 22%, rgba(128,101,245,.055) 0 2px, transparent 2.5px), radial-gradient(circle at 78% 68%, rgba(128,101,245,.045) 0 2px, transparent 2.5px), #F8F7FC", backgroundSize: "34px 34px, 42px 42px, auto", color: "#302B45", fontFamily: "var(--font-ui)" };
 const side = { width: 300, minWidth: 230, maxWidth: "38%", flex: "0 0 320px", minHeight: 0, overflowY: "auto", overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", borderRight: "1px solid var(--border)", padding: 14, boxSizing: "border-box", background: "#FFFFFF", boxShadow: "inset -1px 0 0 #ECE8F5" };
 const button = { border: 0, borderRadius: 12, padding: "10px 14px", cursor: "pointer", background: "linear-gradient(135deg, #8065F5, #6D50E8)", color: "white", margin: 3, fontWeight: 700, boxShadow: "0 5px 14px rgba(128,101,245,.2)" };
 const field = { width: "100%", boxSizing: "border-box", padding: "11px 13px", margin: "6px 0", borderRadius: 12, border: "1px solid var(--border)", background: "#FFFFFF", color: "#302B45", boxShadow: "0 2px 8px rgba(55,42,110,.035)" };
@@ -20,6 +21,7 @@ export default function GroupChat({ onBack }) {
   const [active, setActive] = useState(null);
   const [messages, setMessages] = useState([]);
   const [selectedGroupMessages, setSelectedGroupMessages] = useState([]);
+  const [showForwardPicker, setShowForwardPicker] = useState(false);
   const groupTouchTimer = React.useRef(null);
   const groupLongPressTriggered = React.useRef(false);
   const [creating, setCreating] = useState(false);
@@ -221,6 +223,19 @@ export default function GroupChat({ onBack }) {
       setSelectedGroupMessages([]);
     } catch (error) { setError(error.response?.data?.error || "Unable to delete selected messages."); }
   };
+  const startGroupMeeting = async () => {
+    if (!active?._id) return;
+    const room = "SuraChat-" + (window.crypto?.randomUUID ? window.crypto.randomUUID().replace(/-/g, "") : Date.now().toString(36) + Math.random().toString(36).slice(2));
+    const url = "https://meet.jit.si/" + room;
+    window.open(url, "_blank", "noopener,noreferrer");
+    try {
+      const form = new FormData();
+      form.append("text", "📹 Group video meeting\nJoin here: " + url + "\nRoom code: " + room);
+      await sendGroupMessage(active._id, form);
+      await loadMessages(active);
+    } catch (error) { setError(error.response?.data?.error || "Meeting opened, but the invite could not be posted."); }
+  };
+
   const closeGroup = async (action) => {
     if (!active) return;
     const question = action === "delete" ? "Permanently delete this group?" : "Leave this group?";
@@ -268,7 +283,7 @@ export default function GroupChat({ onBack }) {
         {!active ? <div style={{ margin: "auto", opacity: .7 }}>Select a group or create a new one.</div> : <>
           <header style={{ padding: 12, borderBottom: "1px solid #EAE5F6", background: "linear-gradient(110deg,#F1EDFF,#FFFFFF 75%)" }}>
             {mobileLayout && <button type="button" onClick={() => setActive(null)} style={{ ...button, margin: "0 0 8px", padding: "7px 11px", background: "#F2EEFF", color: "#604BC8", boxShadow: "none" }}>← Groups</button>}
-            <strong>{active.name}</strong><div style={{ fontSize: 12, opacity: .7 }}>{active.members?.length || 0} members</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}><div><strong>{active.name}</strong><div style={{ fontSize: 12, opacity: .7 }}>{active.members?.length || 0} members</div></div><button type="button" style={{ ...button, margin: 0 }} onClick={startGroupMeeting}>▣ Start group video call</button></div>
             {isAdmin && <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 8 }}>
               <input style={{ ...field, maxWidth: 220, margin: 0 }} placeholder="Member user ID" value={adminTarget} onChange={e => setAdminTarget(e.target.value)}/>
               <button style={button} onClick={() => manageMember("add")}>Add member</button>
@@ -308,15 +323,17 @@ export default function GroupChat({ onBack }) {
           </section>
           {selectedGroupMessages.length > 0 && <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "#302B45", color: "#FFFFFF" }}>
             <strong style={{ marginRight: "auto" }}>{selectedGroupMessages.length} selected</strong>
+            <button type="button" style={{ ...button, background: "#5142A4" }} onClick={() => setShowForwardPicker(true)}>↗ Forward</button>
             <button type="button" style={{ ...button, background: "#334155" }} onClick={() => deleteSelectedGroupMessages(false)}>Delete for me</button>
             <button type="button" style={{ ...button, background: "#B83232" }} onClick={() => deleteSelectedGroupMessages(true)}>Delete for everyone</button>
             <button type="button" style={{ ...button, background: "#475569" }} onClick={() => setSelectedGroupMessages([])}>Cancel</button>
           </div>}
+          {showForwardPicker && <ForwardPicker messageIds={selectedGroupMessages.filter((id) => !String(id).startsWith("pending-"))} onClose={(sent) => { setShowForwardPicker(false); if (sent) setSelectedGroupMessages([]); }} />}
           <form onSubmit={send} style={{ padding: 12, borderTop: "1px solid #ECE8F5", display: "flex", gap: 8, flexWrap: "wrap", background: "#FFFFFF" }}>
             <input style={{ ...field, flex: 1, minWidth: 120 }} placeholder="Message group…" value={text} onChange={e => { setText(e.target.value); if (active?._id) socket.emit("group:typing", { groupId: active._id, from: myId, typing: !!e.target.value }); }}/>
             <input id="group-chat-file" type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip" onChange={e => setFile(e.target.files?.[0] || null)} style={{ maxWidth: 170 }}/>
             {file && <label style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 4 }}><input type="checkbox" checked={viewOnce} onChange={e => setViewOnce(e.target.checked)}/> View once</label>}
-            <button style={button} disabled={busy || (!text.trim() && !file)}>Send</button>
+            <button style={button} disabled={busy || (!text.trim() && !file)}>{busy ? "Sending…" : "Send"}</button>
           </form>
         </>}
       </main>
