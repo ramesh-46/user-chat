@@ -89,7 +89,10 @@ export const joinMeeting = (id, passcode) => api.post(`/meetings/${encodeURIComp
 export const endMeeting = (roomId) => api.post(`/meetings/${encodeURIComponent(roomId)}/end`);
 export const removeMeetingParticipant = (roomId, userId) =>
   api.post(`/meetings/${encodeURIComponent(roomId)}/remove`, { userId });
-
-
+export const inviteToMeeting = (roomId, userIds) =>
+  api.post(`/meetings/${encodeURIComponent(roomId)}/invite`, { userIds });
+export const fetchMeetingInvites = () => api.get("/meetings/invites");
+export const acceptMeetingInvite = (inviteId) => api.post(`/meetings/invite/${encodeURIComponent(inviteId)}/accept`);
+export const declineMeetingInvite = (inviteId) => api.post(`/meetings/invite/${encodeURIComponent(inviteId)}/decline`);
 
 export default api;
