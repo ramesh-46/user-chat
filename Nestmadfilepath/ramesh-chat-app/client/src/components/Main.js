@@ -137,6 +137,27 @@ export default function Main() {
     };
   }, [userId, pushToast]);
 
+  // New-message notifications — same toast style as admit/deny and invites.
+  const seenRef = React.useRef({ currentPeerId: null, section: "chats" });
+  seenRef.current = { currentPeerId: current?._id ? String(current._id) : null, section };
+  useEffect(() => {
+    if (!userId) return;
+    const onDirect = (m = {}) => {
+      const sender = String(m.sender?._id || m.sender || "");
+      if (!sender || sender === userId || sender === seenRef.current.currentPeerId) return;
+      const name = m.sender?.name || m.sender?.username || "New message";
+      pushToast({ kind: "info", title: "💬 " + name, body: String(m.text || "📎 Attachment").slice(0, 90) });
+    };
+    const onGroup = (m = {}) => {
+      const sender = String(m.sender?._id || m.sender || "");
+      if (!sender || sender === userId || seenRef.current.section === "groups") return;
+      pushToast({ kind: "info", title: "👥 " + (m.sender?.username || "Group"), body: String(m.text || "📎 Attachment").slice(0, 90) });
+    };
+    socket.on("receiveMessage", onDirect);
+    socket.on("group:message", onGroup);
+    return () => { socket.off("receiveMessage", onDirect); socket.off("group:message", onGroup); };
+  }, [userId, pushToast]);
+
   const admitKnock = async (toast, allow) => {
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -345,7 +366,6 @@ export default function Main() {
                 <button style={{ ...S.toastBtn, background: "var(--primary)" }} onClick={() => joinInvite(t)}>Join</button>
                 <button style={{ ...S.toastBtn, background: "transparent", border: "1px solid var(--border)", color: "var(--textMain)" }} onClick={() => declineInviteToast(t)}>Decline</button>
               </>}
-              {!t.kind || t.kind === "info" ? null : null}
               <button style={S.toastX} aria-label="Dismiss" onClick={() => dismissToast(t.id)}>✕</button>
             </div>
           </div>
