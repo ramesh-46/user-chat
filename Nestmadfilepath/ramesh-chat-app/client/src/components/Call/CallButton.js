@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { AuthContext } from "../../contexts/AuthContext";
 import { useCall } from "../hooks/useCall";
 
@@ -21,6 +22,17 @@ export default function CallButton({ peer }) {
   const [elapsed, setElapsed] = useState(0);
   const [network, setNetwork] = useState({ mbps: 0, rtt: null });
   const previousBytes = useRef({ value: 0, at: 0 });
+
+  // The chat window header renders a slot with id "sura-call-slot".
+  // When it exists, the call buttons render inside the header bar
+  // instead of floating over the middle of the chat window.
+  const [slot, setSlot] = useState(null);
+  useEffect(() => {
+    const find = () => setSlot(document.getElementById("sura-call-slot"));
+    find();
+    const timer = setTimeout(find, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     if (localVideo.current) localVideo.current.srcObject = getLocalStream() || null;
@@ -62,12 +74,17 @@ export default function CallButton({ peer }) {
 
   return (
     <>
-      <div style={styles.launcher}>
-        {!active && peer && <>
-          <button type="button" title="Voice call" aria-label="Start voice call" onClick={() => start("audio")} style={styles.launchButton}>☎</button>
-          <button type="button" title="Video call" aria-label="Start video call" onClick={() => start("video")} style={styles.launchButton}>▣</button>
-        </>}
-      </div>
+      {(() => {
+        const buttons = (!active && peer) ? (
+          <>
+            <button type="button" title="Voice call" aria-label="Start voice call" onClick={() => start("audio")} style={styles.launchButton}>☎</button>
+            <button type="button" title="Video call" aria-label="Start video call" onClick={() => start("video")} style={styles.launchButton}>▣</button>
+          </>
+        ) : null;
+        // Inside a chat window the buttons render into the header bar;
+        // otherwise they fall back to the floating corner position.
+        return slot && buttons ? createPortal(buttons, slot) : <div style={styles.launcher}>{buttons}</div>;
+      })()}
       <audio ref={remoteAudio} autoPlay playsInline style={{ display: "none" }} />
       {recordingSaved && <div role="status" style={styles.savedToast}>✓ Recording saved to Downloads</div>}
       {active && <div style={styles.backdrop}>
