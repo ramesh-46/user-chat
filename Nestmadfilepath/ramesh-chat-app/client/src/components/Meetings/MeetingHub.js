@@ -1,6 +1,10 @@
-import React, { useEffect, useMemo, useState, useContext } from "react";
+import React, { useEffect, useMemo, useState, useContext, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchGroups, fetchChatList, sendMessage, sendGroupMessage, createMeeting, fetchMyMeetings, joinMeeting } from "../../api";
+import {
+  fetchGroups, fetchChatList, sendMessage, sendGroupMessage,
+  createMeeting, fetchMyMeetings, joinMeeting, endMeeting,
+  inviteToMeeting, fetchMeetingInvites, acceptMeetingInvite, declineMeetingInvite,
+} from "../../api";
 import { AuthContext } from "../../contexts/AuthContext";
 
 // Public meeting codes look like Google Meet: xxx-yyyy-zzz
@@ -29,6 +33,7 @@ export default function MeetingHub({ onBack }) {
   const [joinPasscode, setJoinPasscode] = useState("");
   const [created, setCreated] = useState(null);
   const [myMeetings, setMyMeetings] = useState([]);
+  const [invites, setInvites] = useState([]);
   const [people, setPeople] = useState([]);
   const [groups, setGroups] = useState([]);
   const [selectedPeople, setSelectedPeople] = useState([]);
@@ -42,6 +47,12 @@ export default function MeetingHub({ onBack }) {
   const link = useMemo(() => created ? window.location.origin + "/meeting/" + created.roomId : "", [created]);
   const title = roomName.trim() || "Sura Chat meeting";
 
+  const loadInvites = useCallback(() => {
+    fetchMeetingInvites()
+      .then((r) => setInvites(r.data?.invites || []))
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     let live = true;
     Promise.all([fetchChatList(userId), fetchGroups(), fetchMyMeetings()])
@@ -52,8 +63,10 @@ export default function MeetingHub({ onBack }) {
         setMyMeetings(m.data?.meetings || []);
       })
       .catch(() => live && setError("Could not load chats and groups."));
-    return () => { live = false; };
-  }, [userId]);
+    loadInvites();
+    const timer = setInterval(loadInvites, 20000); // keep the invite list fresh
+    return () => { live = false; clearInterval(timer); };
+  }, [userId, loadInvites]);
 
   const toggle = (id, list, set) => set(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
 
@@ -82,10 +95,14 @@ export default function MeetingHub({ onBack }) {
   };
 
   const share = async () => {
+    if (!created) return;
     if (!selectedPeople.length && !selectedGroups.length) return setError("Select at least one chat or group.");
     setLoading(true); setError(""); setNotice("");
     const message = "📹 " + created.title + "\nJoin my Sura Chat meeting: " + link + "\nMeeting code: " + created.code;
     try {
+      // Real invitations (notification with Join / Decline) for direct chats,
+      // plus the link message in every selected chat and group.
+      await inviteToMeeting(created.roomId, selectedPeople).catch(() => {});
       await Promise.all([
         ...selectedPeople.map((receiver) => {
           const f = new FormData();
@@ -94,11 +111,34 @@ export default function MeetingHub({ onBack }) {
         }),
         ...selectedGroups.map((id) => { const f = new FormData(); f.append("text", message); return sendGroupMessage(id, f); })
       ]);
-      setNotice("Meeting link sent to selected chats and groups.");
+      setNotice("Meeting invitation sent to selected chats and groups.");
       setShowShare(false); setSelectedPeople([]); setSelectedGroups([]);
     } catch (e) {
       setError(e.response?.data?.error || "Could not send all invitations.");
     } finally { setLoading(false); }
+  };
+
+  const acceptInvite = async (invite) => {
+    setError("");
+    try {
+      const r = await acceptMeetingInvite(invite._id);
+      setInvites((list) => list.filter((i) => i._id !== invite._id));
+      navigate("/meeting/" + r.data.meeting.roomId, { state: { passcode: "" } });
+    } catch (e) {
+      setInvites((list) => list.filter((i) => i._id !== invite._id));
+      setError(e.response?.data?.error || "Could not join that meeting.");
+    }
+  };
+
+  const declineInvite = async (invite) => {
+    setInvites((list) => list.filter((i) => i._id !== invite._id));
+    declineMeetingInvite(invite._id).catch(() => {});
+  };
+
+  const endMyMeeting = async (meeting) => {
+    setMyMeetings((list) => list.filter((m) => m.roomId !== meeting.roomId));
+    try { await endMeeting(meeting.roomId); setNotice(`"${meeting.title}" was ended for everyone.`); }
+    catch (e) { setError(e.response?.data?.error || "Could not end the meeting."); }
   };
 
   const copy = async (value, okMessage) => {
@@ -116,6 +156,25 @@ export default function MeetingHub({ onBack }) {
       </header>
 
       <section style={s.card}>
+        {/* Invitations received from other people */}
+        {invites.length > 0 && (
+          <>
+            <h3 style={s.listTitle}>Meeting invitations ({invites.length})</h3>
+            {invites.map((inv) => (
+              <div style={s.meetingRow} key={inv._id}>
+                <div style={{ minWidth: 0 }}>
+                  <b style={s.meetingName}>{inv.title}</b>
+                  <div style={s.sub}>From {inv.from?.name || inv.from?.username || "a Sura Chat user"} · code {inv.code}</div>
+                </div>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button style={s.primary} onClick={() => acceptInvite(invite)}>Join</button>
+                  <button style={s.small} onClick={() => declineInvite(invite)}>Decline</button>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
         <div style={s.tabs}>
           <button style={{ ...s.tab, ...(mode === "create" ? s.tabActive : {}) }} onClick={() => { setMode("create"); setError(""); setNotice(""); }}>Create</button>
           <button style={{ ...s.tab, ...(mode === "join" ? s.tabActive : {}) }} onClick={() => { setMode("join"); setError(""); setNotice(""); }}>Join</button>
@@ -190,21 +249,25 @@ export default function MeetingHub({ onBack }) {
         )}
 
         {notice && <p style={s.notice}>{notice}</p>}
+
         {mode === "create" && !created && myMeetings.length > 0 && (
           <>
-            <h3 style={s.listTitle}>Your recent meetings</h3>
+            <h3 style={s.listTitle}>Your meetings — rejoin or end</h3>
             {myMeetings.map((m) => (
               <div style={s.meetingRow} key={m.roomId}>
                 <div style={{ minWidth: 0 }}>
                   <b style={s.meetingName}>{m.title}</b>
                   <div style={s.sub}>{CODE_RE.test(m.code || "") ? m.code : ""}{m.scheduledAt ? " · " + fmtDate(m.scheduledAt) : ""}{m.waitingRoom ? " · lobby on" : ""}</div>
                 </div>
-                <button style={s.small} onClick={() => navigate("/meeting/" + m.roomId)}>Rejoin</button>
+                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                  <button style={s.primary} onClick={() => navigate("/meeting/" + m.roomId)}>Rejoin</button>
+                  <button style={{ ...s.small, color: "#c33" }} onClick={() => endMyMeeting(m)}>End</button>
+                </div>
               </div>
             ))}
           </>
         )}
-        <p style={s.foot}>Participants sign in to Sura Chat and allow camera and microphone access. With the waiting room on, you approve everyone before they enter. The link and code expire after 24 hours.</p>
+        <p style={s.foot}>Participants sign in to Sura Chat and allow camera and microphone access. With the waiting room on, you approve everyone before they enter — even from the chat window. The link and code expire after 24 hours.</p>
       </section>
     </div>
   );
