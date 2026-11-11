@@ -1,9 +1,10 @@
 // Google Meet-style live meeting helpers: waiting room (lobby), host
-// admit/deny, lock, end-for-all, remove, raise hand, reactions and in-meeting
-// chat. Installed once per socket connection from server.js.
+// admit/deny, lock, end-for-all, remove, host transfer, raise hand, reactions
+// and in-meeting chat. Installed once per socket connection from server.js.
 const admin = require("../config/firebaseAdmin");
 const User = require("../models/User");
 const Meeting = require("../models/Meeting");
+const { sendPushToUser } = require("./pushNotifications");
 
 const ROOM_RE = /^[a-f0-9]{24,64}$/i;
 const REACTIONS = ["👍", "👏", "❤️", "😂", "🎉", "😮"];
@@ -20,8 +21,9 @@ async function verifyHost(roomId, token) {
 
 module.exports = function registerMeetingLive(io, socket) {
 
-  // Participant asks to join a waiting-room meeting; the host is notified.
-  socket.on("meeting:knock", async ({ roomId, token, name } = {}) => {
+  // Participant asks to join a waiting-room meeting; the host is notified
+  // live (personal socket room) and with a background push notification.
+  socket.on("meeting\:knock", async ({ roomId, token, name } = {}) => {
     try {
       const code = String(roomId || "").toLowerCase();
       if (!ROOM_RE.test(code) || !token) return;
@@ -31,14 +33,19 @@ module.exports = function registerMeetingLive(io, socket) {
       const meeting = await Meeting.findOne({ roomId: code, status: "live", expiresAt: { $gt: new Date() } }).lean();
       if (!meeting) return socket.emit("meeting:denied", { roomId: code, reason: "This meeting has ended or does not exist." });
       if (meeting.locked && String(meeting.host) !== String(member._id)) {
-        return socket.emit("meeting:denied", { roomId: code, reason: "The host has locked this meeting." });
+        return socket.emit("meeting\:denied", { roomId: code, reason: "The host has locked this meeting." });
       }
       socket.join("meeting-wait:" + code);
       socket.data.waitRoom = "meeting-wait:" + code;
       socket.data.waitName = String(name || member.name || member.username || "Participant").slice(0, 60);
       socket.data.waitUserId = String(member._id);
-      io.to(String(meeting.host)).emit("meeting:knock", {
-        roomId: code, socketId: socket.id, name: socket.data.waitName, userId: String(member._id)
+      const knock = { roomId: code, socketId: socket.id, name: socket.data.waitName, userId: String(member._id) };
+      io.to(String(meeting.host)).emit("meeting:knock", knock);
+      sendPushToUser(String(meeting.host), {
+        title: "Someone is waiting",
+        body: `${socket.data.waitName} wants to join "${meeting.title}"`,
+        ttl: 120, urgency: "high",
+        data: { type: "meeting_knock", roomId: code, url: "/" }
       });
     } catch (_) { /* ignore malformed knocks */ }
   });
@@ -52,17 +59,33 @@ module.exports = function registerMeetingLive(io, socket) {
       const guest = waiting.find((s) => s.id === String(target));
       if (!guest) return;
       if (allow) {
-        guest.emit("meeting:admitted", { roomId: String(roomId).toLowerCase() });
+        guest.emit("meeting\:admitted", { roomId: String(roomId).toLowerCase() });
       } else {
-        guest.emit("meeting:denied", { roomId: String(roomId).toLowerCase(), reason: "The host denied your request to join." });
+        guest.emit("meeting\:denied", { roomId: String(roomId).toLowerCase(), reason: "The host denied your request to join." });
         guest.leave("meeting-wait:" + String(roomId).toLowerCase());
         guest.data.waitRoom = null;
       }
     } catch (_) { /* ignore */ }
   });
 
+  // Host transfers host controls to another participant.
+  socket.on("meeting:transfer", async ({ roomId, targetUserId, token } = {}) => {
+    try {
+      const check = await verifyHost(roomId, token);
+      const code = String(roomId || "").toLowerCase();
+      if (!check || !targetUserId) return;
+      if (String(targetUserId) === check.hostId) return;
+      const member = await User.findById(String(targetUserId)).select("_id").lean();
+      if (!member) return;
+      await Meeting.updateOne({ roomId: code }, { host: member._id });
+      io.to("meeting:" + code).emit("meeting\:host-changed", {
+        roomId: code, hostUserId: String(member._id)
+      });
+    } catch (_) { /* ignore */ }
+  });
+
   // Host locks/unlocks the room so no new participants can join.
-  socket.on("meeting:lock", async ({ roomId, locked, token } = {}) => {
+  socket.on("meeting\:lock", async ({ roomId, locked, token } = {}) => {
     try {
       const check = await verifyHost(roomId, token);
       if (!check) return;
@@ -72,14 +95,14 @@ module.exports = function registerMeetingLive(io, socket) {
   });
 
   // Host ends the meeting for everyone, including the waiting room.
-  socket.on("meeting:end", async ({ roomId, token } = {}) => {
+  socket.on("meeting\:end", async ({ roomId, token } = {}) => {
     try {
       const check = await verifyHost(roomId, token);
       if (!check) return;
       const code = String(roomId).toLowerCase();
       await Meeting.updateOne({ roomId: code }, { status: "ended", endedAt: new Date() });
-      io.to("meeting:" + code).emit("meeting:ended", { roomId: code });
-      io.to("meeting-wait:" + code).emit("meeting:ended", { roomId: code });
+      io.to("meeting:" + code).emit("meeting\:ended", { roomId: code });
+      io.to("meeting-wait:" + code).emit("meeting\:ended", { roomId: code });
     } catch (_) { /* ignore */ }
   });
 
@@ -96,17 +119,17 @@ module.exports = function registerMeetingLive(io, socket) {
         if (removedId) {
           await Meeting.updateOne({ roomId: code }, { $addToSet: { removedUsers: removedId } });
         }
-        guest.emit("meeting:removed", { roomId: code });
+        guest.emit("meeting\:removed", { roomId: code });
         io.to("meeting:" + code).emit("meeting:peer-left", { peerId: String(target) });
       }
     } catch (_) { /* ignore */ }
   });
 
   // Raise / lower hand, visible to everyone in the room.
-  socket.on("meeting:hand", ({ roomId, raised } = {}) => {
+  socket.on("meeting\:hand", ({ roomId, raised } = {}) => {
     const room = "meeting:" + String(roomId || "").toLowerCase();
     if (socket.data.meetingRoom !== room) return;
-    socket.to(room).emit("meeting:hand", { peerId: socket.id, name: socket.data.meetingName, raised: !!raised });
+    socket.to(room).emit("meeting\:hand", { peerId: socket.id, name: socket.data.meetingName, raised: !!raised });
   });
 
   // Emoji reactions floating over the meeting.
@@ -115,23 +138,23 @@ module.exports = function registerMeetingLive(io, socket) {
     if (socket.data.meetingRoom !== room) return;
     const clean = String(emoji || "").slice(0, 8);
     if (!REACTIONS.includes(clean)) return;
-    io.to(room).emit("meeting:reaction", { peerId: socket.id, name: socket.data.meetingName, emoji: clean });
+    io.to(room).emit("meeting\:reaction", { peerId: socket.id, name: socket.data.meetingName, emoji: clean });
   });
 
   // Lightweight in-meeting chat.
-  socket.on("meeting:chat", ({ roomId, text } = {}) => {
+  socket.on("meeting\:chat", ({ roomId, text } = {}) => {
     const room = "meeting:" + String(roomId || "").toLowerCase();
     if (socket.data.meetingRoom !== room) return;
     const clean = String(text || "").trim().slice(0, 500);
     if (!clean) return;
-    io.to(room).emit("meeting:chat", {
+    io.to(room).emit("meeting\:chat", {
       peerId: socket.id, name: socket.data.meetingName, text: clean, at: new Date().toISOString()
     });
   });
 
   // Clear waiting-room state when the socket goes away.
   const clearWait = () => { socket.data.waitRoom = null; socket.data.waitName = null; socket.data.waitUserId = null; };
-  socket.on("meeting:knock-cancel", ({ roomId } = {}) => {
+  socket.on("meeting\:knock-cancel", ({ roomId } = {}) => {
     const room = "meeting-wait:" + String(roomId || "").toLowerCase();
     if (socket.data.waitRoom !== room) return;
     socket.leave(room);
