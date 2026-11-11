@@ -82,4 +82,14 @@ export const deleteGroupMessage = (messageId, forEveryone = false) =>
 export const fetchGroupMedia = (messageId) =>
   api.get(`/group-messages/messages/${messageId}/media`, { responseType: "blob" });
 
+// Google Meet-style meetings
+export const createMeeting = (data) => api.post("/meetings", data);
+export const fetchMyMeetings = () => api.get("/meetings/mine");
+export const joinMeeting = (id, passcode) => api.post(`/meetings/${encodeURIComponent(id)}/join`, { passcode });
+export const endMeeting = (roomId) => api.post(`/meetings/${encodeURIComponent(roomId)}/end`);
+export const removeMeetingParticipant = (roomId, userId) =>
+  api.post(`/meetings/${encodeURIComponent(roomId)}/remove`, { userId });
+
+
+
 export default api;
