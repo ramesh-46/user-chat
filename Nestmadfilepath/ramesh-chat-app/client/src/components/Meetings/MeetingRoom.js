@@ -8,7 +8,7 @@ import { joinMeeting } from "../../api";
 // Native WebRTC mesh — Sura Chat's own engine, no third-party meeting SDK.
 const CFG = {
   iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
+    { urls: "stun\:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
   ],
   iceCandidatePoolSize: 4,
@@ -24,17 +24,39 @@ const FILTERS = {
   vintage: "sepia(.55) contrast(.94) brightness(1.06) saturate(.85)",
 };
 
-function Tile({ stream, name, local, mic, cam, audioOnly, filter, style, spotlight, onPick }) {
+// Track-aware tile: shows video based on the REAL video track state
+// (mute/unmute events from the browser), so video appears the moment
+// someone turns their camera on and hides only when there is truly
+// no live video.
+function Tile({ stream, name, local, filter, style, spotlight, onPick }) {
   const ref = useRef(null);
-  useEffect(() => { if (ref.current) ref.current.srcObject = stream || null; return () => { if (ref.current) ref.current.srcObject = null; }; }, [stream]);
+  const [hasVideo, setHasVideo] = useState(false);
+  useEffect(() => {
+    if (ref.current) ref.current.srcObject = stream || null;
+    const video = stream?.getVideoTracks?.()[0] || null;
+    const update = () => setHasVideo(!!video && video.readyState === "live" && !video.muted);
+    update();
+    if (video) {
+      video.addEventListener("mute", update);
+      video.addEventListener("unmute", update);
+      video.addEventListener("ended", update);
+    }
+    const poll = setInterval(update, 1500); // safety net for browsers that skip events
+    return () => {
+      if (video) {
+        video.removeEventListener("mute", update);
+        video.removeEventListener("unmute", update);
+        video.removeEventListener("ended", update);
+      }
+      clearInterval(poll);
+      if (ref.current) ref.current.srcObject = null;
+    };
+  }, [stream]);
   return (
     <div style={{ ...u.tile, ...(style || {}), ...(spotlight ? u.tileSpot : {}) }} onClick={onPick} title={onPick ? "Click to spotlight" : undefined}>
-      <video ref={ref} autoPlay playsInline muted={local} style={{ ...u.video, filter: FILTERS[filter] || "none" }} />
-      {!cam && !audioOnly && <div style={u.avatar}>{String(name || "?").trim()[0]?.toUpperCase()}</div>}
-      {audioOnly && <div style={u.audioOnly}>🎙 Audio only</div>}
-      <span style={u.name}>
-        {mic === false ? "🔇 " : ""}{name}{local ? " (You)" : ""}
-      </span>
+      {hasVideo && <video ref={ref} autoPlay playsInline muted={local} style={{ ...u.video, filter: FILTERS[filter] || "none" }} />}
+      {!hasVideo && <div style={u.avatar}>{String(name || "?").trim()[0]?.toUpperCase()}</div>}
+      <span style={u.name}>{name}{local ? " (You)" : ""}</span>
     </div>
   );
 }
@@ -79,11 +101,41 @@ export default function MeetingRoom() {
   const [starting, setStarting] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Network speed badge (like the 1-1 call): Mbps + ping from WebRTC stats.
+  const [netStats, setNetStats] = useState({ mbps: 0, rtt: null });
+  useEffect(() => {
+    if (phase !== "live") return undefined;
+    const timer = setInterval(async () => {
+      const pc = pcs.current.values().next().value;
+      if (!pc) return;
+      try {
+        const stats = await pc.getStats();
+        let bytes = 0, rtt = null;
+        stats.forEach((r) => {
+          if (r.type === "inbound-rtp" && r.bytesReceived) bytes += r.bytesReceived;
+          if (r.type === "candidate-pair" && r.state === "succeeded" && r.currentRoundTripTime != null) rtt = Math.round(r.currentRoundTripTime * 1000);
+        });
+        setNetStats((prev) => {
+          const mbps = prev.at ? Math.max(0, ((bytes - prev.bytes) * 8) / ((Date.now() - prev.at) * 1000)) : 0;
+          return { mbps, rtt, bytes, at: Date.now() };
+        });
+      } catch (_) {}
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [phase]);
+
   const isHost = !!hostUserId && hostUserId === myUserId;
 
   /* ---------- media (with audio-only fallback for devices without camera) ---------- */
   const acquireMedia = useCallback(async () => {
     if (localStream.current) return localStream.current;
+    // Group audio call: the caller chose "audio only" from the group header.
+    if (location.state?.audioOnly) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      localStream.current = stream;
+      setAudioOnly(true); setCameraOn(false);
+      return stream;
+    }
     if (!navigator.mediaDevices?.getUserMedia) throw new Error("Camera and microphone need HTTPS.");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -101,7 +153,7 @@ export default function MeetingRoom() {
       setAudioOnly(true); setCameraOn(false);
       return stream;
     }
-  }, []);
+  }, [location.state]);
 
   // Prejoin camera preview.
   useEffect(() => {
@@ -142,7 +194,7 @@ export default function MeetingRoom() {
       });
       setParticipants((p) => ({ ...p, [id]: { ...(p[id] || {}), id, name: name || p[id]?.name || "Participant", stream: remote } }));
     };
-    pc.onicecandidate = (e) => e.candidate && socket.emit("meeting:signal", { roomId, to: id, kind: "ice", payload: e.candidate });
+    pc.onicecandidate = (e) => e.candidate && socket.emit("meeting\:signal", { roomId, to: id, kind: "ice", payload: e.candidate });
     pc.onconnectionstatechange = () => {
       if (["failed", "closed"].includes(pc.connectionState)) {
         pc.close(); pcs.current.delete(id);
@@ -159,19 +211,19 @@ export default function MeetingRoom() {
     if (pc.signalingState !== "stable") return;
     const d = await pc.createOffer();
     await pc.setLocalDescription(d);
-    socket.emit("meeting:signal", { roomId, to: peer.socketId, kind: "offer", payload: pc.localDescription });
+    socket.emit("meeting\:signal", { roomId, to: peer.socketId, kind: "offer", payload: pc.localDescription });
   }, [ensure, roomId]);
 
   const broadcastState = useCallback((overrides = {}) => {
     const payload = { mic: !muted, cam: cameraOn && !audioOnly, audioOnly, userId: myUserId, name: myName, ...overrides };
-    Object.keys(pcs.current).forEach((id) => socket.emit("meeting:signal", { roomId, to: id, kind: "state", payload }));
+    Object.keys(pcs.current).forEach((id) => socket.emit("meeting\:signal", { roomId, to: id, kind: "state", payload }));
   }, [muted, cameraOn, audioOnly, myUserId, myName, roomId]);
 
   useEffect(() => { if (phase === "live") broadcastState(); }, [phase, broadcastState]);
 
   /* ---------- join flow ---------- */
   const socketJoin = useCallback((token) => {
-    const send = () => socket.emit("meeting:join", { roomId, token, displayName: myName });
+    const send = () => socket.emit("meeting\:join", { roomId, token, displayName: myName });
     if (socket.connected) send();
     else { socket.once("connect", send); socket.connect(); }
   }, [roomId, myName]);
@@ -188,7 +240,7 @@ export default function MeetingRoom() {
     pendingToken.current = token;
     if (info.waitingRoom && !info.isHost) {
       setPhase("lobby");
-      socket.emit("meeting:knock", { roomId, token, name: myName });
+      socket.emit("meeting\:knock", { roomId, token, name: myName });
       setStarting(false);
     } else {
       socketJoin(token);
@@ -196,7 +248,7 @@ export default function MeetingRoom() {
   };
 
   const cancelKnock = () => {
-    socket.emit("meeting:knock-cancel", { roomId });
+    socket.emit("meeting\:knock-cancel", { roomId });
     setPhase("prejoin");
   };
 
@@ -214,7 +266,7 @@ export default function MeetingRoom() {
   const finish = useCallback((message, leaveRoom = true) => {
     if (finished.current) return;
     finished.current = true;
-    if (leaveRoom) socket.emit("meeting:leave", { roomId });
+    if (leaveRoom) socket.emit("meeting\:leave", { roomId });
     stopEverything();
     setEndMessage(message || "");
     setPhase("ended");
@@ -233,7 +285,7 @@ export default function MeetingRoom() {
 
   // Unmount: always release camera + microphone.
   useEffect(() => () => {
-    socket.emit("meeting:leave", { roomId });
+    socket.emit("meeting\:leave", { roomId });
     pcs.current.forEach((pc) => pc.close());
     pcs.current.clear();
     localStream.current?.getTracks().forEach((t) => { try { t.stop(); } catch (_) {} });
@@ -271,7 +323,7 @@ export default function MeetingRoom() {
           iceQueue.current.delete(from);
           const a = await pc.createAnswer();
           await pc.setLocalDescription(a);
-          socket.emit("meeting:signal", { roomId, to: from, kind: "answer", payload: pc.localDescription });
+          socket.emit("meeting\:signal", { roomId, to: from, kind: "answer", payload: pc.localDescription });
         } else if (kind === "answer") {
           await pc.setRemoteDescription(new RTCSessionDescription(payload));
           for (const c of iceQueue.current.get(from) || []) await pc.addIceCandidate(new RTCIceCandidate(c)).catch(() => {});
@@ -314,37 +366,37 @@ export default function MeetingRoom() {
       if (phase === "live") setError(message || "Meeting error.");
       else finish(message || "Unable to join meeting.");
     };
-    socket.on("meeting:joined", onJoined);
-    socket.on("meeting:peer-joined", onPeer);
-    socket.on("meeting:peer-left", onLeft);
-    socket.on("meeting:signal", onSignal);
-    socket.on("meeting:knock", onKnock);
-    socket.on("meeting:admitted", onAdmitted);
-    socket.on("meeting:denied", onDenied);
-    socket.on("meeting:ended", onEnded);
-    socket.on("meeting:removed", onRemoved);
-    socket.on("meeting:locked", onLocked);
-    socket.on("meeting:host-changed", onHostChanged);
-    socket.on("meeting:hand", onHand);
-    socket.on("meeting:reaction", onReaction);
-    socket.on("meeting:chat", onChat);
+    socket.on("meeting\:joined", onJoined);
+    socket.on("meeting\:peer-joined", onPeer);
+    socket.on("meeting\:peer-left", onLeft);
+    socket.on("meeting\:signal", onSignal);
+    socket.on("meeting\:knock", onKnock);
+    socket.on("meeting\:admitted", onAdmitted);
+    socket.on("meeting\:denied", onDenied);
+    socket.on("meeting\:ended", onEnded);
+    socket.on("meeting\:removed", onRemoved);
+    socket.on("meeting\:locked", onLocked);
+    socket.on("meeting\:host-changed", onHostChanged);
+    socket.on("meeting\:hand", onHand);
+    socket.on("meeting\:reaction", onReaction);
+    socket.on("meeting\:chat", onChat);
     socket.on("meeting:error", onError);
     return () => {
-      socket.off("meeting:joined", onJoined);
-      socket.off("meeting:peer-joined", onPeer);
-      socket.off("meeting:peer-left", onLeft);
-      socket.off("meeting:signal", onSignal);
-      socket.off("meeting:knock", onKnock);
-      socket.off("meeting:admitted", onAdmitted);
-      socket.off("meeting:denied", onDenied);
-      socket.off("meeting:ended", onEnded);
-      socket.off("meeting:removed", onRemoved);
-      socket.off("meeting:locked", onLocked);
-      socket.off("meeting:host-changed", onHostChanged);
-      socket.off("meeting:hand", onHand);
-      socket.off("meeting:reaction", onReaction);
+      socket.off("meeting\:joined", onJoined);
+      socket.off("meeting\:peer-joined", onPeer);
+      socket.off("meeting\:peer-left", onLeft);
+      socket.off("meeting\:signal", onSignal);
+      socket.off("meeting\:knock", onKnock);
+      socket.off("meeting\:admitted", onAdmitted);
+      socket.off("meeting\:denied", onDenied);
+      socket.off("meeting\:ended", onEnded);
+      socket.off("meeting\:removed", onRemoved);
+      socket.off("meeting\:locked", onLocked);
+      socket.off("meeting\:host-changed", onHostChanged);
+      socket.off("meeting\:hand", onHand);
+      socket.off("meeting\:reaction", onReaction);
       socket.off("meeting:chat", onChat);
-      socket.off("meeting:error", onError);
+      socket.off("meeting\:error", onError);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, ensure, offer, socketJoin, finish, broadcastState, myUserId]);
@@ -364,13 +416,13 @@ export default function MeetingRoom() {
   const toggleHand = () => {
     const next = !handRaised;
     setHandRaised(next);
-    socket.emit("meeting:hand", { roomId, raised: next });
+    socket.emit("meeting\:hand", { roomId, raised: next });
   };
-  const react = (emoji) => socket.emit("meeting:reaction", { roomId, emoji });
+  const react = (emoji) => socket.emit("meeting\:reaction", { roomId, emoji });
   const sendChat = () => {
     const text = chatDraft.trim();
     if (!text) return;
-    socket.emit("meeting:chat", { roomId, text });
+    socket.emit("meeting\:chat", { roomId, text });
     setChat((c) => [...c, { peerId: "me", name: myName, text, at: new Date().toISOString() }]);
     setChatDraft("");
   };
@@ -381,7 +433,7 @@ export default function MeetingRoom() {
   };
   const lockRoom = () => {
     const token = auth.currentUser?.getIdToken();
-    token.then((t) => socket.emit("meeting:lock", { roomId, locked: !locked, token: t }));
+    token.then((t) => socket.emit("meeting\:lock", { roomId, locked: !locked, token: t }));
   };
   const endForAll = async () => {
     const token = await auth.currentUser?.getIdToken();
@@ -390,13 +442,13 @@ export default function MeetingRoom() {
   };
   const removePeer = async (socketId) => {
     const token = await auth.currentUser?.getIdToken();
-    socket.emit("meeting:remove", { roomId, target: socketId, token });
+    socket.emit("meeting\:remove", { roomId, target: socketId, token });
   };
   const makeHost = async (socketId) => {
     const targetUserId = participants[socketId]?.userId;
     if (!targetUserId) return setError("Wait for that participant's status, then try again.");
     const token = await auth.currentUser?.getIdToken();
-    socket.emit("meeting:transfer", { roomId, targetUserId, token });
+    socket.emit("meeting\:transfer", { roomId, targetUserId, token });
   };
   const leave = () => { finish(""); navigate("/"); };
   const copyLink = async () => {
@@ -410,14 +462,17 @@ export default function MeetingRoom() {
   /* ---------- render ---------- */
   return (
     <div style={u.page}>
-      <style>{`@keyframes suraFloatUp{0%{transform:translateY(0) scale(.7);opacity:0}12%{opacity:1}100%{transform:translateY(-46vh) scale(1.35);opacity:0}}
-@keyframes suraSpin{to{transform:rotate(360deg)}}
+      <style>{`@keyframes suraFloatUp{0%{transform\:translateY(0) scale(.7);opacity:0}12%{opacity:1}100%{transform\:translateY(-46vh) scale(1.35);opacity:0}}
+@keyframes suraSpin{to{transform\:rotate(360deg)}}
 @keyframes suraPulse{0%,100%{opacity:.45}50%{opacity:1}}`}</style>
 
       <header style={u.header}>
         <div>
           <b style={u.brand}>SURA CHAT MEETING</b>
           <small style={u.roomLabel}>{meeting?.title || "Meeting"} · {roomId.slice(0, 10)}{locked ? " · 🔒 locked" : ""}</small>
+          <small style={{ ...u.roomLabel, color: netStats.mbps >= 1 ? "#6fe0a8" : "#e4a44d" }}>
+            📶 {netStats.mbps.toFixed(2)} Mbps{netStats.rtt != null ? " · " + netStats.rtt + " ms" : ""}
+          </small>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}>
           <select aria-label="Video filter" value={filter} onChange={(e) => setFilter(e.target.value)} style={u.select}>
@@ -494,24 +549,24 @@ export default function MeetingRoom() {
                 {(() => {
                   const spot = peerList.find((p) => p.id === spotlight) || peerList[0];
                   return spot ? (
-                    <Tile stream={spot.stream} name={spot.name} mic={spot.mic} cam={spot.cam} audioOnly={spot.audioOnly}
+                    <Tile stream={spot.stream} name={spot.name}
                       filter={tileFilter} spotlight style={{ flex: 1, minHeight: 0, width: "100%" }} />
                   ) : null;
                 })()}
                 <div style={u.strip}>
-                  <Tile stream={localStream.current} name={myName} local mic={!muted} cam={cameraOn} audioOnly={audioOnly}
+                  <Tile stream={localStream.current} name={myName} local
                     filter={tileFilter} style={u.stripTile} onPick={() => setSpotlight(null)} />
                   {peerList.filter((p) => p.id !== spotlight).map((p) => (
-                    <Tile key={p.id} stream={p.stream} name={p.name} mic={p.mic} cam={p.cam} audioOnly={p.audioOnly}
+                    <Tile key={p.id} stream={p.stream} name={p.name}
                       filter={tileFilter} style={u.stripTile} onPick={() => setSpotlight(p.id)} />
                   ))}
                 </div>
               </>
             ) : (
               <>
-                <Tile stream={localStream.current} name={myName} local mic={!muted} cam={cameraOn} audioOnly={audioOnly} filter={tileFilter} />
+                <Tile stream={localStream.current} name={myName} local filter={tileFilter} />
                 {peerList.map((p) => (
-                  <Tile key={p.id} stream={p.stream} name={p.name} mic={p.mic} cam={p.cam} audioOnly={p.audioOnly}
+                  <Tile key={p.id} stream={p.stream} name={p.name}
                     filter={tileFilter} onPick={() => { setLayout("speaker"); setSpotlight(p.id); }} />
                 ))}
               </>
