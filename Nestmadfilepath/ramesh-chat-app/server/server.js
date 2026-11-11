@@ -68,37 +68,7 @@
 //   socket.on("webrtc-ice",    data => io.to(data.to).emit("webrtc-ice",    { from: socket.id, ...data }));
 
 //   /* disconnect => mark offline */
-//   // Authenticated native WebRTC meeting rooms (mesh topology).
-  socket.on("meeting:join", async ({ roomId, token, displayName } = {}) => {
-    try {
-      const code=String(roomId||"");
-      if(!/^[a-f0-9]{24,64}$/i.test(code)||!token) throw new Error("Invalid meeting link.");
-      const decoded=await admin.auth().verifyIdToken(token);
-      const member=await User.findOne({firebaseUid:decoded.uid}).select("_id name username").lean();
-      if(!member) throw new Error("Sura Chat account not found.");
-      const room="meeting:"+code;
-      const existing=await io.in(room).fetchSockets();
-      const peers=existing.filter(x=>x.id!==socket.id).map(x=>({socketId:x.id,name:x.data.meetingName||"Participant"}));
-      socket.join(room);socket.data.meetingRoom=room;socket.data.meetingUserId=String(member._id);
-      socket.data.meetingName=String(displayName||member.name||member.username||"Participant").slice(0,60);
-      socket.emit("meeting:joined",{peers});
-      socket.to(room).emit("meeting:peer-joined",{peerId:socket.id,name:socket.data.meetingName});
-    } catch(e) { socket.emit("meeting:error",{message:e.message||"Unable to join meeting."}); }
-  });
-  socket.on("meeting:signal",async({roomId,to,kind,payload}={})=>{
-    const room="meeting:"+String(roomId||"");
-    if(socket.data.meetingRoom!==room||!to||!["offer","answer","ice"].includes(kind)||!payload)return;
-    const members=await io.in(room).fetchSockets();
-    if(!members.some(x=>x.id===String(to)))return;
-    io.to(String(to)).emit("meeting:signal",{from:socket.id,kind,payload});
-  });
-  socket.on("meeting:leave",({roomId}={})=>{
-    const room="meeting:"+String(roomId||"");
-    if(socket.data.meetingRoom!==room)return;
-    socket.to(room).emit("meeting:peer-left",{peerId:socket.id});
-    socket.leave(room);socket.data.meetingRoom=null;socket.data.meetingUserId=null;
-  });
-  socket.on("disconnect", async () => {
+//   socket.on("disconnect", async () => {
 //     console.log("🔌 Socket", socket.id, "disconnected");
 //     const rooms = [...socket.rooms].filter(r => r !== socket.id);
 //     for (const id of rooms) {
@@ -160,7 +130,6 @@
 // // API Routes
 // app.use("/api/auth", authRoutes);
 // app.use("/api/profile", profileRoutes);
-// app.use("/api", chatRoutes);
 // app.use("/api/settings", settingsRoutes);
 
 // // Socket.IO Logic
@@ -196,6 +165,7 @@ console.log("✅ Firebase Admin SDK ready");
 // Models and Routes
 console.log("📦 [DEBUG] Loading models and routes...");
 const User = require("./models/User");
+const Meeting = require("./models/Meeting");
 const authRoutes = require("./routes/authRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const profileRoutes = require("./routes/profileRoutes");
@@ -203,6 +173,8 @@ const settingsRoutes = require("./routes/settingsRoutes");
 const groupRoutes = require("./routes/grouproutes");
 const groupMessageRoutes = require("./routes/groupMessageRoutes");
 const messageActionRoutes = require("./routes/messageActionRoutes");
+const meetingRoutes = require("./routes/meetingRoutes");
+const registerMeetingLive = require("./services/meetingLive");
 console.log("✅ [DEBUG] Models and routes loaded successfully");
 
 // App & Server Setup
@@ -265,6 +237,9 @@ app.use("/api/groups", groupRoutes);
 app.use("/api/group-messages", groupMessageRoutes);
 app.use("/api/message-actions", messageActionRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/groups (Firebase-authenticated)");
+
+app.use("/api/meetings", meetingRoutes);
+console.log("✅ [DEBUG] Route mounted: /api/meetings (Google Meet-style meetings)");
 
 // Lightweight health endpoint for Render and uptime checks.
 app.get("/", (req, res) => {
@@ -470,6 +445,53 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Authenticated native WebRTC meeting rooms (mesh topology).
+  socket.on("meeting:join", async ({ roomId, token, displayName } = {}) => {
+    try {
+      const code = String(roomId || "").toLowerCase();
+      if (!/^[a-f0-9]{24,64}$/i.test(code) || !token) throw new Error("Invalid meeting link.");
+      const decoded = await admin.auth().verifyIdToken(token);
+      const member = await User.findOne({ firebaseUid: decoded.uid }).select("_id name username").lean();
+      if (!member) throw new Error("Sura Chat account not found.");
+      // Enforce Google Meet-style room rules server-side: ended, locked or removed.
+      const meeting = await Meeting.findOne({ roomId: code }).lean().catch(() => null);
+      if (meeting) {
+        if (meeting.status === "ended") throw new Error("This meeting was ended by the host.");
+        if (meeting.locked && String(meeting.host) !== String(member._id)) throw new Error("The host has locked this meeting.");
+        if ((meeting.removedUsers || []).some((u) => String(u) === String(member._id))) throw new Error("You were removed from this meeting.");
+      }
+      const room = "meeting:" + code;
+      const existing = await io.in(room).fetchSockets();
+      const peers = existing.filter((x) => x.id !== socket.id).map((x) => ({ socketId: x.id, name: x.data.meetingName || "Participant" }));
+      socket.join(room);
+      socket.data.meetingRoom = room;
+      socket.data.meetingUserId = String(member._id);
+      socket.data.meetingName = String(displayName || member.name || member.username || "Participant").slice(0, 60);
+      socket.emit("meeting:joined", { peers });
+      socket.to(room).emit("meeting:peer-joined", { peerId: socket.id, name: socket.data.meetingName });
+    } catch (e) {
+      socket.emit("meeting:error", { message: e.message || "Unable to join meeting." });
+    }
+  });
+  socket.on("meeting:signal", async ({ roomId, to, kind, payload } = {}) => {
+    const room = "meeting:" + String(roomId || "").toLowerCase();
+    if (socket.data.meetingRoom !== room || !to || !["offer", "answer", "ice", "state"].includes(kind) || !payload) return;
+    const members = await io.in(room).fetchSockets();
+    if (!members.some((x) => x.id === String(to))) return;
+    io.to(String(to)).emit("meeting:signal", { from: socket.id, kind, payload });
+  });
+  socket.on("meeting:leave", ({ roomId } = {}) => {
+    const room = "meeting:" + String(roomId || "").toLowerCase();
+    if (socket.data.meetingRoom !== room) return;
+    socket.to(room).emit("meeting:peer-left", { peerId: socket.id });
+    socket.leave(room);
+    socket.data.meetingRoom = null;
+    socket.data.meetingUserId = null;
+  });
+
+  // Google Meet-style waiting room, host controls, hands, reactions and chat.
+  registerMeetingLive(io, socket);
+
   socket.on("disconnect", async () => {
     const meetingRoom = socket.data.meetingRoom;
     if (meetingRoom) socket.to(meetingRoom).emit("meeting:peer-left", { peerId: socket.id });
@@ -521,6 +543,7 @@ server.listen(PORT, () => {
   console.log(`   - GET/POST /api/messages, /api/conversations/*, /api/chatlist/*`);
   console.log(`   - GET/POST /api/settings/*`);
   console.log(`   - GET/POST/PATCH/DELETE /api/groups/* (Firebase-authenticated)`);
+  console.log(`   - POST/GET /api/meetings/* (Google Meet-style meetings)`);
   console.log(`✅ [DEBUG] Socket.IO ready for connections`);
 });
 
