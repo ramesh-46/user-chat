@@ -196,9 +196,27 @@ console.log("🗄️ [DEBUG] Connecting to MongoDB...");
 console.log("🗄️ [DEBUG] MONGO_URI present:", !!process.env.MONGO_URI);
 
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => {
+  .then(async () => {
     console.log("✅ [DEBUG] MongoDB connected successfully");
     console.log("🗄️ [DEBUG] Connection state:", mongoose.connection.readyState);
+
+    // One-time rollout for accounts created while the old schema default was Private.
+    // This runs once only; users can switch to Private afterwards without being reset.
+    try {
+      const migrations = mongoose.connection.collection("app_migrations");
+      const migrationId = "2026-11-public-directory-default";
+      const alreadyApplied = await migrations.findOne({ _id: migrationId });
+      if (!alreadyApplied) {
+        const result = await User.updateMany(
+          { isPublic: { $ne: true } },
+          { $set: { isPublic: true } }
+        );
+        await migrations.insertOne({ _id: migrationId, appliedAt: new Date() });
+        console.log("[PUBLIC_DIRECTORY_MIGRATION] Existing accounts made Public:", result.modifiedCount);
+      }
+    } catch (migrationError) {
+      console.error("[PUBLIC_DIRECTORY_MIGRATION] Failed:", migrationError.message);
+    }
   })
   .catch(err => {
     console.error("❌ [DEBUG] MongoDB connection error:", err.message);
