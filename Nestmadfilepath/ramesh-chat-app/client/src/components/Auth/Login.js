@@ -21,11 +21,11 @@ export default function Login() {
   const [error, setError] = useState("");
   const [qrSession, setQrSession] = useState(null);
   const [qrBusy, setQrBusy] = useState(false);
+  const { login } = useContext(AuthContext);
+  const nav = useNavigate();
   const qrRef = useRef(null);
   const loginRef = useRef(login);
   loginRef.current = login;
-  const { login } = useContext(AuthContext);
-  const nav = useNavigate();
 
   const handleLogin = async () => {
     if (!username || !password) return setError("Enter your username and password.");
@@ -53,6 +53,7 @@ export default function Login() {
       const idToken = await credential.user.getIdToken();
       const res = await api.post("/auth/google", { idToken });
       login(res.data);
+      await registerDevice();
       nav("/");
     } catch (err) {
       const code = err?.code;
