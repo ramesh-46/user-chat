@@ -5,6 +5,7 @@
 
 // const DeletedAccount = require("../models/DeletedAccount");
 const { sendPushToUser } = require("../services/pushNotifications");
+const admin = require("../config/firebaseAdmin");
 
 // /* Public directory: only users who explicitly enable Public visibility are listed. */
 
@@ -195,8 +196,15 @@ router.get("/public-users/:userId", async (req, res) => {
       return res.status(400).json({ error: "Invalid user ID" });
     }
 
-    const current = await User.findById(userId).select("_id blockList").lean();
-    if (!current) return res.status(404).json({ error: "User not found" });
+    // Require the signed-in Firebase account to match the requested directory owner.
+    const authorization = String(req.headers.authorization || "");
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    if (!token) return res.status(401).json({ error: "Sign in to find people" });
+    const decoded = await admin.auth().verifyIdToken(token);
+    const current = await User.findOne({ firebaseUid: decoded.uid }).select("_id blockList").lean();
+    if (!current || String(current._id) !== String(userId)) {
+      return res.status(403).json({ error: "You can only browse people from your own account" });
+    }
 
     const blockedByCurrent = current.blockList || [];
     const users = await User.find({
