@@ -600,7 +600,7 @@ export default function ProfilePanel({ onClose }) {
   const [mobileNumber, setMobileN] = useState(user.mobile || "");
   const [about, setAbout] = useState(user.about || "");
   const [avatar, setAvatar] = useState(user.avatar || "");
-  const [isPublic, setIsPublic] = useState(!!user.isPublic);
+  const [isPublic, setIsPublic] = useState(user.isPublic !== false);
   const [privacyBusy, setPrivacyBusy] = useState(false);
   const fileInputRef = useRef();
 
@@ -611,7 +611,7 @@ export default function ProfilePanel({ onClose }) {
     try {
       const res = await updateProfile(user._id || user.userId, { isPublic: next });
       login(res.data);
-      setIsPublic(!!res.data.isPublic);
+      setIsPublic(res.data.isPublic !== false);
     } catch (error) {
       alert(error.response?.data?.error || "Could not update profile visibility.");
     } finally { setPrivacyBusy(false); }
@@ -766,7 +766,7 @@ export default function ProfilePanel({ onClose }) {
               {privacyBusy ? "Saving…" : isPublic ? "Public" : "Private"}
             </button>
           </div>
-          <small style={{ display: "block", color: "var(--textLight)", marginTop: 8 }}>Only public profiles appear in Find people. Existing chats are not removed when you switch to Private.</small>
+          <small style={{ display: "block", color: "var(--textLight)", marginTop: 8 }}>New accounts are Public by default. You can switch to Private whenever you want. Private profiles stay hidden from Find people; existing chats are not removed.</small>
         </div>
         <label style={S.label}>Name</label>
         <input

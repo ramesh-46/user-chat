@@ -63,6 +63,7 @@ router.post("/signup", async (req, res) => {
       email: decoded.email,
       name: decoded.name || "",
       username: uname,
+      isPublic: true,
       password: password.trim(), // ✅ Store password directly (for now only)
     });
 
@@ -151,6 +152,7 @@ router.post("/google", async (req, res) => {
         email: decoded.email.toLowerCase(),
         name: decoded.name || "",
         username,
+        isPublic: true,
         avatar: decoded.picture || "",
       });
     } else {
