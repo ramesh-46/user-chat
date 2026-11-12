@@ -21,6 +21,8 @@ export default function DeviceSessions(){
   const load=useCallback(async()=>{
     try{
       setBusy(true);setError("");
+      const firebaseUser=await waitForFirebaseUser();
+      if(!firebaseUser)throw new Error("Your secure sign-in is still loading. Refresh this page or sign in again.");
       if(!localStorage.getItem("deviceSession")){
         const registered=await api.post("/auth-extra/session/register",{
           deviceName:/Mobi/i.test(navigator.userAgent)?"Mobile device":"Desktop browser",
