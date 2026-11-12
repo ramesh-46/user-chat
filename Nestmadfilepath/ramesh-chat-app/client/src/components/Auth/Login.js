@@ -141,6 +141,15 @@ export default function Login() {
           setQrStatus("error");
           setQrMessage("Approval was received, but account verification failed. Generate a new QR code.");
           if (timer) clearInterval(timer);
+        } else if (
+          e.response?.status === 409 ||
+          e.response?.status === 503 ||
+          e.response?.data?.code === "QR_TOKEN_CREATION_FAILED" ||
+          e.response?.data?.code === "QR_APPROVAL_ACCOUNT_MISSING"
+        ) {
+          setQrStatus("error");
+          setQrMessage(e.response?.data?.error || "Secure sign-in could not be completed. Generate a new QR code and try again.");
+          if (timer) clearInterval(timer);
         } else {
           setQrMessage(e.response?.data?.error || "Connection interrupted. Retrying securely…");
         }
