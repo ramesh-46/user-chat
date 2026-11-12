@@ -7,23 +7,7 @@
 const { sendPushToUser } = require("../services/pushNotifications");
 
 // /* Public directory: only users who explicitly enable Public visibility are listed. */
-router.get("/public-users/:userId", async (req, res) => {
-  try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.userId)) return res.status(400).json({ error: "Invalid user ID" });
-    const current = await User.findById(req.params.userId).select("blockList");
-    if (!current) return res.status(404).json({ error: "User not found" });
-    const blocked = (current.blockList || []).map((id) => new mongoose.Types.ObjectId(String(id)));
-    const users = await User.find({
-      isPublic: true,
-      _id: { $ne: current._id, $nin: blocked },
-      blockList: { $ne: current._id },
-    }).select("_id username name about avatar online lastSeen").sort({ online: -1, username: 1 }).limit(200).lean();
-    return res.json({ success: true, users });
-  } catch (error) {
-    console.error("[PUBLIC_USERS]", error);
-    return res.status(500).json({ error: "Unable to load public profiles" });
-  }
-});
+
 
 /* 🔎 User search – by mobile OR username */
 // router.get("/users", async (req, res) => {
@@ -202,6 +186,35 @@ const mongoose = require("mongoose");
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 }, fileFilter: (_req, _file, cb) => cb(null, true) });
 const DeletedAccount = require("../models/DeletedAccount");
+
+/* Public directory: list only public users, excluding the signed-in user and either-side blocks. */
+router.get("/public-users/:userId", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+
+    const current = await User.findById(userId).select("_id blockList").lean();
+    if (!current) return res.status(404).json({ error: "User not found" });
+
+    const blockedByCurrent = current.blockList || [];
+    const users = await User.find({
+      isPublic: true,
+      _id: { $ne: current._id, $nin: blockedByCurrent },
+      blockList: { $ne: current._id },
+    })
+      .select("_id username name about avatar online lastSeen")
+      .sort({ online: -1, username: 1 })
+      .limit(200)
+      .lean();
+
+    return res.json({ success: true, users });
+  } catch (error) {
+    console.error("[PUBLIC_USERS]", error);
+    return res.status(500).json({ error: "Unable to load public users" });
+  }
+});
 
 /* 🔎 User search – by mobile OR username */
 router.get("/users", async (req, res) => {
