@@ -179,24 +179,9 @@
 //   const [mobileNumber, setMobileN] = useState(user.mobile || "");
 //   const [about, setAbout] = useState(user.about || "");
 //   const [avatar, setAvatar] = useState(user.avatar || "");
-  const [isPublic, setIsPublic] = useState(!!user.isPublic);
-  const [privacyBusy, setPrivacyBusy] = useState(false);
 //   const fileInputRef = useRef();
 
-//   const toggleProfilePrivacy = async () => {
-    if (privacyBusy) return;
-    const next = !isPublic;
-    setPrivacyBusy(true);
-    try {
-      const res = await updateProfile(user._id || user.userId, { isPublic: next });
-      login(res.data);
-      setIsPublic(!!res.data.isPublic);
-    } catch (error) {
-      alert(error.response?.data?.error || "Could not update profile visibility.");
-    } finally { setPrivacyBusy(false); }
-  };
-
-  const nextTheme = () => {
+//   const nextTheme = () => {
 //     const keys = Object.keys(THEMES);
 //     setTheme(keys[(keys.indexOf(themeKey) + 1) % keys.length]);
 //   };
@@ -615,7 +600,22 @@ export default function ProfilePanel({ onClose }) {
   const [mobileNumber, setMobileN] = useState(user.mobile || "");
   const [about, setAbout] = useState(user.about || "");
   const [avatar, setAvatar] = useState(user.avatar || "");
+  const [isPublic, setIsPublic] = useState(!!user.isPublic);
+  const [privacyBusy, setPrivacyBusy] = useState(false);
   const fileInputRef = useRef();
+
+  const toggleProfilePrivacy = async () => {
+    if (privacyBusy) return;
+    const next = !isPublic;
+    setPrivacyBusy(true);
+    try {
+      const res = await updateProfile(user._id || user.userId, { isPublic: next });
+      login(res.data);
+      setIsPublic(!!res.data.isPublic);
+    } catch (error) {
+      alert(error.response?.data?.error || "Could not update profile visibility.");
+    } finally { setPrivacyBusy(false); }
+  };
 
   const nextTheme = () => {
     const keys = Object.keys(THEMES);
