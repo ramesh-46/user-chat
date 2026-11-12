@@ -71,8 +71,9 @@ export default function Login() {
       <div style={styles.card}>
         {/* Header Section matching "Hello Again!" vibe */}
         <div style={styles.header}>
-          <h2 style={styles.h2}>Hello Again!</h2>
-          <p style={styles.subtitle}>Welcome back you've been missed.</p>
+          <div style={styles.brand}><span style={styles.brandMark}>✦</span><span>BLACK PEARL</span></div>
+          <h2 style={styles.h2}>Welcome back.</h2>
+          <p style={styles.subtitle}>Your conversations, your people, your space. Sign in to continue.</p>
         </div>
 
         {/* Error Message */}
@@ -177,36 +178,39 @@ const styles = {
     display: "flex", 
     justifyContent: "center", 
     alignItems: "center",
-    background: "#f8f9fa", // Light background like the image
+    background: "radial-gradient(circle at 15% 15%, rgba(128,101,245,.24), transparent 32%), radial-gradient(circle at 85% 85%, rgba(212,175,55,.14), transparent 30%), #080b14",
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    padding: "20px", 
+    padding: "28px 18px", 
     boxSizing: "border-box",
   },
   card: {
     width: "100%", 
-    maxWidth: "400px", // Optimal size for mobile/iPad/Laptop
-    padding: "40px 32px", 
-    borderRadius: "24px",
-    background: "#ffffff", 
-    boxShadow: "0 10px 40px rgba(0,0,0,0.08)",
+    maxWidth: "460px",
+    padding: "42px 38px", 
+    borderRadius: "28px",
+    background: "linear-gradient(145deg, rgba(25,31,48,.98), rgba(12,16,28,.98))",
+    border: "1px solid rgba(212,175,55,.28)",
+    boxShadow: "0 30px 100px rgba(0,0,0,.52), inset 0 1px 0 rgba(255,255,255,.07)",
     display: "flex", 
     flexDirection: "column", 
     boxSizing: "border-box", 
   },
+  brand: { display:"flex",alignItems:"center",gap:9,marginBottom:26,color:"#d8bd70",fontSize:11,fontWeight:900,letterSpacing:"3px" },
+  brandMark: { width:30,height:30,display:"grid",placeItems:"center",border:"1px solid rgba(216,189,112,.55)",borderRadius:10,fontSize:18,color:"#e8d28d" },
   header: {
-    marginBottom: "24px",
+    marginBottom: "30px",
     textAlign: "left",
   },
   h2: {
-    fontSize: "28px",
-    fontWeight: "700",
-    color: "#1a1a1a",
+    fontSize: "34px",
+    fontWeight: "800",
+    color: "#f8f5eb",
     margin: "0 0 8px 0",
     letterSpacing: "-0.5px",
   },
   subtitle: {
     fontSize: "14px",
-    color: "#6b7280",
+    color: "#a9afbf",
     margin: 0,
     lineHeight: "1.5",
   },
@@ -217,21 +221,21 @@ const styles = {
     display: "block",
     fontSize: "13px",
     fontWeight: "500",
-    color: "#374151",
-    marginBottom: "8px",
+    color: "#d7d2c4",
+    marginBottom: "9px",
   },
   fieldWrap: {
     display: "flex", 
     alignItems: "center", 
     gap: "10px", 
     padding: "0 14px", 
-    border: "1px solid #e5e7eb", 
-    borderRadius: "12px", 
-    background: "#ffffff",
+    border: "1px solid rgba(255,255,255,.12)", 
+    borderRadius: "14px", 
+    background: "rgba(255,255,255,.055)",
     transition: "border-color 0.2s",
   },
   fieldIcon: {
-    color: "#9ca3af", 
+    color: "#c5a85c", 
     fontSize: "16px",
   },
   input: {
@@ -241,14 +245,14 @@ const styles = {
     padding: "14px 0", 
     border: "none", 
     background: "transparent",
-    color: "#111827", 
+    color: "#f8f5eb", 
     fontSize: "14px", 
     outline: "none",
   },
   eye: { 
     border: 0, 
     background: "transparent", 
-    color: "#9ca3af", 
+    color: "#c5a85c", 
     fontSize: "16px", 
     cursor: "pointer", 
     padding: "4px",
@@ -267,7 +271,7 @@ const styles = {
     alignItems: "center",
     gap: "6px",
     cursor: "pointer",
-    color: "#4b5563",
+    color: "#a9afbf",
   },
   checkbox: {
     accentColor: "#111827",
@@ -278,7 +282,7 @@ const styles = {
     fontSize: "12px",
   },
   forgotLink: {
-    color: "#111827",
+    color: "#d6b75f",
     textDecoration: "none",
     fontWeight: "600",
     fontSize: "12px",
@@ -289,9 +293,9 @@ const styles = {
     marginBottom: "16px", 
     fontSize: "13px", 
     lineHeight: "1.4",
-    background: "#fef2f2", 
-    border: "1px solid #fecaca", 
-    color: "#dc2626",
+    background: "rgba(220,38,38,.12)", 
+    border: "1px solid rgba(248,113,113,.35)", 
+    color: "#fca5a5",
     textAlign: "center",
   },
   btn: {
@@ -303,8 +307,8 @@ const styles = {
     fontWeight: "600", 
     fontSize: "15px", 
     letterSpacing: "0.3px",
-    background: "#111827", // Dark button like the image
-    color: "#ffffff", 
+    background: "linear-gradient(110deg,#d8bd70,#b58a35)",
+    color: "#17130a", 
     cursor: "pointer",
     transition: "opacity 0.2s",
   },
@@ -317,10 +321,10 @@ const styles = {
   sepLine: {
     flex: 1,
     height: "1px",
-    background: "#e5e7eb",
+    background: "rgba(255,255,255,.14)",
   },
   sepText: {
-    color: "#9ca3af", 
+    color: "#8991a4", 
     fontSize: "11px", 
     textTransform: "lowercase",
     whiteSpace: "nowrap",
@@ -335,8 +339,8 @@ const styles = {
     width: "50px",
     height: "50px",
     borderRadius: "50%",
-    border: "1px solid #e5e7eb",
-    background: "#ffffff",
+    border: "1px solid rgba(255,255,255,.16)",
+    background: "rgba(255,255,255,.06)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -353,12 +357,12 @@ const styles = {
   },
   footer: {
     textAlign: "center", 
-    color: "#6b7280", 
+    color: "#a9afbf", 
     fontSize: "13px", 
     margin: 0,
   },
   link: { 
-    color: "#111827", 
+    color: "#d6b75f", 
     textDecoration: "none", 
     fontWeight: "700",
     marginLeft: "4px",
