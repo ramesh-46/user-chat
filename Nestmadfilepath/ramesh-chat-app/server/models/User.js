@@ -8,6 +8,7 @@ const userSchema = new Schema(
     name: { type: String },
     mobile: { type: String, unique: true, sparse: true },
     about: { type: String },
+    isPublic: { type: Boolean, default: false, index: true },
     avatar: { type: String },
     fcmToken: { type: String },
     fcmTokens: { type: [String], default: [] },

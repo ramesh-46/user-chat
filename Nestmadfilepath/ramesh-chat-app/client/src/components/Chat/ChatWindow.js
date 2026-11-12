@@ -46,6 +46,11 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   const [showScrollDown, setShowScrollDown] = useState(false);
   const bottom = useRef();
   const flowRef = useRef();
+  const hasMoreRef = useRef(true);
+  const loadingOlderRef = useRef(false);
+  const preserveScrollRef = useRef(null);
+  const initialScrollRef = useRef(true);
+  const atBottomRef = useRef(true);
   const isMobile = useIsMobile();
   const notificationAudio = useRef(new Audio("/ping.mp3"));
   const userId = String(user?._id || user?.userId || "");
@@ -62,21 +67,27 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   const [replyTo, setReplyTo] = useState(null);
   const touchTimeout = useRef(null);
 
-  // join socket room
+  // Show newest messages first; older pages are fetched only on upward scroll.
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || !peerId) return;
+    let cancelled = false;
+    hasMoreRef.current = true;
+    loadingOlderRef.current = false;
+    preserveScrollRef.current = null;
+    initialScrollRef.current = true;
+    setMsgs([]);
     socket.emit("join", userId);
     const fetchInitialMessages = async () => {
-      if (!peerId) return;
       try {
-        const res = await fetchMessages(userId, peerId);
-        setMsgs(res.data.messages);
+        const res = await fetchMessages(userId, peerId, { limit: 40 });
+        if (cancelled) return;
+        setMsgs(res.data.messages || []);
+        hasMoreRef.current = !!res.data.hasMore;
         markConversationRead(userId, peerId).catch((error) => console.warn("Read receipt update failed:", error));
-      } catch (err) {
-        console.error("Failed to load messages:", err);
-      }
+      } catch (err) { if (!cancelled) console.error("Failed to load recent messages:", err); }
     };
     fetchInitialMessages();
+    return () => { cancelled = true; };
   }, [userId, peerId]);
 
   // block status
@@ -176,7 +187,18 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   }, [socket, userId, peerId]);
 
   useEffect(() => {
-    if (selectedMessages.length === 0 && !showScrollDown) bottom.current?.scrollIntoView({ behavior: "smooth" });
+    if (selectedMessages.length || showScrollDown) return;
+    const el = flowRef.current;
+    if (preserveScrollRef.current && el) {
+      const previous = preserveScrollRef.current;
+      el.scrollTop = previous.top + (el.scrollHeight - previous.height);
+      preserveScrollRef.current = null;
+      return;
+    }
+    if (initialScrollRef.current || atBottomRef.current) {
+      bottom.current?.scrollIntoView({ behavior: initialScrollRef.current ? "auto" : "smooth" });
+      initialScrollRef.current = false;
+    }
   }, [msgs, selectedMessages, showScrollDown]);
 
   const send = async (text, file, fileType, content) => {
@@ -276,15 +298,27 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
     setSelectedMessages([]);
   };
 
-  // handle scroll to show scroll-down button
-  const handleScroll = () => {
+  // Fetch older messages at the top and preserve the visible scroll anchor.
+  const handleScroll = async () => {
     const el = flowRef.current;
     if (!el) return;
-    if (el.scrollTop + el.clientHeight < el.scrollHeight - 50) {
-      setShowScrollDown(true);
-    } else {
-      setShowScrollDown(false);
-    }
+    atBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    setShowScrollDown(!atBottomRef.current);
+    if (el.scrollTop > 90 || loadingOlderRef.current || !hasMoreRef.current || !msgs.length) return;
+    loadingOlderRef.current = true;
+    const first = msgs[0];
+    preserveScrollRef.current = { height: el.scrollHeight, top: el.scrollTop };
+    try {
+      const res = await fetchMessages(userId, peerId, { limit: 40, before: first.createdAt, beforeId: first._id });
+      const older = res.data.messages || [];
+      hasMoreRef.current = !!res.data.hasMore;
+      if (older.length) setMsgs((current) => {
+        const known = new Set(current.map((item) => String(item._id)));
+        return [...older.filter((item) => !known.has(String(item._id))), ...current];
+      });
+      else { hasMoreRef.current = false; preserveScrollRef.current = null; }
+    } catch (error) { preserveScrollRef.current = null; console.warn("Could not load older messages:", error); }
+    finally { loadingOlderRef.current = false; }
   };
 
   const visibleMessages = msgs.filter((message) => {

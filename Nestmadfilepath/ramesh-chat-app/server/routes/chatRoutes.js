@@ -6,7 +6,26 @@
 // const DeletedAccount = require("../models/DeletedAccount");
 const { sendPushToUser } = require("../services/pushNotifications");
 
-// /* 🔎 User search – by mobile OR username */
+// /* Public directory: only users who explicitly enable Public visibility are listed. */
+router.get("/public-users/:userId", async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.userId)) return res.status(400).json({ error: "Invalid user ID" });
+    const current = await User.findById(req.params.userId).select("blockList");
+    if (!current) return res.status(404).json({ error: "User not found" });
+    const blocked = (current.blockList || []).map((id) => new mongoose.Types.ObjectId(String(id)));
+    const users = await User.find({
+      isPublic: true,
+      _id: { $ne: current._id, $nin: blocked },
+      blockList: { $ne: current._id },
+    }).select("_id username name about avatar online lastSeen").sort({ online: -1, username: 1 }).limit(200).lean();
+    return res.json({ success: true, users });
+  } catch (error) {
+    console.error("[PUBLIC_USERS]", error);
+    return res.status(500).json({ error: "Unable to load public profiles" });
+  }
+});
+
+/* 🔎 User search – by mobile OR username */
 // router.get("/users", async (req, res) => {
 //   const { mobile, username, email } = req.query;
 //   const query = mobile
@@ -583,38 +602,36 @@ router.post("/pin/:userId/:peerId", async (req, res) => {
   }
 });
 
-/* 📜 History between two users */
+/* Recent-first conversation history with cursor pagination. */
 router.get("/messages/:u1/:u2", async (req, res) => {
-  console.log("📜 [DEBUG] GET /api/messages/:u1/:u2 - Request received");
-  console.log("📜 [DEBUG] Params:", { u1: req.params.u1, u2: req.params.u2 });
-  
   try {
     const { u1, u2 } = req.params;
-    console.log("📜 [DEBUG] Fetching message history between users...");
-    
-    const msgs = await Message.find({
-      $or: [
-        { sender: u1, receiver: u2 },
-        { sender: u2, receiver: u1 },
-      ],
+    if (!mongoose.Types.ObjectId.isValid(u1) || !mongoose.Types.ObjectId.isValid(u2)) return res.status(400).json({ error: "Invalid conversation users" });
+    const limit = Math.min(80, Math.max(10, Number.parseInt(req.query.limit, 10) || 40));
+    const filter = {
+      $or: [{ sender: u1, receiver: u2 }, { sender: u2, receiver: u1 }],
       deletedFor: { $ne: u1 },
       deletedForEveryone: { $ne: true },
-    }).populate("replyTo", "text sender").sort("createdAt");
-    
-    console.log("📜 [DEBUG] Messages found:", msgs.length);
-    console.log("📜 [DEBUG] Messages preview (first 5):", msgs.slice(0, 5).map(m => ({
-      _id: m._id,
-      sender: m.sender,
-      receiver: m.receiver,
-      text: m.text?.substring(0, 50),
-      hasFile: !!m.file,      createdAt: m.createdAt
-    })));
-    
-    res.json({ success: true, messages: msgs });
-    console.log("📜 [DEBUG] Response sent successfully");
-  } catch (err) {
-    console.error("❌ [DEBUG] Error in /messages/:u1/:u2:", err);
-    res.status(500).json({ error: "Failed to load message history" });
+    };
+    if (req.query.before) {
+      const beforeDate = new Date(req.query.before);
+      if (Number.isNaN(beforeDate.getTime())) return res.status(400).json({ error: "Invalid message cursor" });
+      if (req.query.beforeId && mongoose.Types.ObjectId.isValid(req.query.beforeId)) {
+        filter.$and = [{ $or: [
+          { createdAt: { $lt: beforeDate } },
+          { createdAt: beforeDate, _id: { $lt: new mongoose.Types.ObjectId(req.query.beforeId) } },
+        ] }];
+      } else filter.createdAt = { $lt: beforeDate };
+    }
+    const rows = await Message.find(filter).populate("replyTo", "text sender")
+      .sort({ createdAt: -1, _id: -1 }).limit(limit + 1).lean();
+    const hasMore = rows.length > limit;
+    const messages = rows.slice(0, limit).reverse();
+    const oldest = messages[0];
+    return res.json({ success: true, messages, hasMore, nextCursor: oldest ? { before: oldest.createdAt, beforeId: oldest._id } : null });
+  } catch (error) {
+    console.error("[MESSAGE_HISTORY]", error);
+    return res.status(500).json({ error: "Failed to load message history" });
   }
 });
 

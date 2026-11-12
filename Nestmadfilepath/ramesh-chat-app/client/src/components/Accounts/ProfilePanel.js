@@ -179,9 +179,24 @@
 //   const [mobileNumber, setMobileN] = useState(user.mobile || "");
 //   const [about, setAbout] = useState(user.about || "");
 //   const [avatar, setAvatar] = useState(user.avatar || "");
+  const [isPublic, setIsPublic] = useState(!!user.isPublic);
+  const [privacyBusy, setPrivacyBusy] = useState(false);
 //   const fileInputRef = useRef();
 
-//   const nextTheme = () => {
+//   const toggleProfilePrivacy = async () => {
+    if (privacyBusy) return;
+    const next = !isPublic;
+    setPrivacyBusy(true);
+    try {
+      const res = await updateProfile(user._id || user.userId, { isPublic: next });
+      login(res.data);
+      setIsPublic(!!res.data.isPublic);
+    } catch (error) {
+      alert(error.response?.data?.error || "Could not update profile visibility.");
+    } finally { setPrivacyBusy(false); }
+  };
+
+  const nextTheme = () => {
 //     const keys = Object.keys(THEMES);
 //     setTheme(keys[(keys.indexOf(themeKey) + 1) % keys.length]);
 //   };
@@ -742,6 +757,16 @@ export default function ProfilePanel({ onClose }) {
         </div>
         <div style={S.read}>
           <b>Username:</b> {user.username}
+        </div>
+        <div style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12, marginBottom: 14, background: "var(--surface)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div><b style={{ display: "block", fontSize: 14 }}>Profile visibility</b><small style={{ color: "var(--textLight)" }}>{isPublic ? "Public · visible in Find people" : "Private · hidden from Find people"}</small></div>
+            <button type="button" onClick={toggleProfilePrivacy} disabled={privacyBusy}
+              style={{ border: 0, borderRadius: 999, padding: "9px 13px", background: isPublic ? "var(--primary)" : "var(--chatSelected)", color: isPublic ? "#fff" : "var(--textMain)", fontWeight: 700, cursor: privacyBusy ? "wait" : "pointer" }}>
+              {privacyBusy ? "Saving…" : isPublic ? "Public" : "Private"}
+            </button>
+          </div>
+          <small style={{ display: "block", color: "var(--textLight)", marginTop: 8 }}>Only public profiles appear in Find people. Existing chats are not removed when you switch to Private.</small>
         </div>
         <label style={S.label}>Name</label>
         <input
