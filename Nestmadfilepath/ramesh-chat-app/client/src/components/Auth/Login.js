@@ -35,6 +35,7 @@ export default function Login() {
       await signInWithEmailAndPassword(auth, email, password);
       const res = await apiLogin({ username: username.trim().toLowerCase(), password });
       login(res.data);
+      await registerDevice();
       nav("/");
     } catch (err) {
       setError(err?.response?.data?.error || err.message || "Login failed");
@@ -66,6 +67,7 @@ export default function Login() {
   };
 
   const busy = loading || googleLoading || qrBusy;
+  const registerDevice = async () => { try { const r = await api.post("/auth-extra/session/register", { deviceName: navigator.userAgent, userAgent: navigator.userAgent }); if (r.data.sessionToken) localStorage.setItem("deviceSession", r.data.sessionToken); } catch (e) { console.warn("Session registration failed", e.message); } };
 
   const startQr = async () => {
     try {
