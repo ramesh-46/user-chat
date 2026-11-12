@@ -8,6 +8,9 @@ const LoginSession = require("../models/LoginSession");
 const router = express.Router();
 const hash = (value) => crypto.createHash("sha256").update(String(value || "")).digest("hex");
 const random = (bytes = 32) => crypto.randomBytes(bytes).toString("hex");
+const qrLog = (stage, details = {}) => console.info("[QR_LOGIN]", JSON.stringify({
+  stage, at: new Date().toISOString(), ...details,
+}));
 
 async function identity(req) {
   const header = req.headers.authorization || "";
@@ -74,6 +77,7 @@ router.post("/qr/start", async (req, res) => {
       userAgent: String(req.body?.userAgent || "").slice(0, 300),
       expiresAt,
     });
+    qrLog("backend.start.success", { traceId, durationMs: Date.now() - startedAt, expiresAt: expiresAt.toISOString() });
     const origin = (process.env.CLIENT_ORIGIN || "https://user-chat-woad.vercel.app").replace(/\/$/, "");
     return res.json({
       sessionId,
@@ -101,7 +105,10 @@ router.post("/qr/approve", async (req, res) => {
       status: "pending",
       expiresAt: { $gt: new Date() },
     });
-    if (!row) return res.status(410).json({ error: "QR expired or already used" });
+    if (!row) {
+      qrLog("backend.approve.not_found_or_expired", { traceId, durationMs: Date.now() - startedAt });
+      return res.status(410).json({ error: "QR expired or already used" });
+    }
 
     row.status = "approved";
     row.approvedUserId = user._id;
@@ -134,17 +141,23 @@ router.get("/qr/status", async (req, res) => {
     if (!row || row.status === "consumed") {
       return res.status(410).json({ status: "expired", error: "This QR code expired or was already used" });
     }
-    if (row.status !== "approved") return res.json({ status: "pending" });
+    if (row.status !== "approved") {
+      qrLog("backend.status.pending", { traceId, durationMs: Date.now() - startedAt });
+      return res.json({ status: "pending" });
+    }
+    qrLog("backend.status.approved_record_found", { traceId, hasApprovedUid: Boolean(row.approvedFirebaseUid), hasApprovedUserId: Boolean(row.approvedUserId) });
 
     // Backward-compatible recovery for QR records created before
     // approvedFirebaseUid was persisted correctly.
     let firebaseUid = row.approvedFirebaseUid;
     if (!firebaseUid && row.approvedUserId) {
+      qrLog("backend.status.user_recovery.begin", { traceId });
       const approvedUser = await User.findById(row.approvedUserId).select("firebaseUid").lean();
+      qrLog("backend.status.user_recovery.result", { traceId, found: Boolean(approvedUser?.firebaseUid) });
       firebaseUid = approvedUser?.firebaseUid || "";
     }
     if (!firebaseUid) {
-      console.error("[QR_STATUS_MISSING_APPROVED_UID]", { sessionId: row.sessionId });
+      qrLog("backend.status.approved_uid_missing", { traceId, durationMs: Date.now() - startedAt });
       return res.status(409).json({
         status: "error",
         code: "QR_APPROVAL_ACCOUNT_MISSING",
@@ -170,10 +183,13 @@ router.get("/qr/status", async (req, res) => {
 
 router.post("/qr/complete", async (req, res) => {
   try {
+    qrLog("backend.complete.auth.begin", { traceId });
     const { decoded, user } = await identity(req);
+    qrLog("backend.complete.auth.success", { traceId, userId: String(user._id) });
     const sessionId = String(req.body?.sessionId || "");
     if (!sessionId) return res.status(400).json({ error: "Missing QR login session" });
 
+    qrLog("backend.complete.consume.begin", { traceId });
     const row = await QrLogin.findOneAndUpdate(
       {
         sessionId,
@@ -191,7 +207,9 @@ router.post("/qr/complete", async (req, res) => {
       return res.status(410).json({ error: "QR approval expired, already used, or belongs to another account" });
     }
 
+    qrLog("backend.complete.session_create.begin", { traceId });
     const sessionToken = await addSession(user, req.body || {});
+    qrLog("backend.complete.success", { traceId, durationMs: Date.now() - startedAt });
     const safeUser = user.toObject();
     delete safeUser.password;
     delete safeUser.recoveryAnswer;
