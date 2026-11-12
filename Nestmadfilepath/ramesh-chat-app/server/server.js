@@ -18,7 +18,6 @@
 // const chatRoutes     = require("./routes/chatRoutes");
 // const profileRoutes  = require("./routes/profileRoutes");
 // const settingsRoutes = require("./routes/settingsRoutes");
-const authExtraRoutes = require("./routes/authExtraRoutes");
 // const User           = require("./models/User");
 
 
@@ -42,8 +41,6 @@ const authExtraRoutes = require("./routes/authExtraRoutes");
 // app.use("/api/profile", profileRoutes);
 // app.use("/api",         chatRoutes);
 // app.use("/api/settings", settingsRoutes);
-app.use("/api/auth-extra", authExtraRoutes);
-console.log("✅ [DEBUG] Route mounted: /api/auth-extra");
 
 // /* ─── Socket.IO Events ───────────────────────────── */
 // io.on("connection", socket => {
@@ -176,6 +173,7 @@ const settingsRoutes = require("./routes/settingsRoutes");
 const groupRoutes = require("./routes/grouproutes");
 const groupMessageRoutes = require("./routes/groupMessageRoutes");
 const messageActionRoutes = require("./routes/messageActionRoutes");
+const authExtraRoutes = require("./routes/authExtraRoutes");
 const meetingRoutes = require("./routes/meetingRoutes");
 const registerMeetingLive = require("./services/meetingLive");
 console.log("✅ [DEBUG] Models and routes loaded successfully");
@@ -253,6 +251,8 @@ app.use("/api", chatRoutes);
 console.log("✅ [DEBUG] Route mounted: /api (chatRoutes)");
 app.use("/api/settings", settingsRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/settings");
+app.use("/api/auth-extra", authExtraRoutes);
+console.log("✅ [DEBUG] Route mounted: /api/auth-extra");
 
 app.use("/api/groups", groupRoutes);
 app.use("/api/group-messages", groupMessageRoutes);
