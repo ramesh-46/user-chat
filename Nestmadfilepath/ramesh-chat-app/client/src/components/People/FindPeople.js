@@ -62,7 +62,7 @@ export default function FindPeople({ onPick, onBack }) {
         <div style={s.search}>
           <span aria-hidden="true">⌕</span>
           <input value={query} onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search name, username or About" aria-label="Search public profiles" />
+            placeholder="Search people by name, username or About…" aria-label="Search public profiles" />
           {query && <button type="button" onClick={() => setQuery("")} style={s.clear} aria-label="Clear search">×</button>}
         </div>
         <div style={s.filters} role="group" aria-label="Filter public profiles">
@@ -77,8 +77,8 @@ export default function FindPeople({ onPick, onBack }) {
         : error ? <div style={s.empty}><p>{error}</p><button type="button" style={s.retry} onClick={() => loadPeople()}>Try again</button></div>
         : !filtered.length ? <div style={s.empty}>
           <div style={s.emptyIcon}>⌕</div>
-          <b>{query ? "No matching profiles" : filter === "online" ? "Nobody is online right now" : "No public profiles yet"}</b>
-          <p>{query ? "Try another name or username." : filter === "online" ? "Switch to All to browse every public profile." : "People who keep their profiles Public will appear here."}</p>
+          <b>{query ? "No matching profiles" : filter === "online" ? "Nobody is online right now" : "No people found yet"}</b>
+          <p>{query ? "Try another name or username." : filter === "online" ? "Switch to All to browse every public profile." : "Public profiles appear here. Offline people are included in All."}</p>
         </div>
         : <div style={s.list}>
           <div style={s.listMeta}>{filtered.length} {filtered.length === 1 ? "person" : "people"} {filter === "online" ? "online" : "available"}{refreshing ? " · Updating…" : ""}</div>
@@ -113,18 +113,18 @@ const s = {
   back:{width:38,height:38,border:0,borderRadius:12,background:"var(--chatSelected)",color:"var(--textMain)",fontSize:20,cursor:"pointer",flexShrink:0},
   heading:{minWidth:0,flex:1},title:{margin:0,fontSize:20},sub:{margin:"3px 0 0",color:"var(--textLight)",fontSize:12},
   refresh:{width:38,height:38,border:"1px solid var(--border)",borderRadius:11,background:"var(--surface)",color:"var(--primary)",fontSize:23,cursor:"pointer",flexShrink:0},
-  toolbar:{padding:"14px 16px 10px",borderBottom:"1px solid var(--border)"},
+  toolbar:{padding:"18px 20px 14px",borderBottom:"1px solid var(--border)",background:"linear-gradient(180deg,var(--surface),var(--primarySoft))"},
   search:{display:"flex",alignItems:"center",gap:9,padding:"0 13px",minHeight:44,border:"1px solid var(--border)",borderRadius:12,background:"var(--primarySoft)",color:"var(--textLight)"},
   filters:{display:"flex",gap:8,marginTop:12},
   filter:{border:"1px solid var(--border)",borderRadius:999,padding:"7px 13px",background:"transparent",color:"var(--textLight)",fontSize:12,fontWeight:600,cursor:"pointer"},
   filterActive:{background:"var(--chatSelected)",borderColor:"var(--primary)",color:"var(--primary)"},
   clear:{border:0,background:"transparent",fontSize:20,color:"var(--textLight)",cursor:"pointer"},
-  list:{overflowY:"auto",padding:"2px 16px 20px"},
+  list:{overflowY:"auto",padding:"4px 20px 24px"},
   listMeta:{padding:"11px 5px 7px",fontSize:11,color:"var(--textLight)"},
-  person:{width:"100%",display:"flex",alignItems:"center",gap:12,padding:"13px 8px",border:0,borderBottom:"1px solid var(--border)",background:"transparent",color:"var(--textMain)",textAlign:"left",cursor:"pointer"},
-  avatarWrap:{width:48,height:48,position:"relative",flexShrink:0},
-  avatar:{width:48,height:48,borderRadius:"50%",objectFit:"cover"},
-  avatarFallback:{width:48,height:48,borderRadius:"50%",display:"grid",placeItems:"center",background:"var(--chatSelected)",color:"var(--primary)",fontWeight:800,fontSize:18},
+  person:{width:"100%",display:"flex",alignItems:"center",gap:14,padding:"15px 12px",border:0,borderBottom:"1px solid var(--border)",background:"transparent",color:"var(--textMain)",textAlign:"left"},
+  avatarWrap:{width:52,height:52,position:"relative",flexShrink:0},
+  avatar:{width:52,height:52,borderRadius:"50%",objectFit:"cover"},
+  avatarFallback:{width:52,height:52,borderRadius:"50%",display:"grid",placeItems:"center",background:"var(--chatSelected)",color:"var(--primary)",fontWeight:800,fontSize:19,border:"1px solid var(--border)"},
   presence:{position:"absolute",right:0,bottom:1,width:11,height:11,borderRadius:"50%",border:"2px solid var(--surface)"},
   details:{display:"flex",flexDirection:"column",gap:3,minWidth:0,flex:1},
   name:{fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"},
