@@ -43,6 +43,7 @@ const authExtraRoutes = require("./routes/authExtraRoutes");
 // app.use("/api",         chatRoutes);
 // app.use("/api/settings", settingsRoutes);
 app.use("/api/auth-extra", authExtraRoutes);
+console.log("✅ [DEBUG] Route mounted: /api/auth-extra");
 
 // /* ─── Socket.IO Events ───────────────────────────── */
 // io.on("connection", socket => {
