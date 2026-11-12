@@ -28,6 +28,10 @@ export default function Login() {
   const nav = useNavigate();
   const qrRef = useRef(null);
   const loginRef = useRef(login);
+  const qrPollCount = useRef(0);
+  const qrClientLog = (stage, details = {}) => {
+    console.info("[QR_LOGIN][laptop]", { stage, at: new Date().toISOString(), ...details });
+  };
   loginRef.current = login;
 
   const handleLogin = async () => {
@@ -74,6 +78,8 @@ export default function Login() {
   const registerDevice = async () => { try { const r = await api.post("/auth-extra/session/register", { deviceName: navigator.userAgent, userAgent: navigator.userAgent }); if (r.data.sessionToken) localStorage.setItem("deviceSession", r.data.sessionToken); } catch (e) { console.warn("Session registration failed", e.message); } };
 
   const startQr = async () => {
+    const startedAt = Date.now();
+    qrClientLog("frontend.start.request");
     try {
       setQrBusy(true); setError("");
       const r = await api.post("/auth-extra/qr/start", { deviceName: /Mobi/i.test(navigator.userAgent) ? "Mobile device" : "Desktop browser", userAgent: navigator.userAgent });
@@ -92,6 +98,8 @@ export default function Login() {
     let active = true;
     let timer = null;
     let qrRetry = null;
+    const pollStartedAt = Date.now();
+    qrPollCount.current = 0;
     const drawQr = () => {
       if (!active || !qrRef.current) return;
       if (window.QRCode) {
@@ -106,6 +114,7 @@ export default function Login() {
     const poll = async () => {
       if (!active || pollLock.current) return;
       pollLock.current = true;
+      qrPollCount.current += 1;
       try {
         const r = await api.get("/auth-extra/qr/status", {
           params: { sessionId: qrSession.sessionId, secret: qrSession.secret },
