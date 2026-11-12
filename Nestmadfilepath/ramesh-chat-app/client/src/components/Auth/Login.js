@@ -21,6 +21,9 @@ export default function Login() {
   const [error, setError] = useState("");
   const [qrSession, setQrSession] = useState(null);
   const [qrBusy, setQrBusy] = useState(false);
+  const [qrStatus, setQrStatus] = useState("idle");
+  const [qrMessage, setQrMessage] = useState("");
+  const pollLock = useRef(false);
   const { login } = useContext(AuthContext);
   const nav = useNavigate();
   const qrRef = useRef(null);
@@ -75,33 +78,84 @@ export default function Login() {
       setQrBusy(true); setError("");
       const r = await api.post("/auth-extra/qr/start", { deviceName: /Mobi/i.test(navigator.userAgent) ? "Mobile device" : "Desktop browser", userAgent: navigator.userAgent });
       setQrSession(r.data);
+      setQrStatus("waiting");
+      setQrMessage("Waiting for approval from your signed-in device…");
     } catch (e) { setError(e.response?.data?.error || "Unable to create QR login."); }
     finally { setQrBusy(false); }
   };
   useEffect(() => {
     if (!qrSession) return undefined;
     let active = true;
-    if (qrRef.current && window.QRCode) {
-      qrRef.current.innerHTML = "";
-      new window.QRCode(qrRef.current, { text: qrSession.approvalUrl, width: 196, height: 196 });
-    }
+    let timer = null;
+    let qrRetry = null;
+    const drawQr = () => {
+      if (!active || !qrRef.current) return;
+      if (window.QRCode) {
+        qrRef.current.innerHTML = "";
+        new window.QRCode(qrRef.current, { text: qrSession.approvalUrl, width: 196, height: 196 });
+        return;
+      }
+      setQrMessage("Preparing the secure QR image…");
+      qrRetry = setTimeout(drawQr, 250);
+    };
+    drawQr();
     const poll = async () => {
+      if (!active || pollLock.current) return;
+      pollLock.current = true;
       try {
-        const r = await api.get("/auth-extra/qr/status", { params: { sessionId: qrSession.sessionId, secret: qrSession.secret } });
-        if (!active || r.data.status !== "approved" || !r.data.customToken) return;
-        clearInterval(timer);
-        const credential = await signInWithCustomToken(auth, r.data.customToken);
-        const idToken = await credential.user.getIdToken();
-        const done = await api.post("/auth-extra/qr/complete", { sessionId: qrSession.sessionId, idToken, deviceName: /Mobi/i.test(navigator.userAgent) ? "Mobile device" : "Desktop browser", userAgent: navigator.userAgent });
+        const r = await api.get("/auth-extra/qr/status", {
+          params: { sessionId: qrSession.sessionId, secret: qrSession.secret },
+        });
         if (!active) return;
-        localStorage.setItem("deviceSession", done.data.sessionToken);
-        loginRef.current(done.data.user); nav("/");
+        if (r.data.status === "pending") {
+          setQrStatus("waiting");
+          setQrMessage("Scan this code with your signed-in phone, then approve the login.");
+          return;
+        }
+        if (r.data.status === "approved" && r.data.customToken) {
+          if (timer) clearInterval(timer);
+          setQrStatus("connecting");
+          setQrMessage("Approved. Securely signing in on this device…");
+          const credential = await signInWithCustomToken(auth, r.data.customToken);
+          const idToken = await credential.user.getIdToken(true);
+          const done = await api.post("/auth-extra/qr/complete", {
+            sessionId: qrSession.sessionId,
+            idToken,
+            deviceName: /Mobi/i.test(navigator.userAgent) ? "Mobile device" : "Desktop browser",
+            userAgent: navigator.userAgent,
+          }, { headers: { Authorization: `Bearer ${idToken}` } });
+          if (!active) return;
+          if (done.data.sessionToken) localStorage.setItem("deviceSession", done.data.sessionToken);
+          loginRef.current(done.data.user);
+          setQrStatus("success");
+          setQrMessage("Login successful. Opening your chats…");
+          nav("/", { replace: true });
+        }
       } catch (e) {
-        if (active && e.response?.status === 410) { setError("QR login expired. Generate a new code."); setQrSession(null); }
+        if (!active) return;
+        if (e.response?.status === 410) {
+          setQrStatus("expired");
+          setQrMessage("This QR code expired or was already used. Generate a new code.");
+          if (timer) clearInterval(timer);
+        } else if (e.response?.status === 401) {
+          setQrStatus("error");
+          setQrMessage("Approval was received, but account verification failed. Generate a new QR code.");
+          if (timer) clearInterval(timer);
+        } else {
+          setQrMessage(e.response?.data?.error || "Connection interrupted. Retrying securely…");
+        }
+      } finally {
+        pollLock.current = false;
       }
     };
-    const timer = setInterval(poll, 1800);
-    return () => { active = false; clearInterval(timer); };
+    poll();
+    timer = setInterval(poll, 1500);
+    return () => {
+      active = false;
+      if (timer) clearInterval(timer);
+      if (qrRetry) clearTimeout(qrRetry);
+      pollLock.current = false;
+    };
   }, [qrSession, nav]);
 
   return (
@@ -182,10 +236,10 @@ export default function Login() {
         </button>
         {qrSession && <div style={styles.qrPanel}>
           <b style={{color:"#f8f5eb"}}>Scan to sign in</b>
-          <p style={styles.qrText}>On your signed-in device, open Settings → Login sessions & QR scan, then approve this login.</p>
+          <p style={styles.qrText}>Open Black Pearl Chat on your signed-in phone → Settings → Login sessions & QR scan. Scan this code and tap Approve login.</p>
           <div ref={qrRef} style={styles.qrImage} />
-          <small style={styles.qrText}>Code expires in 2 minutes · Never share this code</small>
-          <button type="button" style={styles.qrCancel} onClick={() => setQrSession(null)}>Cancel</button>
+          <small style={styles.qrText}>{qrMessage || "Waiting for secure approval…"} · Code expires in 2 minutes</small>
+          <button type="button" style={styles.qrCancel} onClick={() => { setQrSession(null); setQrStatus("idle"); setQrMessage(""); }}>Cancel</button>
         </div>}
         {/* Divider */}
         <div style={styles.separator}>
