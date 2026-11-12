@@ -18,6 +18,7 @@
 // const chatRoutes     = require("./routes/chatRoutes");
 // const profileRoutes  = require("./routes/profileRoutes");
 // const settingsRoutes = require("./routes/settingsRoutes");
+const authExtraRoutes = require("./routes/authExtraRoutes");
 // const User           = require("./models/User");
 
 
@@ -41,6 +42,7 @@
 // app.use("/api/profile", profileRoutes);
 // app.use("/api",         chatRoutes);
 // app.use("/api/settings", settingsRoutes);
+app.use("/api/auth-extra", authExtraRoutes);
 
 // /* ─── Socket.IO Events ───────────────────────────── */
 // io.on("connection", socket => {

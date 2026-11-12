@@ -1,0 +1,3 @@
+const {Schema,model}=require("mongoose");
+const schema=new Schema({sessionId:{type:String,required:true,unique:true,index:true},secretHash:{type:String,required:true},status:{type:String,enum:["pending","approved","consumed"],default:"pending",index:true},approvedUserId:{type:Schema.Types.ObjectId,ref:"User",default:null},approvedFirebaseUid:{type:String,default:null},deviceName:{type:String,default:"New device"},userAgent:{type:String,default:""},expiresAt:{type:Date,required:true,index:{expires:0}},consumedAt:{type:Date,default:null}},{timestamps:true});
+module.exports=model("QrLogin",schema);

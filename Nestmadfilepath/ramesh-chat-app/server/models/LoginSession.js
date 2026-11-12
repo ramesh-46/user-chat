@@ -1,0 +1,3 @@
+const {Schema,model}=require("mongoose");
+const schema=new Schema({userId:{type:Schema.Types.ObjectId,ref:"User",required:true,index:true},tokenHash:{type:String,required:true,unique:true},deviceName:{type:String,default:"Browser"},browser:{type:String,default:"Unknown"},platform:{type:String,default:"Unknown"},userAgent:{type:String,default:""},lastActiveAt:{type:Date,default:Date.now},revokedAt:{type:Date,default:null},expiresAt:{type:Date,required:true,index:{expires:0}}},{timestamps:true});
+module.exports=model("LoginSession",schema);

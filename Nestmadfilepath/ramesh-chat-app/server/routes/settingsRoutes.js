@@ -1,6 +1,8 @@
 const router = require("express").Router();
 const firebaseAuth = require("../middleware/firebaseAuth");
 const User = require("../models/User");
+const LoginSession = require("../models/LoginSession");
+const crypto = require("crypto");
 
 const THEMES = new Set(["blackPearl", "midnight"]);
 const isHexColor = (value) => value === "" || /^#[0-9a-fA-F]{6}$/.test(value);
@@ -58,4 +60,9 @@ router.delete("/fcmtoken", firebaseAuth, async (req, res) => {
     return res.status(500).json({ success: false, error: "Unable to remove notification device" });
   }
 });
+router.get("/sessions", firebaseAuth, async (req, res) => {
+ try { const list = await LoginSession.find({userId:req.user._id,revokedAt:null,expiresAt:{$gt:new Date()}}).select("_id deviceName browser platform lastActiveAt createdAt tokenHash").sort({lastActiveAt:-1}).lean(); const t=String(req.headers["x-device-session"]||""); const h=t?crypto.createHash("sha256").update(t).digest("hex"):""; res.json({sessions:list.map(({tokenHash,...s})=>({...s,current:!!h&&h===tokenHash}))}); } catch(e) { res.status(500).json({error:"Unable to load sessions"}); }
+});
+router.delete("/sessions/:id", firebaseAuth, async (req,res)=>{try{const row=await LoginSession.findOneAndUpdate({_id:req.params.id,userId:req.user._id,revokedAt:null},{$set:{revokedAt:new Date()}});if(!row)return res.status(404).json({error:"Session not found"});res.json({success:true});}catch(e){res.status(500).json({error:"Unable to revoke session"});}});
+router.post("/sessions/revoke-others", firebaseAuth, async (req,res)=>{try{const t=String(req.headers["x-device-session"]||"");if(!t)return res.status(400).json({error:"Register this device by signing in again first"});const h=crypto.createHash("sha256").update(t).digest("hex");await LoginSession.updateMany({userId:req.user._id,tokenHash:{$ne:h},revokedAt:null},{$set:{revokedAt:new Date()}});res.json({success:true});}catch(e){res.status(500).json({error:"Unable to revoke sessions"});}});
 module.exports = router;
