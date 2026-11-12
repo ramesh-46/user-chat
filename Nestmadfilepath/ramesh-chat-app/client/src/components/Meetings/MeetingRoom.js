@@ -5,6 +5,7 @@ import { auth } from "../../firebase";
 import socket from "../../socket";
 import { joinMeeting } from "../../api";
 import { playCallTone } from "../../utils/callSounds";
+import { playCallTone } from "../../utils/callSounds";
 
 // Native WebRTC mesh — Sura Chat's own engine, no third-party meeting SDK.
 const CFG = {
@@ -296,6 +297,7 @@ export default function MeetingRoom() {
   /* ---------- socket listeners ---------- */
   useEffect(() => {
     const onJoined = async ({ peers = [] } = {}) => {
+      playCallTone("connected");
       playCallTone("connected");
       setPhase("live"); finished.current = false;
       setKnocks([]);

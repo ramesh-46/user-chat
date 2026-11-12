@@ -9,6 +9,8 @@ import Signup  from "./components/Auth/Signup";
 import Forgot  from "./components/Auth/Forgot";
 import Main    from "./components/Main";
 import MeetingRoom from "./components/Meetings/MeetingRoom";
+import QrApprove from "./components/Auth/QrApprove";
+import DeviceSessions from "./components/Accounts/DeviceSessions";
 
 /* 🔔  foreground push‑toast */
 import { listenForeground } from "./firebase";
@@ -34,6 +36,8 @@ export default function App() {
       <Routes>
         {/* Home  →  chat if logged‑in, otherwise go to login */}
         <Route path="/" element={user ? <Main /> : <Navigate to="/login" />} />
+        <Route path="/qr-approve" element={user ? <QrApprove /> : <Navigate to="/login" replace />} />
+        <Route path="/sessions" element={user ? <DeviceSessions /> : <Navigate to="/login" replace />} />
         <Route path="/meeting/:roomId" element={user ? <MeetingRoom /> : <Navigate to="/login" replace />} />
 
       <Route path="/login"  element={user ? <Navigate to="/" /> : <Login  />} />

@@ -420,6 +420,7 @@ export default function Main() {
             }}>{notificationsEnabled ? "Notifications enabled" : "Enable notifications"}</button>
             <button style={S.settingsAction} onClick={() => { setShowSettings(false); setShowProfile(true); }}>My Account</button>
             <button style={S.settingsAction} onClick={() => { setShowSettings(false); navigate("/sessions"); }}>Login sessions & QR scan</button>
+            <button style={S.settingsAction} onClick={() => { setShowSettings(false); navigate("/sessions"); }}>Login sessions & QR scan</button>
             <button style={{ ...S.settingsAction, background: "#E5484D" }} onClick={logout}>Log out</button>
           </section>
         </div>

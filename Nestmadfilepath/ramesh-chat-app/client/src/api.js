@@ -14,6 +14,8 @@ api.interceptors.request.use(async (config) => {
     const token = await currentUser.getIdToken();
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${token}`;
+    const deviceSession = localStorage.getItem("deviceSession");
+    if (deviceSession) config.headers["X-Device-Session"] = deviceSession;
   }
   return config;
 });
