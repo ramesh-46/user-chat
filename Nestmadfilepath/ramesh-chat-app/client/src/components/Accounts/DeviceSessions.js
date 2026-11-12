@@ -1,8 +1,10 @@
 import React,{useCallback,useEffect,useState}from"react";
 import{useNavigate}from"react-router-dom";
 import api from"../../api";
+import {auth} from "../../firebase";
+import {onAuthStateChanged} from "firebase/auth";
 
-export default function DeviceSessions(){
+const waitForFirebaseUser=()=>new Promise(resolve=>{\n  if(auth.currentUser)return resolve(auth.currentUser);\n  let unsubscribe=()=>{};\n  const timeout=setTimeout(()=>{unsubscribe();resolve(null);},10000);\n  unsubscribe=onAuthStateChanged(auth,user=>{if(user){clearTimeout(timeout);unsubscribe();resolve(user);}});\n});\n\nexport default function DeviceSessions(){
   const nav=useNavigate();
   const [rows,setRows]=useState([]);
   const [busy,setBusy]=useState(true);
