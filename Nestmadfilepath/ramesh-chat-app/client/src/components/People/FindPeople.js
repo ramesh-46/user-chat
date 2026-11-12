@@ -60,9 +60,10 @@ export default function FindPeople({ onPick, onBack }) {
 
       <div style={s.toolbar}>
         <div style={s.search}>
+          <span style={s.searchHint}>DISCOVER</span>
           <span aria-hidden="true">⌕</span>
           <input value={query} onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search people by name, username or About…" aria-label="Search public profiles" />
+            placeholder="Search people by name, username or About…" aria-label="Search public profiles" style={s.searchInput} />
           {query && <button type="button" onClick={() => setQuery("")} style={s.clear} aria-label="Clear search">×</button>}
         </div>
         <div style={s.filters} role="group" aria-label="Filter public profiles">
