@@ -5,7 +5,6 @@ import { auth } from "../../firebase";
 import socket from "../../socket";
 import { joinMeeting } from "../../api";
 import { playCallTone } from "../../utils/callSounds";
-import { playCallTone } from "../../utils/callSounds";
 
 // Native WebRTC mesh — Sura Chat's own engine, no third-party meeting SDK.
 const CFG = {
