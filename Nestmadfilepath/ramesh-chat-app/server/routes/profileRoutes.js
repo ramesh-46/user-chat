@@ -14,7 +14,7 @@ const DeletedAccount = require("../models/DeletedAccount");
 router.put("/:id", upload.single("avatar"), async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, mobile, about, recoveryAnswer } = req.body;
+    const { name, mobile, about, recoveryAnswer, isPublic } = req.body;
 
     const user = await User.findById(id);
     if (!user) return res.status(404).json({ error: "User not found" });
@@ -22,6 +22,7 @@ router.put("/:id", upload.single("avatar"), async (req, res) => {
     if (name !== undefined) user.name = name;
     if (mobile !== undefined) user.mobile = mobile;
     if (about !== undefined) user.about = about;
+    if (isPublic !== undefined) user.isPublic = isPublic === true || String(isPublic).toLowerCase() === "true";
 
     // ✅ Save recoveryAnswer if provided
     if (recoveryAnswer !== undefined) {

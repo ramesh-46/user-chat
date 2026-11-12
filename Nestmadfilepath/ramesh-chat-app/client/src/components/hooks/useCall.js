@@ -11,6 +11,7 @@ const RTC_CONFIG = {
 
 export function useCall(userId) {
   const pc = useRef(null);
+  const videoSender = useRef(null);
   const localStream = useRef(null);
   const remoteStream = useRef(null);
   const pendingOffer = useRef(null);
@@ -51,6 +52,7 @@ export function useCall(userId) {
     setRecording(false);
     setRecordingRequest(null);
     recordingRequestPending.current = false;
+    videoSender.current = null;
     if (pc.current) {
       pc.current.ontrack = null;
       pc.current.onicecandidate = null;
@@ -89,7 +91,9 @@ export function useCall(userId) {
     const connection = new RTCPeerConnection(RTC_CONFIG);
     pc.current = connection;
     const stream = localStream.current;
-    stream?.getTracks().forEach((track) => connection.addTrack(track, stream));
+    stream?.getAudioTracks().forEach((track) => connection.addTrack(track, stream));
+    const initialVideoTrack = stream?.getVideoTracks?.()[0];
+    videoSender.current = initialVideoTrack ? connection.addTrack(initialVideoTrack, stream) : connection.addTransceiver("video", { direction: "sendrecv" }).sender;
     connection.ontrack = (event) => {
       const incoming = event.streams?.[0];
       if (incoming) remoteStream.current = incoming;
@@ -202,8 +206,8 @@ export function useCall(userId) {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: nextFacing } }, audio: false });
       replacement = stream.getVideoTracks()[0];
       if (!replacement) throw new Error("No camera available");
-      const sender = pc.current?.getSenders().find((item) => item.track?.kind === "video");
-      if (sender) await sender.replaceTrack(replacement);
+      const sender = videoSender.current || pc.current?.getSenders().find((item) => item.track?.kind === "video");
+      if (sender) { await sender.replaceTrack(replacement); videoSender.current = sender; }
       const previous = localStream.current.getVideoTracks()[0];
       if (previous) {
         localStream.current.removeTrack(previous);
@@ -223,14 +227,17 @@ export function useCall(userId) {
     try {
       if (mediaMode === "video") {
         const track = localStream.current.getVideoTracks()[0];
-        if (track) { const sender = pc.current.getSenders().find((item) => item.track?.kind === "video"); if (sender) await sender.replaceTrack(null); localStream.current.removeTrack(track); track.stop(); }
+        if (videoSender.current) await videoSender.current.replaceTrack(null);
+        if (track) { localStream.current.removeTrack(track); track.stop(); }
         setCameraEnabled(false); setMediaMode("audio");
       } else {
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cameraFacing } });
-        const track = stream.getVideoTracks()[0]; if (!track) throw new Error("Camera is unavailable");
-        const sender = pc.current.getSenders().find((item) => item.track?.kind === "video");
-        if (sender) await sender.replaceTrack(track); else pc.current.addTrack(track, localStream.current);
-        localStream.current.addTrack(track); setCameraEnabled(true); setMediaMode("video"); setLocalVersion((v) => v + 1);
+        const track = stream.getVideoTracks()[0];
+        if (!track) throw new Error("Camera is unavailable");
+        if (!videoSender.current) throw new Error("Video channel is unavailable. Please restart the call.");
+        await videoSender.current.replaceTrack(track);
+        localStream.current.addTrack(track);
+        setCameraEnabled(true); setMediaMode("video"); setLocalVersion((v) => v + 1);
       }
     } catch (error) { window.alert(error.message || "Unable to switch call mode on this device."); }
   }, [callState, cameraFacing, mediaMode]);

@@ -54,7 +54,7 @@ function Tile({ stream, name, local, filter, style, spotlight, onPick }) {
   }, [stream]);
   return (
     <div style={{ ...u.tile, ...(style || {}), ...(spotlight ? u.tileSpot : {}) }} onClick={onPick} title={onPick ? "Click to spotlight" : undefined}>
-      {hasVideo && <video ref={ref} autoPlay playsInline muted={local} style={{ ...u.video, filter: FILTERS[filter] || "none" }} />}
+      <video ref={ref} autoPlay playsInline muted={local} style={{ ...u.video, filter: FILTERS[filter] || "none", opacity: hasVideo ? 1 : 0 }} />
       {!hasVideo && <div style={u.avatar}>{String(name || "?").trim()[0]?.toUpperCase()}</div>}
       <span style={u.name}>{name}{local ? " (You)" : ""}</span>
     </div>

@@ -41,7 +41,8 @@ export const findUser = (value) => {
 // Chat list and messages
 export const fetchChatList = (userId) => api.get(`/chatlist/${userId}`);
 export const fetchConversations = (userId) => api.get(`/conversations/${userId}`);
-export const fetchMessages = (userId, peerId) => api.get(`/messages/${userId}/${peerId}`);
+export const fetchMessages = (userId, peerId, options = {}) => api.get(`/messages/${userId}/${peerId}`, { params: options });
+export const fetchPublicUsers = (userId) => api.get(`/public-users/${userId}`);
 export const markConversationRead = (userId, peerId) =>
   api.post(`/messages/read/${peerId}`, { userId });
 export const sendMessage = (formData) =>
