@@ -206,6 +206,19 @@ router.get("/public-users/:userId", async (req, res) => {
       return res.status(403).json({ error: "You can only browse people from your own account" });
     }
 
+    // Complete the one-time legacy-account visibility migration before
+    // returning the directory, so offline accounts appear on the first load.
+    const migrations = mongoose.connection.collection("app_migrations");
+    const migrationId = "2026-11-public-directory-default";
+    if (!(await migrations.findOne({ _id: migrationId }))) {
+      await User.updateMany({ isPublic: { $ne: true } }, { $set: { isPublic: true } });
+      try {
+        await migrations.insertOne({ _id: migrationId, appliedAt: new Date() });
+      } catch (migrationRace) {
+        if (migrationRace.code !== 11000) throw migrationRace;
+      }
+    }
+
     const blockedByCurrent = current.blockList || [];
     const users = await User.find({
       isPublic: true,
