@@ -77,10 +77,14 @@ export default function Login() {
     try {
       setQrBusy(true); setError("");
       const r = await api.post("/auth-extra/qr/start", { deviceName: /Mobi/i.test(navigator.userAgent) ? "Mobile device" : "Desktop browser", userAgent: navigator.userAgent });
+      qrClientLog("frontend.start.success", { durationMs: Date.now() - startedAt, hasSessionId: Boolean(r.data.sessionId), hasApprovalUrl: Boolean(r.data.approvalUrl), expiresAt: r.data.expiresAt });
       setQrSession(r.data);
       setQrStatus("waiting");
       setQrMessage("Waiting for approval from your signed-in device…");
-    } catch (e) { setError(e.response?.data?.error || "Unable to create QR login."); }
+    } catch (e) {
+      qrClientLog("frontend.start.failed", { durationMs: Date.now() - startedAt, httpStatus: e.response?.status || null, code: e.code || null, message: e.response?.data?.error || e.message });
+      setError(e.response?.data?.error || "Unable to create QR login.");
+    }
     finally { setQrBusy(false); }
   };
   useEffect(() => {
@@ -113,10 +117,13 @@ export default function Login() {
           return;
         }
         if (r.data.status === "approved" && r.data.customToken) {
+          qrClientLog("frontend.status.approved", { poll: qrPollCount.current, durationMs: Date.now() - pollStartedAt, hasCustomToken: true });
           if (timer) clearInterval(timer);
           setQrStatus("connecting");
           setQrMessage("Approved. Securely signing in on this device…");
+          qrClientLog("frontend.firebase_custom_signin.begin");
           const credential = await signInWithCustomToken(auth, r.data.customToken);
+          qrClientLog("frontend.firebase_custom_signin.success", { uidPresent: Boolean(credential.user?.uid) });
           const idToken = await credential.user.getIdToken(true);
           const done = await api.post("/auth-extra/qr/complete", {
             sessionId: qrSession.sessionId,
@@ -129,6 +136,7 @@ export default function Login() {
           loginRef.current(done.data.user);
           setQrStatus("success");
           setQrMessage("Login successful. Opening your chats…");
+          qrClientLog("frontend.navigation.home");
           nav("/", { replace: true });
         }
       } catch (e) {
@@ -140,6 +148,15 @@ export default function Login() {
         } else if (e.response?.status === 401) {
           setQrStatus("error");
           setQrMessage("Approval was received, but account verification failed. Generate a new QR code.");
+          if (timer) clearInterval(timer);
+        } else if (
+          e.response?.status === 409 ||
+          e.response?.status === 503 ||
+          e.response?.data?.code === "QR_TOKEN_CREATION_FAILED" ||
+          e.response?.data?.code === "QR_APPROVAL_ACCOUNT_MISSING"
+        ) {
+          setQrStatus("error");
+          setQrMessage(e.response?.data?.error || "Secure sign-in could not be completed. Generate a new QR code and try again.");
           if (timer) clearInterval(timer);
         } else {
           setQrMessage(e.response?.data?.error || "Connection interrupted. Retrying securely…");
