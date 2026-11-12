@@ -187,7 +187,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
   }, [socket, userId, peerId]);
 
   useEffect(() => {
-    if (selectedMessages.length || showScrollDown) return;
+    if (selectedMessages.length) return;
     const el = flowRef.current;
     if (preserveScrollRef.current && el) {
       const previous = preserveScrollRef.current;
@@ -195,6 +195,7 @@ export default function ChatWindow({ peer, onBack = () => {} }) {
       preserveScrollRef.current = null;
       return;
     }
+    if (showScrollDown) return;
     if (initialScrollRef.current || atBottomRef.current) {
       bottom.current?.scrollIntoView({ behavior: initialScrollRef.current ? "auto" : "smooth" });
       initialScrollRef.current = false;
