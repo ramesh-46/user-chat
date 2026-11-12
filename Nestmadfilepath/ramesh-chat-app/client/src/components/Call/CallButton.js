@@ -2,6 +2,7 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AuthContext } from "../../contexts/AuthContext";
 import { useCall } from "../hooks/useCall";
+import { playCallTone } from "../../utils/callSounds";
 
 const displayName = (incoming, peer) =>
   incoming?.username || incoming?.name || peer?.contactName || peer?.name || peer?.username || "Sura Chat user";
@@ -22,6 +23,15 @@ export default function CallButton({ peer }) {
   const [elapsed, setElapsed] = useState(0);
   const [network, setNetwork] = useState({ mbps: 0, rtt: null });
   const previousBytes = useRef({ value: 0, at: 0 });
+  const previousCallState = useRef("idle");
+  useEffect(() => {
+    if (callState === previousCallState.current) return;
+    if (callState === "incoming") playCallTone("ring");
+    else if (callState === "calling") playCallTone("calling");
+    else if (callState === "connected") playCallTone("connected");
+    else if (previousCallState.current !== "idle" && callState === "idle") playCallTone("leave");
+    previousCallState.current = callState;
+  }, [callState]);
 
   // The chat window header renders a slot with id "sura-call-slot".
   // When it exists, the call buttons render inside the header bar

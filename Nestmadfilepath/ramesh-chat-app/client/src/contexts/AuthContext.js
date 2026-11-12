@@ -7,7 +7,7 @@ export const AuthProvider = ({ children }) => {
   );
 
   const login  = data => { localStorage.setItem("user", JSON.stringify(data)); setUser(data); };
-  const logout = ()   => { localStorage.removeItem("user"); setUser(null); };
+  const logout = ()   => { localStorage.removeItem("user"); localStorage.removeItem("deviceSession"); setUser(null); };
 
   return (
     <AuthContext.Provider value={{ user, login, logout }}>

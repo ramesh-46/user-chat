@@ -1,10 +1,11 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   GoogleAuthProvider,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithCustomToken,
 } from "firebase/auth";
 
 import { auth } from "../../firebase";
@@ -18,6 +19,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [qrSession, setQrSession] = useState(null);
+  const [qrBusy, setQrBusy] = useState(false);
+  const qrRef = useRef(null);
+  const loginRef = useRef(login);
+  loginRef.current = login;
   const { login } = useContext(AuthContext);
   const nav = useNavigate();
 
@@ -59,7 +65,41 @@ export default function Login() {
     }
   };
 
-  const busy = loading || googleLoading;
+  const busy = loading || googleLoading || qrBusy;
+
+  const startQr = async () => {
+    try {
+      setQrBusy(true); setError("");
+      const r = await api.post("/auth-extra/qr/start", { deviceName: /Mobi/i.test(navigator.userAgent) ? "Mobile device" : "Desktop browser", userAgent: navigator.userAgent });
+      setQrSession(r.data);
+    } catch (e) { setError(e.response?.data?.error || "Unable to create QR login."); }
+    finally { setQrBusy(false); }
+  };
+  useEffect(() => {
+    if (!qrSession) return undefined;
+    let active = true;
+    if (qrRef.current && window.QRCode) {
+      qrRef.current.innerHTML = "";
+      new window.QRCode(qrRef.current, { text: qrSession.approvalUrl, width: 196, height: 196 });
+    }
+    const poll = async () => {
+      try {
+        const r = await api.get("/auth-extra/qr/status", { params: { sessionId: qrSession.sessionId, secret: qrSession.secret } });
+        if (!active || r.data.status !== "approved" || !r.data.customToken) return;
+        clearInterval(timer);
+        const credential = await signInWithCustomToken(auth, r.data.customToken);
+        const idToken = await credential.user.getIdToken();
+        const done = await api.post("/auth-extra/qr/complete", { sessionId: qrSession.sessionId, idToken, deviceName: /Mobi/i.test(navigator.userAgent) ? "Mobile device" : "Desktop browser", userAgent: navigator.userAgent });
+        if (!active) return;
+        localStorage.setItem("deviceSession", done.data.sessionToken);
+        loginRef.current(done.data.user); nav("/");
+      } catch (e) {
+        if (active && e.response?.status === 410) { setError("QR login expired. Generate a new code."); setQrSession(null); }
+      }
+    };
+    const timer = setInterval(poll, 1800);
+    return () => { active = false; clearInterval(timer); };
+  }, [qrSession, nav]);
 
   return (
     <motion.div 
@@ -134,6 +174,16 @@ export default function Login() {
           {loading ? "Signing In..." : "Login"}
         </button>
 
+        <button type="button" style={styles.qrButton} onClick={startQr} disabled={busy}>
+          {qrBusy ? "Preparing secure QR…" : "▦  Login with QR Code"}
+        </button>
+        {qrSession && <div style={styles.qrPanel}>
+          <b style={{color:"#f8f5eb"}}>Scan to sign in</b>
+          <p style={styles.qrText}>On your signed-in device, open Settings → Login sessions & QR scan, then approve this login.</p>
+          <div ref={qrRef} style={styles.qrImage} />
+          <small style={styles.qrText}>Code expires in 2 minutes · Never share this code</small>
+          <button type="button" style={styles.qrCancel} onClick={() => setQrSession(null)}>Cancel</button>
+        </div>}
         {/* Divider */}
         <div style={styles.separator}>
           <span style={styles.sepLine}></span>
@@ -312,6 +362,11 @@ const styles = {
     cursor: "pointer",
     transition: "opacity 0.2s",
   },
+  qrButton: { width:"100%",padding:14,marginTop:14,borderRadius:12,border:"1px solid rgba(216,189,112,.5)",background:"rgba(216,189,112,.08)",color:"#e8d28d",fontWeight:700,cursor:"pointer" },
+  qrPanel: { marginTop:14,padding:16,borderRadius:16,background:"rgba(255,255,255,.045)",border:"1px solid rgba(216,189,112,.25)",textAlign:"center" },
+  qrText: { color:"#a9afbf",fontSize:12,lineHeight:1.5,margin:"10px 0" },
+  qrImage: { width:212,minHeight:212,margin:"12px auto",display:"grid",placeItems:"center",background:"#fff",padding:8,borderRadius:12,boxSizing:"border-box" },
+  qrCancel: { border:0,background:"transparent",color:"#d6b75f",cursor:"pointer",padding:8 },
   separator: {
     display: "flex", 
     alignItems: "center", 

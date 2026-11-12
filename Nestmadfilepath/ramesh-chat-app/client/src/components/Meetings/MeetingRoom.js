@@ -4,6 +4,7 @@ import { AuthContext } from "../../contexts/AuthContext";
 import { auth } from "../../firebase";
 import socket from "../../socket";
 import { joinMeeting } from "../../api";
+import { playCallTone } from "../../utils/callSounds";
 
 // Native WebRTC mesh — Sura Chat's own engine, no third-party meeting SDK.
 const CFG = {
@@ -295,13 +296,15 @@ export default function MeetingRoom() {
   /* ---------- socket listeners ---------- */
   useEffect(() => {
     const onJoined = async ({ peers = [] } = {}) => {
+      playCallTone("connected");
       setPhase("live"); finished.current = false;
       setKnocks([]);
       for (const p of peers) await offer(p);
       setTimeout(() => broadcastState(), 600);
     };
-    const onPeer = ({ peerId, name }) => peerId && ensure(peerId, name);
+    const onPeer = ({ peerId, name }) => { if (peerId) { playCallTone("join"); ensure(peerId, name); } };
     const onLeft = ({ peerId }) => {
+      playCallTone("leave");
       pcs.current.get(peerId)?.close();
       pcs.current.delete(peerId); iceQueue.current.delete(peerId);
       setParticipants((p) => { const n = { ...p }; delete n[peerId]; return n; });
