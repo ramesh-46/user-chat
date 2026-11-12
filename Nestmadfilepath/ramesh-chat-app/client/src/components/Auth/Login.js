@@ -29,6 +29,7 @@ export default function Login() {
   const qrRef = useRef(null);
   const loginRef = useRef(login);
   const qrPollCount = useRef(0);
+  const qrTokenFailures = useRef(0);
   const qrClientLog = (stage, details = {}) => {
     console.info("[QR_LOGIN][laptop]", { stage, at: new Date().toISOString(), ...details });
   };
@@ -84,6 +85,7 @@ export default function Login() {
       setQrBusy(true); setError("");
       const r = await api.post("/auth-extra/qr/start", { deviceName: /Mobi/i.test(navigator.userAgent) ? "Mobile device" : "Desktop browser", userAgent: navigator.userAgent });
       qrClientLog("frontend.start.success", { durationMs: Date.now() - startedAt, hasSessionId: Boolean(r.data.sessionId), hasApprovalUrl: Boolean(r.data.approvalUrl), expiresAt: r.data.expiresAt });
+      qrTokenFailures.current = 0;
       setQrSession(r.data);
       setQrStatus("waiting");
       setQrMessage("Waiting for approval from your signed-in device…");
@@ -141,7 +143,9 @@ export default function Login() {
             userAgent: navigator.userAgent,
           }, { headers: { Authorization: `Bearer ${idToken}` } });
           if (!active) return;
+          if (!done.data?.user) throw new Error("The server did not return the signed-in account. Please generate a new QR code.");
           if (done.data.sessionToken) localStorage.setItem("deviceSession", done.data.sessionToken);
+          qrTokenFailures.current = 0;
           loginRef.current(done.data.user);
           setQrStatus("success");
           setQrMessage("Login successful. Opening your chats…");
@@ -159,14 +163,37 @@ export default function Login() {
           setQrMessage("Approval was received, but account verification failed. Generate a new QR code.");
           if (timer) clearInterval(timer);
         } else if (
-          e.response?.status === 409 ||
           e.response?.status === 503 ||
-          e.response?.data?.code === "QR_TOKEN_CREATION_FAILED" ||
+          e.response?.data?.code === "QR_TOKEN_CREATION_FAILED"
+        ) {
+          // Firebase Admin signing can briefly fail while the backend is waking up.
+          // Retry a few times without asking the user to scan another code.
+          qrTokenFailures.current += 1;
+          qrClientLog("frontend.firebase_custom_token.retry", {
+            attempt: qrTokenFailures.current,
+            httpStatus: 503,
+            serverCode: e.response?.data?.code || null,
+          });
+          if (qrTokenFailures.current <= 5) {
+            setQrStatus("connecting");
+            setQrMessage(`Approved. Reconnecting securely… attempt ${qrTokenFailures.current} of 5`);
+          } else {
+            setQrStatus("error");
+            setQrMessage("Your phone approved this login, but the server could not create the Firebase sign-in token. Check the Firebase Admin service-account settings in Render, then generate a fresh QR code.");
+            if (timer) clearInterval(timer);
+          }
+        } else if (
+          e.response?.status === 409 ||
           e.response?.data?.code === "QR_APPROVAL_ACCOUNT_MISSING"
         ) {
           setQrStatus("error");
-          setQrMessage(e.response?.data?.error || "Secure sign-in could not be completed. Generate a new QR code and try again.");
+          setQrMessage(e.response?.data?.error || "The approved account could not be matched. Generate a new QR code and try again.");
           if (timer) clearInterval(timer);
+        } else if (e.code?.startsWith("auth/")) {
+          setQrStatus("error");
+          setQrMessage(`Firebase sign-in failed (${e.code}). Generate a new QR code and try again.`);
+          if (timer) clearInterval(timer);
+          qrClientLog("frontend.firebase_custom_signin.failed", { firebaseCode: e.code });
         } else {
           setQrMessage(e.response?.data?.error || "Connection interrupted. Retrying securely…");
         }
