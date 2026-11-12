@@ -86,7 +86,7 @@ export default function FindPeople({ onPick, onBack }) {
             const avatarUrl = person.avatar
               ? (person.avatar.startsWith("http") ? person.avatar : API_ORIGIN + person.avatar)
               : "";
-            return <button type="button" key={person._id} style={s.person} onClick={() => onPick(person)}>
+            return <div key={person._id} style={s.person}>
               <span style={s.avatarWrap}>
                 {avatarUrl ? <img src={avatarUrl} alt="" style={s.avatar} loading="lazy" />
                   : <span style={s.avatarFallback}>{initials(person)}</span>}
@@ -97,8 +97,10 @@ export default function FindPeople({ onPick, onBack }) {
                 <small style={s.username}>@{person.username} · {person.online ? "Online" : "Offline"}</small>
                 {person.about ? <span style={s.about}>{person.about}</span> : <span style={s.aboutMuted}>No About added</span>}
               </span>
-              <span style={s.chat}>Message <span aria-hidden="true">→</span></span>
-            </button>;
+              <button type="button" style={s.chat} onClick={() => onPick(person)}>
+                Message <span aria-hidden="true">→</span>
+              </button>
+            </div>;
           })}
         </div>}
     </section>
@@ -129,7 +131,7 @@ const s = {
   username:{fontSize:11,color:"var(--textLight)"},
   about:{fontSize:12,color:"var(--textMain)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"100%"},
   aboutMuted:{fontSize:11,color:"var(--textLight)"},
-  chat:{color:"var(--primary)",fontSize:12,fontWeight:700,flexShrink:0,whiteSpace:"nowrap"},
+  chat:{color:"var(--primary)",fontSize:12,fontWeight:700,flexShrink:0,whiteSpace:"nowrap",border:"1px solid var(--primary)",borderRadius:999,padding:"8px 12px",background:"transparent",cursor:"pointer"},
   empty:{margin:"auto",padding:24,color:"var(--textLight)",textAlign:"center",fontSize:14},
   emptyIcon:{fontSize:36,marginBottom:10,color:"var(--primary)"},
   retry:{border:0,borderRadius:10,padding:"9px 14px",background:"var(--primary)",color:"#fff",fontWeight:700,cursor:"pointer"}
