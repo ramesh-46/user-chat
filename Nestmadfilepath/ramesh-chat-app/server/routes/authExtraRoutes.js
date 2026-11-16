@@ -26,7 +26,7 @@ function classifyFirebaseTokenError(error) {
       message: "The Firebase Admin service-account key is invalid, expired, revoked, or does not match the configured project.",
     };
   }
-  if (/signblob|iam\\.serviceaccounts|permission.?denied|service account token creator|insufficient permission/.test(combined)) {
+  if (/signblob|iam\.serviceaccounts|permission.?denied|service account token creator|insufficient permission/.test(combined)) {
     return {
       code: "FIREBASE_ADMIN_SIGNING_PERMISSION",
       category: "signing_permission",
