@@ -162,24 +162,39 @@ export default function Login() {
           setQrStatus("error");
           setQrMessage("Approval was received, but account verification failed. Generate a new QR code.");
           if (timer) clearInterval(timer);
+        } else if ([
+          "FIREBASE_ADMIN_CREDENTIALS_INVALID",
+          "FIREBASE_ADMIN_SIGNING_PERMISSION",
+          "FIREBASE_ADMIN_PROJECT_MISMATCH",
+        ].includes(e.response?.data?.code)) {
+          const code = e.response.data.code;
+          const messages = {
+            FIREBASE_ADMIN_CREDENTIALS_INVALID: "Your phone approved this login, but Render has an invalid Firebase Admin service-account key. Replace it with a valid service-account JSON/key, redeploy the backend, then generate a fresh QR code.",
+            FIREBASE_ADMIN_SIGNING_PERMISSION: "Your phone approved this login, but Firebase Admin is not allowed to sign the login token. Check the service account's token-signing permission in Google Cloud IAM, redeploy, then generate a fresh QR code.",
+            FIREBASE_ADMIN_PROJECT_MISMATCH: "Your phone approved this login, but the backend and app appear to use different Firebase projects. Match their project IDs in Render and Vercel, redeploy, then generate a fresh QR code.",
+          };
+          qrClientLog("frontend.firebase_custom_token.configuration_error", { serverCode: code });
+          setQrStatus("error");
+          setQrMessage(messages[code]);
+          if (timer) clearInterval(timer);
         } else if (
           e.response?.status === 503 ||
           e.response?.data?.code === "QR_TOKEN_CREATION_FAILED"
         ) {
-          // Firebase Admin signing can briefly fail while the backend is waking up.
-          // Retry a few times without asking the user to scan another code.
+          // Only unknown/transient signing failures are retried. Permanent credential
+          // and IAM failures are surfaced immediately instead of wasting the QR lifetime.
           qrTokenFailures.current += 1;
           qrClientLog("frontend.firebase_custom_token.retry", {
             attempt: qrTokenFailures.current,
-            httpStatus: 503,
+            httpStatus: e.response?.status || null,
             serverCode: e.response?.data?.code || null,
           });
           if (qrTokenFailures.current <= 5) {
             setQrStatus("connecting");
-            setQrMessage(`Approved. Reconnecting securely… attempt ${qrTokenFailures.current} of 5`);
+            setQrMessage(`Approved. Retrying secure sign-in… attempt ${qrTokenFailures.current} of 5`);
           } else {
             setQrStatus("error");
-            setQrMessage("Your phone approved this login, but the server could not create the Firebase sign-in token. Check the Firebase Admin service-account settings in Render, then generate a fresh QR code.");
+            setQrMessage("Your phone approved this login, but the server still cannot create the Firebase sign-in token. Check the [QR_LOGIN] backend.status.failed entry in Render logs, correct the reported Firebase Admin issue, then generate a fresh QR code.");
             if (timer) clearInterval(timer);
           }
         } else if (
