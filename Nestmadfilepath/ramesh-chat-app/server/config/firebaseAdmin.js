@@ -10,12 +10,50 @@ function firstEnv(...names) {
 }
 
 function normalizePrivateKey(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^[\"']|[\"']$/g, "")
+  let key = String(value || "").replace(/^\uFEFF/, "").trim();
+
+  // Accept a JSON-stringified PEM or a service-account JSON object accidentally
+  // placed in FB_PRIVATE_KEY. Never log the secret while parsing it.
+  if (key.startsWith('"') && key.endsWith('"')) {
+    try {
+      const parsed = JSON.parse(key);
+      if (typeof parsed === "string") key = parsed;
+    } catch (_) {
+      key = key.slice(1, -1);
+    }
+  }
+
+  if (key.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(key);
+      if (typeof parsed.private_key === "string") key = parsed.private_key;
+    } catch (_) {
+      // Leave malformed input untouched so validation below reports it safely.
+    }
+  }
+
+  // Render may store PEM newlines as literal backslash-n sequences.
+  key = key
+    .replace(/\\r\\n/g, "\n")
     .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "")
-    .replace(/\r\n/g, "\n");
+    .replace(/\\r/g, "\n")
+    .replace(/\r\n/g, "\n")
+    .trim();
+
+  // Also accept a base64-encoded PEM, but only decode when it really contains
+  // a PEM header; arbitrary values are never treated as valid keys.
+  if (!key.includes("-----BEGIN") && /^[A-Za-z0-9+/=\s]+$/.test(key)) {
+    try {
+      const decoded = Buffer.from(key.replace(/\s/g, ""), "base64").toString("utf8");
+      if (decoded.includes("-----BEGIN") && decoded.includes("PRIVATE KEY-----")) {
+        key = decoded.trim();
+      }
+    } catch (_) {
+      // Keep original value; createPrivateKey below will reject it.
+    }
+  }
+
+  return key;
 }
 
 // Render projects commonly use either FB_* variables or FIREBASE_* names.
