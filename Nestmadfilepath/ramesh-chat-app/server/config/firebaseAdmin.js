@@ -1,4 +1,5 @@
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 function firstEnv(...names) {
   for (const name of names) {
@@ -59,8 +60,23 @@ if (!admin.apps.length) {
     );
   }
 
-  if (!serviceAccount.private_key.includes("-----BEGIN PRIVATE KEY-----")) {
-    throw new Error("Firebase Admin private key is not a valid PEM private key. Recheck the Firebase service-account private key in Render.");
+  // Validate the PEM cryptographically at startup. A BEGIN marker alone does not
+  // prove that the key is complete, parseable, or usable by the Admin SDK.
+  try {
+    const parsedKey = crypto.createPrivateKey(serviceAccount.private_key);
+    if (parsedKey.asymmetricKeyType !== "rsa") {
+      throw new Error("Firebase service-account keys must use RSA.");
+    }
+  } catch (error) {
+    throw new Error(
+      "Firebase Admin private key is invalid or incomplete. In Render, replace it with the private_key from a newly generated Firebase service-account JSON file. (" +
+      String(error.message || "Invalid PEM").slice(0, 160) +
+      ")"
+    );
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(serviceAccount.client_email)) {
+    throw new Error("Firebase Admin client_email is not a Google service-account email. Check the service-account JSON configured in Render.");
   }
 
   admin.initializeApp({
