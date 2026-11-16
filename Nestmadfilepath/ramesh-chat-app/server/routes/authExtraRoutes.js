@@ -19,7 +19,7 @@ function classifyFirebaseTokenError(error) {
   const message = String(error?.message || "").toLowerCase();
   const combined = code + " " + message;
 
-  if (/invalid_grant|invalid[_-]credential|private key|invalid pem|malformed.*key/.test(combined)) {
+  if (/invalid_grant|invalid[_-]credential|private key|invalid pem|malformed.*key|err_ossl_unsupported|decoder routines::unsupported|unsupported.*key/.test(combined)) {
     return {
       code: "FIREBASE_ADMIN_CREDENTIALS_INVALID",
       category: "credentials",
