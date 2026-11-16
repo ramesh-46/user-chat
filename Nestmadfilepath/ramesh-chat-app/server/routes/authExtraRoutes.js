@@ -49,8 +49,8 @@ function classifyFirebaseTokenError(error) {
 
 function safeFirebaseErrorMessage(error) {
   return String(error?.message || "Unknown Firebase Admin error")
-    .replace(/-----BEGIN [^-]+-----[\\s\\S]*?-----END [^-]+-----/g, "[REDACTED KEY]")
-    .replace(/(private[_ -]?key\\s*[:=]\\s*)[^,;]+/ig, "$1[REDACTED]")
+    .replace(/-----BEGIN [^-]+-----[\s\S]*?-----END [^-]+-----/g, "[REDACTED KEY]")
+    .replace(/(private[_ -]?key\s*[:=]\s*)[^,;]+/ig, "$1[REDACTED]")
     .slice(0, 240);
 }
 
