@@ -1,5 +1,4 @@
 const admin = require("firebase-admin");
-const crypto = require("crypto");
 
 function firstEnv(...names) {
   for (const name of names) {
@@ -10,50 +9,12 @@ function firstEnv(...names) {
 }
 
 function normalizePrivateKey(value) {
-  let key = String(value || "").replace(/^\uFEFF/, "").trim();
-
-  // Accept a JSON-stringified PEM or a service-account JSON object accidentally
-  // placed in FB_PRIVATE_KEY. Never log the secret while parsing it.
-  if (key.startsWith('"') && key.endsWith('"')) {
-    try {
-      const parsed = JSON.parse(key);
-      if (typeof parsed === "string") key = parsed;
-    } catch (_) {
-      key = key.slice(1, -1);
-    }
-  }
-
-  if (key.startsWith("{")) {
-    try {
-      const parsed = JSON.parse(key);
-      if (typeof parsed.private_key === "string") key = parsed.private_key;
-    } catch (_) {
-      // Leave malformed input untouched so validation below reports it safely.
-    }
-  }
-
-  // Render may store PEM newlines as literal backslash-n sequences.
-  key = key
-    .replace(/\\r\\n/g, "\n")
+  return String(value || "")
+    .trim()
+    .replace(/^[\"']|[\"']$/g, "")
     .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\n")
-    .replace(/\r\n/g, "\n")
-    .trim();
-
-  // Also accept a base64-encoded PEM, but only decode when it really contains
-  // a PEM header; arbitrary values are never treated as valid keys.
-  if (!key.includes("-----BEGIN") && /^[A-Za-z0-9+/=\s]+$/.test(key)) {
-    try {
-      const decoded = Buffer.from(key.replace(/\s/g, ""), "base64").toString("utf8");
-      if (decoded.includes("-----BEGIN") && decoded.includes("PRIVATE KEY-----")) {
-        key = decoded.trim();
-      }
-    } catch (_) {
-      // Keep original value; createPrivateKey below will reject it.
-    }
-  }
-
-  return key;
+    .replace(/\\r/g, "")
+    .replace(/\r\n/g, "\n");
 }
 
 // Render projects commonly use either FB_* variables or FIREBASE_* names.
@@ -98,23 +59,8 @@ if (!admin.apps.length) {
     );
   }
 
-  // Validate the PEM cryptographically at startup. A BEGIN marker alone does not
-  // prove that the key is complete, parseable, or usable by the Admin SDK.
-  try {
-    const parsedKey = crypto.createPrivateKey(serviceAccount.private_key);
-    if (parsedKey.asymmetricKeyType !== "rsa") {
-      throw new Error("Firebase service-account keys must use RSA.");
-    }
-  } catch (error) {
-    throw new Error(
-      "Firebase Admin private key is invalid or incomplete. In Render, replace it with the private_key from a newly generated Firebase service-account JSON file. (" +
-      String(error.message || "Invalid PEM").slice(0, 160) +
-      ")"
-    );
-  }
-
-  if (!/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(serviceAccount.client_email)) {
-    throw new Error("Firebase Admin client_email is not a Google service-account email. Check the service-account JSON configured in Render.");
+  if (!serviceAccount.private_key.includes("-----BEGIN PRIVATE KEY-----")) {
+    throw new Error("Firebase Admin private key is not a valid PEM private key. Recheck the Firebase service-account private key in Render.");
   }
 
   admin.initializeApp({
