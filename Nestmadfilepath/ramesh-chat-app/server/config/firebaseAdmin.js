@@ -75,7 +75,7 @@ if (!admin.apps.length) {
     );
   }
 
-  if (!/^[^\\s@]+@[^\\s@]+\\.iam\\.gserviceaccount\\.com$/.test(serviceAccount.client_email)) {
+  if (!/^[^\s@]+@[^\s@]+\.iam\.gserviceaccount\.com$/.test(serviceAccount.client_email)) {
     throw new Error("Firebase Admin client_email is not a Google service-account email. Check the service-account JSON configured in Render.");
   }
 
