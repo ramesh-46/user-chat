@@ -42,9 +42,9 @@ function normalizePrivateKey(value) {
 
   // Also accept a base64-encoded PEM, but only decode when it really contains
   // a PEM header; arbitrary values are never treated as valid keys.
-  if (!key.includes("-----BEGIN") && /^[A-Za-z0-9+/=\\s]+$/.test(key)) {
+  if (!key.includes("-----BEGIN") && /^[A-Za-z0-9+/=\s]+$/.test(key)) {
     try {
-      const decoded = Buffer.from(key.replace(/\\s/g, ""), "base64").toString("utf8");
+      const decoded = Buffer.from(key.replace(/\s/g, ""), "base64").toString("utf8");
       if (decoded.includes("-----BEGIN") && decoded.includes("PRIVATE KEY-----")) {
         key = decoded.trim();
       }
