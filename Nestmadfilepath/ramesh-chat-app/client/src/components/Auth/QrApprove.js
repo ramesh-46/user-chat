@@ -107,7 +107,33 @@ export default function QrApprove() {
         <button style={s.back} onClick={() => navigate("/")}>← Back</button>
         <h2>Connect a device</h2>
         <p>{message}</p>
-        {status === "camera" && <video ref={video} muted playsInline style={s.video} />}
+        {status === "camera" && (
+          <div className="bp-qr-scanner">
+            <video ref={video} muted playsInline style={s.video} />
+            <div className="bp-qr-shade" />
+            <div className="bp-qr-frame">
+              <i /><i /><i /><i />
+              <span className="bp-qr-beam" />
+            </div>
+            <div className="bp-qr-hint"><span className="bp-qr-dot" /> SCANNING FOR QR CODE</div>
+          </div>
+        )}
+        <style>{`
+          .bp-qr-scanner{position:relative;width:100%;height:clamp(260px,58vw,390px);max-height:55vh;margin:18px 0 14px;border-radius:20px;overflow:hidden;background:#05070c;border:1px solid rgba(216,189,112,.28);box-shadow:0 18px 50px rgba(0,0,0,.35)}
+          .bp-qr-shade{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 34%,rgba(3,6,13,.42) 100%);pointer-events:none}
+          .bp-qr-frame{position:absolute;width:min(68%,260px);aspect-ratio:1;left:50%;top:45%;transform:translate(-50%,-50%);border:1px solid rgba(232,210,141,.24);border-radius:22px;box-shadow:0 0 0 999px rgba(2,5,12,.12),0 0 34px rgba(216,189,112,.14);pointer-events:none}
+          .bp-qr-frame i{position:absolute;width:30px;height:30px;border-color:#f0d98e;border-style:solid;filter:drop-shadow(0 0 7px rgba(240,217,142,.75))}
+          .bp-qr-frame i:nth-child(1){top:-2px;left:-2px;border-width:3px 0 0 3px;border-radius:10px 0 0}
+          .bp-qr-frame i:nth-child(2){top:-2px;right:-2px;border-width:3px 3px 0 0;border-radius:0 10px 0 0}
+          .bp-qr-frame i:nth-child(3){bottom:-2px;left:-2px;border-width:0 0 3px 3px;border-radius:0 0 0 10px}
+          .bp-qr-frame i:nth-child(4){bottom:-2px;right:-2px;border-width:0 3px 3px 0;border-radius:0 0 10px}
+          .bp-qr-beam{position:absolute;left:7%;right:7%;height:2px;top:8%;background:linear-gradient(90deg,transparent,#f8e5a8,#fff4c8,#d8bd70,transparent);box-shadow:0 0 12px 3px rgba(232,210,141,.58);animation:bpQrScan 2.3s ease-in-out infinite}
+          .bp-qr-hint{position:absolute;left:0;right:0;bottom:18px;text-align:center;color:#f5e6b4;font-size:10px;font-weight:900;letter-spacing:2px;text-shadow:0 2px 8px #000}
+          .bp-qr-dot{display:inline-block;width:7px;height:7px;margin-right:8px;border-radius:50%;background:#b9f4cf;box-shadow:0 0 10px #4ade80;animation:bpQrPulse 1.2s ease-in-out infinite}
+          @keyframes bpQrScan{0%{top:8%;opacity:.45}50%{top:90%;opacity:1}100%{top:8%;opacity:.45}}
+          @keyframes bpQrPulse{0%,100%{opacity:.45;transform:scale(.8)}50%{opacity:1;transform:scale(1.15)}}
+          @media(prefers-reduced-motion:reduce){.bp-qr-beam,.bp-qr-dot{animation:none}}
+        `}</style>
         {status === "confirm" && <button style={s.action} onClick={approve} disabled={busy}>{busy ? "Approving…" : "Approve login"}</button>}
         {status === "done" && <button style={s.action} onClick={() => navigate("/")}>Done</button>}
         {status === "unsupported" && <button style={s.action} onClick={() => navigate("/")}>Back to chat</button>}
@@ -122,7 +148,7 @@ const s = {
   page: { minHeight: "100dvh", display: "grid", placeItems: "center", padding: 16, background: "#080b14", color: "#f8f5eb" },
   card: { width: "min(100%,440px)", padding: 26, borderRadius: 22, background: "#151b2b", border: "1px solid #d8bd7055", textAlign: "center", boxSizing: "border-box" },
   back: { display: "block", border: 0, background: "transparent", color: "#d8bd70" },
-  video: { width: "100%", aspectRatio: "4/3", objectFit: "cover", borderRadius: 16, background: "#05070c" },
+  video: { width: "100%", height: "100%", objectFit: "cover", display: "block", background: "#05070c" },
   action: { width: "100%", padding: 14, border: 0, borderRadius: 12, background: "#d8bd70", fontWeight: 800 },
   small: { display: "block", marginTop: 18, color: "#9da5b7", fontSize: 11 },
 };
