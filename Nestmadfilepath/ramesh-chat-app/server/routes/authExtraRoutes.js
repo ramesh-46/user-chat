@@ -106,6 +106,28 @@ router.post("/session/register", async (req, res) => {
   }
 });
 
+router.post("/session/check", async (req, res) => {
+  try {
+    const { user } = await identity(req);
+    const token = String(req.headers["x-device-session"] || "");
+    if (!token) {
+      return res.status(401).json({ active: false, code: "DEVICE_SESSION_MISSING", error: "This device has no active login session." });
+    }
+    const session = await LoginSession.findOne({
+      userId: user._id,
+      tokenHash: hash(token),
+      revokedAt: null,
+      expiresAt: { $gt: new Date() },
+    }).select("_id").lean();
+    if (!session) {
+      return res.status(401).json({ active: false, code: "DEVICE_SESSION_REVOKED", error: "This device was logged out from another device." });
+    }
+    return res.json({ active: true });
+  } catch (error) {
+    return res.status(error.status || 401).json({ active: false, error: error.message || "Unable to verify this device session" });
+  }
+});
+
 router.post("/qr/start", async (req, res) => {
   const startedAt = Date.now();
   const traceId = random(6);
