@@ -14,6 +14,46 @@ const qrLog = (stage, traceId, details = {}) => console.info("[QR_LOGIN]", JSON.
   stage, traceId, at: new Date().toISOString(), ...details,
 }));
 
+function classifyFirebaseTokenError(error) {
+  const code = String(error?.code || error?.errorInfo?.code || "").toLowerCase();
+  const message = String(error?.message || "").toLowerCase();
+  const combined = code + " " + message;
+
+  if (/invalid_grant|invalid[_-]credential|private key|invalid pem|malformed.*key/.test(combined)) {
+    return {
+      code: "FIREBASE_ADMIN_CREDENTIALS_INVALID",
+      category: "credentials",
+      message: "The Firebase Admin service-account key is invalid, expired, revoked, or does not match the configured project.",
+    };
+  }
+  if (/signblob|iam\\.serviceaccounts|permission.?denied|service account token creator|insufficient permission/.test(combined)) {
+    return {
+      code: "FIREBASE_ADMIN_SIGNING_PERMISSION",
+      category: "signing_permission",
+      message: "The Firebase Admin service account does not have permission to sign custom authentication tokens.",
+    };
+  }
+  if (/project.?id|project.*mismatch|audience/.test(combined)) {
+    return {
+      code: "FIREBASE_ADMIN_PROJECT_MISMATCH",
+      category: "project",
+      message: "The Firebase Admin service account and the client app appear to be configured for different Firebase projects.",
+    };
+  }
+  return {
+    code: "QR_TOKEN_CREATION_FAILED",
+    category: "temporary_or_unknown",
+    message: "Firebase Admin could not create the sign-in token. Check the backend error details in Render logs.",
+  };
+}
+
+function safeFirebaseErrorMessage(error) {
+  return String(error?.message || "Unknown Firebase Admin error")
+    .replace(/-----BEGIN [^-]+-----[\\s\\S]*?-----END [^-]+-----/g, "[REDACTED KEY]")
+    .replace(/(private[_ -]?key\\s*[:=]\\s*)[^,;]+/ig, "$1[REDACTED]")
+    .slice(0, 240);
+}
+
 async function identity(req) {
   const header = req.headers.authorization || "";
   if (!header.startsWith("Bearer ")) {
@@ -166,10 +206,18 @@ router.get("/qr/status", async (req, res) => {
     qrLog("backend.status.success", traceId, { durationMs: Date.now() - startedAt });
     return res.json({ status: "approved", customToken });
   } catch (error) {
-    qrLog("backend.status.failed", traceId, { durationMs: Date.now() - startedAt, code: error.code || "unknown", message: error.message || "Unknown error" });
+    const diagnosis = classifyFirebaseTokenError(error);
+    qrLog("backend.status.failed", traceId, {
+      durationMs: Date.now() - startedAt,
+      firebaseErrorCode: String(error?.code || error?.errorInfo?.code || "unknown").slice(0, 100),
+      category: diagnosis.category,
+      message: safeFirebaseErrorMessage(error),
+    });
     return res.status(503).json({
-      status: "error", code: "QR_TOKEN_CREATION_FAILED",
-      error: "Firebase could not create the secure sign-in token. Check Firebase Admin credentials in Render, then try a new QR code.",
+      status: "error",
+      code: diagnosis.code,
+      error: diagnosis.message,
+      retryable: diagnosis.code === "QR_TOKEN_CREATION_FAILED",
     });
   }
 });
