@@ -8,13 +8,29 @@ function firstEnv(...names) {
   return "";
 }
 
+// Render environment values may contain real line breaks, JSON-escaped \n,
+// or double-escaped \\n. Normalize those formats without changing key data.
 function normalizePrivateKey(value) {
-  return String(value || "")
-    .trim()
-    .replace(/^[\"']|[\"']$/g, "")
+  let key = String(value || "").replace(/^\uFEFF/, "").trim();
+
+  // Remove one pair of wrapping quotes sometimes added when copying a PEM.
+  if (
+    (key.startsWith('"') && key.endsWith('"')) ||
+    (key.startsWith("'") && key.endsWith("'"))
+  ) {
+    key = key.slice(1, -1).trim();
+  }
+
+  // Collapse repeated escaping first, then turn escaped line endings into
+  // actual PEM line breaks. Also normalize Windows CRLF.
+  key = key
+    .replace(/\\\\/g, "\\")
+    .replace(/\\r\\n/g, "\n")
     .replace(/\\n/g, "\n")
     .replace(/\\r/g, "")
-    .replace(/\r\n/g, "\n");
+    .replace(/\r\n?/g, "\n");
+
+  return key.trim();
 }
 
 // Render projects commonly use either FB_* variables or FIREBASE_* names.
@@ -59,8 +75,11 @@ if (!admin.apps.length) {
     );
   }
 
-  if (!serviceAccount.private_key.includes("-----BEGIN PRIVATE KEY-----")) {
-    throw new Error("Firebase Admin private key is not a valid PEM private key. Recheck the Firebase service-account private key in Render.");
+  if (
+    !serviceAccount.private_key.includes("-----BEGIN PRIVATE KEY-----") ||
+    !serviceAccount.private_key.includes("-----END PRIVATE KEY-----")
+  ) {
+    throw new Error("Firebase Admin private key is incomplete. Check the full PEM key, including its BEGIN and END lines, in Render.");
   }
 
   admin.initializeApp({
