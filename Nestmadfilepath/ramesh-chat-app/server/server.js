@@ -560,7 +560,24 @@ const PORT = process.env.PORT || 4000;
 console.log(`🚀 [DEBUG] Starting server on port ${PORT}...`);
 console.log(`🚀 [DEBUG] Environment: ${process.env.NODE_ENV || 'development'}`);
 
-server.listen(PORT, () => {\n  // Remove expired status records and their Supabase objects. TTL index remains a database safety net.\n  const cleanupExpiredStatuses = async () => {\n    try {\n      const expired = await Status.find({ expiresAt: { $lte: new Date() } }).select("_id mediaPath").limit(500).lean();\n      for (const item of expired) {\n        if (item.mediaPath) {\n          try { await deleteMedia(item.mediaPath); }\n          catch (storageError) { console.error("[STATUS_EXPIRY_STORAGE]", item._id, storageError.message); continue; }\n        }\n        await Status.deleteOne({ _id: item._id });\n      }\n      if (expired.length) console.log("[STATUS_EXPIRY] Removed expired statuses:", expired.length);\n    } catch (error) { console.error("[STATUS_EXPIRY]", error.message); }\n  };\n  cleanupExpiredStatuses();\n  const statusCleanupTimer = setInterval(cleanupExpiredStatuses, 5 * 60 * 1000);\n  statusCleanupTimer.unref?.();
+server.listen(PORT, () => {
+  // Remove expired status records and their Supabase objects. TTL index remains a database safety net.
+  const cleanupExpiredStatuses = async () => {
+    try {
+      const expired = await Status.find({ expiresAt: { $lte: new Date() } }).select("_id mediaPath").limit(500).lean();
+      for (const item of expired) {
+        if (item.mediaPath) {
+          try { await deleteMedia(item.mediaPath); }
+          catch (storageError) { console.error("[STATUS_EXPIRY_STORAGE]", item._id, storageError.message); continue; }
+        }
+        await Status.deleteOne({ _id: item._id });
+      }
+      if (expired.length) console.log("[STATUS_EXPIRY] Removed expired statuses:", expired.length);
+    } catch (error) { console.error("[STATUS_EXPIRY]", error.message); }
+  };
+  cleanupExpiredStatuses();
+  const statusCleanupTimer = setInterval(cleanupExpiredStatuses, 5 * 60 * 1000);
+  statusCleanupTimer.unref?.();
   console.log(`✅ [DEBUG] Server listening @ http://localhost:${PORT}`);
 
   // Verify actual access to the configured private Supabase Storage bucket.
