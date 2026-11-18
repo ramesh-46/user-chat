@@ -12,7 +12,7 @@ const statusSchema = new Schema({
   excludedUsers: [{ type: Schema.Types.ObjectId, ref: "User" }],
   allowedUsers: [{ type: Schema.Types.ObjectId, ref: "User" }],
   viewers: [{ user: { type: Schema.Types.ObjectId, ref: "User" }, viewedAt: { type: Date, default: Date.now } }],
-  expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
+  expiresAt: { type: Date, required: true, index: true },
 }, { timestamps: true, versionKey: false });
 
 statusSchema.index({ owner: 1, createdAt: -1 });
