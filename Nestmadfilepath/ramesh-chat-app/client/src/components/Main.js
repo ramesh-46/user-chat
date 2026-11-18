@@ -273,6 +273,7 @@ export default function Main() {
                     {menuItem("New chat", () => { openChats(); setSearchOpen(true); })}
                     {menuItem("Create group", openGroups)}
                     {menuItem("Meetings", () => { setCurrent(null); setSection("meetings"); })}
+                    {menuItem("Status", () => { setCurrent(null); setSection("status"); })}
                     {menuItem("Find people", openFindPeople)}
                     {menuItem("Refresh chats", () => setRefreshKey(k => k + 1))}
                     {menuItem("Mark all as read", () => setMarkAllReadKey(k => k + 1))}
@@ -357,6 +358,7 @@ export default function Main() {
                 <button type="button" style={S.fabItem} onClick={() => { setFabOpen(false); setSearchOpen(true); }}>New chat</button>
                 <button type="button" style={S.fabItem} onClick={() => { setFabOpen(false); openGroups(); }}>Create group</button>
                 <button type="button" style={S.fabItem} onClick={() => { setFabOpen(false); setSection("meetings"); }}>Meetings</button>
+                <button type="button" style={S.fabItem} onClick={() => { setFabOpen(false); setCurrent(null); setSection("status"); }}>Status</button>
                 <button type="button" style={S.fabItem} onClick={() => { setFabOpen(false); openFindPeople(); }}>Find people</button>
               </div>
             )}
