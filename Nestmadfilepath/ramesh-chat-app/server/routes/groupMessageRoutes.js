@@ -7,21 +7,14 @@ const Message = require("../models/Message");
 const Group = require("../models/Group");
 const firebaseAuth = require("../middleware/firebaseAuth");
 const { sendPushToUsers } = require("../services/pushNotifications");
+const { uploadMedia, createMediaUrl } = require("../services/mediaStorage");
 
 const router = express.Router();
 router.use(firebaseAuth);
 
 const privateDir = path.join(__dirname, "..", "private_uploads");
-fs.mkdirSync(privateDir, { recursive: true });
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, privateDir),
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname || "").toLowerCase();
-    cb(null, `${Date.now()}-${require("crypto").randomUUID()}${ext}`);
-  }
-});
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 100 * 1024 * 1024 },
   fileFilter: (_req, _file, cb) => cb(null, true)
 });
@@ -64,21 +57,28 @@ router.post("/:groupId/messages", upload.single("file"), async (req, res) => {
   try {
     const group = await memberGroup(req.params.groupId, req.user._id);
     if (!group) {
-      if (req.file) fs.promises.unlink(req.file.path).catch(() => {});
+      
       return res.status(404).json({ success: false, error: "Group not found" });
     }
     const text = String(req.body.text || "").trim();
     if (!text && !req.file) return res.status(400).json({ success: false, error: "Message cannot be empty" });
     const viewOnce = ["true", "1"].includes(String(req.body.viewOnce).toLowerCase());
+    const uploaded = req.file ? await uploadMedia(req.file, `groups/${group._id}/${req.user._id}`) : null;
     const message = await Message.create({
       sender: req.user._id,
       groupId: group._id,
       text,
-      file: req.file ? path.basename(req.file.filename) : undefined,
+      file: undefined,
+      storagePath: uploaded?.path,
+      mediaProvider: uploaded ? "supabase" : undefined,
       fileType: req.file ? (req.file.mimetype.startsWith("image/") ? "image" : req.file.mimetype.startsWith("video/") ? "video" : req.file.mimetype.startsWith("audio/") ? "audio" : "document") : undefined,
       mime: req.file?.mimetype,
       viewOnce: !!(viewOnce && req.file),
     });
+    if (uploaded) {
+      message.file = `/api/group-messages/messages/${message._id}/media`;
+      await message.save();
+    }
     group.updatedAt = new Date();
     await group.save();
     const populatedMessage = await Message.findById(message._id).populate("sender", "username name avatar").lean();
@@ -149,8 +149,14 @@ router.get("/messages/:messageId/media", async (req, res) => {
       );
       if (!claimed) return res.status(410).json({ success: false, error: "This media is no longer available" });
     }
-    const filePath = path.join(privateDir, path.basename(message.file));
-    if (!fs.existsSync(filePath)) return res.status(404).json({ success: false, error: "Media file is unavailable" });
+    if (message.storagePath && message.mediaProvider === "supabase") {
+      const url = await createMediaUrl(message.storagePath, 60);
+      res.setHeader("Cache-Control", "no-store, private");
+      return res.redirect(302, url);
+    }
+    // Legacy local-disk attachments remain readable after this migration.
+    const filePath = path.join(privateDir, path.basename(message.file || ""));
+    if (!message.file || !fs.existsSync(filePath)) return res.status(404).json({ success: false, error: "Media file is unavailable" });
     res.setHeader("Content-Type", message.mime || "application/octet-stream");
     res.setHeader("Cache-Control", "no-store, private");
     res.setHeader("X-Content-Type-Options", "nosniff");

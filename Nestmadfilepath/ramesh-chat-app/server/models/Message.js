@@ -7,6 +7,8 @@ const messageSchema = new Schema(
     groupId: { type: Schema.Types.ObjectId, ref: "Group", default: null, index: true },
     text: { type: String, maxlength: 10000 },
     file: String,
+    storagePath: String,
+    mediaProvider: { type: String, enum: ["supabase"], default: undefined },
     fileType: String,
     mime: String,
     content: Schema.Types.Mixed,

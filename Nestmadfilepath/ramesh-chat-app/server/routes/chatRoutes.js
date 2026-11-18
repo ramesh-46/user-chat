@@ -4,6 +4,7 @@
 // const upload  = require("../utils/upload");     // multer config (accepts images & mp4)
 
 // const DeletedAccount = require("../models/DeletedAccount");
+const { uploadMedia, createMediaUrl } = require("../services/mediaStorage");
 const { sendPushToUser } = require("../services/pushNotifications");
 const admin = require("../config/firebaseAdmin");
 
@@ -348,36 +349,19 @@ router.post("/messages", upload.single("file"), async (req, res) => {
       }
     }
 
-    let filePath, mime;
-
-    if (req.file) {
-      if (!mongoose.connection.db) return res.status(503).json({ error: "Media storage is not ready. Please retry." });
-      const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "directChatMedia" });
-      const fileId = await new Promise((resolve, reject) => {
-        const stream = bucket.openUploadStream(req.file.originalname || "attachment", {
-          contentType: req.file.mimetype,
-          metadata: { sender: String(sender), receiver: String(receiver), uploadedAt: new Date() }
-        });
-        stream.once("error", reject);
-        stream.once("finish", () => resolve(String(stream.id)));
-        stream.end(req.file.buffer);
-      });
-      filePath = `/api/media/${fileId}`;
-      mime = req.file.mimetype;
-      console.log("📤 [DEBUG] File path set:", filePath, "MIME:", mime);
-    }
-
+    const uploaded = req.file ? await uploadMedia(req.file, `direct/${sender}/${receiver}`) : null;
     console.log("📤 [DEBUG] Creating Message document...");
     const msg = await Message.create({
-      sender,
-      receiver,
-      text,
-      file: filePath,
-      fileType,
-      mime,
+      sender, receiver, text, file: undefined, fileType,
+      mime: req.file?.mimetype, storagePath: uploaded?.path,
+      mediaProvider: uploaded ? "supabase" : undefined,
       content: content ? JSON.parse(content) : null,
       replyTo: replyTo && mongoose.Types.ObjectId.isValid(replyTo) ? replyTo : null,
     });
+    if (uploaded) {
+      msg.file = `/api/media/${msg._id}`;
+      await msg.save();
+    }
     
     console.log("📤 [DEBUG] Message created successfully:", {
       _id: msg._id,
@@ -419,12 +403,15 @@ router.post("/messages", upload.single("file"), async (req, res) => {
     res.status(500).json({ error: "Failed to send message" });
   }
 });
-/* Stream durable direct-chat attachments from MongoDB GridFS. */
+/* Stream legacy GridFS files and redirect new Supabase media to signed URLs. */
 router.get("/media/:fileId", async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.fileId) || !mongoose.connection.db) {
-      return res.status(404).json({ error: "Media not found" });
+    if (!mongoose.Types.ObjectId.isValid(req.params.fileId)) return res.status(404).json({ error: "Media not found" });
+    const message = await Message.findById(req.params.fileId).select("storagePath mediaProvider").lean();
+    if (message?.storagePath && message.mediaProvider === "supabase") {
+      return res.redirect(302, await createMediaUrl(message.storagePath, 300));
     }
+    if (!mongoose.connection.db) return res.status(404).json({ error: "Media not found" });
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "directChatMedia" });
     const fileId = new mongoose.Types.ObjectId(req.params.fileId);
     const files = await bucket.find({ _id: fileId }).toArray();
@@ -433,13 +420,10 @@ router.get("/media/:fileId", async (req, res) => {
     res.setHeader("Content-Disposition", "inline");
     res.setHeader("X-Content-Type-Options", "nosniff");
     res.setHeader("Cache-Control", "private, max-age=3600");
-    const stream = bucket.openDownloadStream(fileId);
-    stream.on("error", (error) => {
+    return bucket.openDownloadStream(fileId).on("error", (error) => {
       console.error("[DIRECT_MEDIA_STREAM]", error);
-      if (!res.headersSent) res.status(404).end();
-      else res.end();
-    });
-    return stream.pipe(res);
+      if (!res.headersSent) res.status(404).end(); else res.end();
+    }).pipe(res);
   } catch (error) {
     console.error("[DIRECT_MEDIA_READ]", error);
     return res.status(500).json({ error: "Unable to open attachment" });
