@@ -1,8 +1,10 @@
 const router  = require("express").Router();
 const User    = require("../models/User");
-const upload  = require("../utils/upload");   // multer config (saves files in /uploads)
+const multer = require("multer");
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 }, fileFilter: (_req, file, cb) => cb(null, file.mimetype.startsWith("image/")) });
 
 const DeletedAccount = require("../models/DeletedAccount");
+const { uploadMedia, createMediaUrl } = require("../services/mediaStorage");
 
 /*
   PUT /api/profile/:id
@@ -31,7 +33,9 @@ router.put("/:id", upload.single("avatar"), async (req, res) => {
 
     // ✅ Save avatar if file uploaded
     if (req.file) {
-      user.avatar = `/uploads/${req.file.filename}`;
+      const uploaded = await uploadMedia(req.file, `profiles/${user._id}`);
+      user.avatar = `/api/profile/${user._id}/avatar`;
+      user.avatarStoragePath = uploaded.path;
     }
 
     await user.save();
@@ -41,6 +45,17 @@ router.put("/:id", upload.single("avatar"), async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 });
+router.get("/:id/avatar", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("avatarStoragePath");
+    if (!user?.avatarStoragePath) return res.status(404).json({ error: "Avatar not found" });
+    return res.redirect(302, await createMediaUrl(user.avatarStoragePath, 300));
+  } catch (error) {
+    console.error("[PROFILE_AVATAR_READ]", error);
+    return res.status(500).json({ error: "Unable to load avatar" });
+  }
+});
+
 router.post("/cancel-deletion", async (req, res) => {
   const { username } = req.body;
 
