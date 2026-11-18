@@ -204,6 +204,18 @@ mongoose.connect(process.env.MONGO_URI)
     console.log("✅ [DEBUG] MongoDB connected successfully");
     console.log("🗄️ [DEBUG] Connection state:", mongoose.connection.readyState);
 
+    // Keep expired status rows long enough to remove their Supabase objects first.
+    try {
+      const statusIndexes = await Status.collection.indexes();
+      const ttlIndex = statusIndexes.find(index => index.key?.expiresAt === 1 && index.expireAfterSeconds !== undefined);
+      if (ttlIndex) {
+        await Status.collection.dropIndex(ttlIndex.name);
+        console.log("[STATUS_EXPIRY] Removed MongoDB TTL index so Supabase media cleanup can run first.");
+      }
+    } catch (indexError) {
+      console.warn("[STATUS_EXPIRY] Could not inspect legacy TTL index:", indexError.message);
+    }
+
     // One-time rollout for accounts created while the old schema default was Private.
     // This runs once only; users can switch to Private afterwards without being reset.
     try {
