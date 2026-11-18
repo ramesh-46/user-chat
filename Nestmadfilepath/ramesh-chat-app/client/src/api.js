@@ -85,6 +85,13 @@ export const deleteGroupMessage = (messageId, forEveryone = false) =>
 export const fetchGroupMedia = (messageId) =>
   api.get(`/group-messages/messages/${messageId}/media`, { responseType: "blob" });
 
+// 24-hour status updates
+export const fetchStatuses = () => api.get("/statuses");
+export const createStatus = (formData) => api.post("/statuses", formData, { headers: { "Content-Type": "multipart/form-data" } });
+export const viewStatus = (id) => api.post(`/statuses/${id}/view`);
+export const fetchStatusViewers = (id) => api.get(`/statuses/${id}/viewers`);
+export const deleteStatus = (id) => api.delete(`/statuses/${id}`);
+
 // Google Meet-style meetings
 export const createMeeting = (data) => api.post("/meetings", data);
 export const fetchMyMeetings = () => api.get("/meetings/mine");

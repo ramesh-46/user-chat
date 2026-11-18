@@ -160,13 +160,14 @@ const path = require("path");
 // Firebase Admin SDK: use one shared initializer for routes and middleware.
 const admin = require("./config/firebaseAdmin");
 const { sendPushToUser } = require("./services/pushNotifications");
-const { verifyStorageConnection } = require("./services/mediaStorage");
+const { verifyStorageConnection, deleteMedia } = require("./services/mediaStorage");
 console.log("✅ Firebase Admin SDK ready");
 
 // Models and Routes
 console.log("📦 [DEBUG] Loading models and routes...");
 const User = require("./models/User");
 const Meeting = require("./models/Meeting");
+const Status = require("./models/Status");
 const authRoutes = require("./routes/authRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const profileRoutes = require("./routes/profileRoutes");
@@ -176,6 +177,7 @@ const groupMessageRoutes = require("./routes/groupMessageRoutes");
 const messageActionRoutes = require("./routes/messageActionRoutes");
 const authExtraRoutes = require("./routes/authExtraRoutes");
 const meetingRoutes = require("./routes/meetingRoutes");
+const statusRoutes = require("./routes/statusRoutes");
 const registerMeetingLive = require("./services/meetingLive");
 console.log("✅ [DEBUG] Models and routes loaded successfully");
 
@@ -261,6 +263,7 @@ app.use("/api/message-actions", messageActionRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/groups (Firebase-authenticated)");
 
 app.use("/api/meetings", meetingRoutes);
+app.use("/api/statuses", statusRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/meetings (Google Meet-style meetings)");
 
 // Lightweight health endpoint for Render and uptime checks.
@@ -557,7 +560,7 @@ const PORT = process.env.PORT || 4000;
 console.log(`🚀 [DEBUG] Starting server on port ${PORT}...`);
 console.log(`🚀 [DEBUG] Environment: ${process.env.NODE_ENV || 'development'}`);
 
-server.listen(PORT, () => {
+server.listen(PORT, () => {\n  // Remove expired status records and their Supabase objects. TTL index remains a database safety net.\n  const cleanupExpiredStatuses = async () => {\n    try {\n      const expired = await Status.find({ expiresAt: { $lte: new Date() } }).select("_id mediaPath").limit(500).lean();\n      for (const item of expired) {\n        if (item.mediaPath) {\n          try { await deleteMedia(item.mediaPath); }\n          catch (storageError) { console.error("[STATUS_EXPIRY_STORAGE]", item._id, storageError.message); continue; }\n        }\n        await Status.deleteOne({ _id: item._id });\n      }\n      if (expired.length) console.log("[STATUS_EXPIRY] Removed expired statuses:", expired.length);\n    } catch (error) { console.error("[STATUS_EXPIRY]", error.message); }\n  };\n  cleanupExpiredStatuses();\n  const statusCleanupTimer = setInterval(cleanupExpiredStatuses, 5 * 60 * 1000);\n  statusCleanupTimer.unref?.();
   console.log(`✅ [DEBUG] Server listening @ http://localhost:${PORT}`);
 
   // Verify actual access to the configured private Supabase Storage bucket.
@@ -580,6 +583,7 @@ server.listen(PORT, () => {
   console.log(`   - GET/POST /api/settings/*`);
   console.log(`   - GET/POST/PATCH/DELETE /api/groups/* (Firebase-authenticated)`);
   console.log(`   - POST/GET /api/meetings/* (Google Meet-style meetings)`);
+  console.log(`   - GET/POST/DELETE /api/statuses/* (24-hour status updates)`);
   console.log(`✅ [DEBUG] Socket.IO ready for connections`);
 });
 
