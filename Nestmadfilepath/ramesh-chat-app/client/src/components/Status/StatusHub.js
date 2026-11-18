@@ -21,7 +21,14 @@ export default function StatusHub({ onBack }) {
   const [viewerList, setViewerList] = useState(null);
   const [active, setActive] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 820);
   const inputRef = useRef(null);
+
+  useEffect(() => {
+    const resize = () => setIsMobile(window.innerWidth <= 820);
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, []);
 
   const load = async () => {
     try { const r = await api.get("/statuses"); setData(r.data); setError(""); }
@@ -76,7 +83,7 @@ export default function StatusHub({ onBack }) {
   return <div style={s.page}>
     <header style={s.header}><button style={s.back} onClick={onBack}>‹</button><div><b>Status</b><small>Share a moment · disappears after 24 hours</small></div><button style={s.refresh} onClick={load}>↻</button></header>
     {error && <div style={s.error}>{error}</div>}
-    <div style={s.body}>
+    <div style={{ ...s.body, gridTemplateColumns: isMobile ? "minmax(0, 1fr)" : "minmax(0, 1fr) minmax(0, 1fr)", padding: isMobile ? 12 : 22 }}>
       <section style={s.composer}>
         <h3>Create a status</h3>
         <div style={s.tabs}><button style={type==="image"?s.selected:{}} onClick={()=>{setType("image");inputRef.current?.click();}}>Photo</button><button style={type==="video"?s.selected:{}} onClick={()=>{setType("video");inputRef.current?.click();}}>Video</button><button style={type==="text"?s.selected:{}} onClick={()=>{setType("text");setFile(null);}}>Text</button></div>
@@ -96,13 +103,13 @@ export default function StatusHub({ onBack }) {
       <section style={s.list}>
         <h3>My status <small>{data.mine.length}/unexpired</small></h3>
         {data.mine.length===0?<p style={s.empty}>Your status updates will appear here.</p>:data.mine.map(item=><article key={item._id} style={s.item}>
-          <button style={s.itemMain} onClick={()=>openStatus(item)}><span style={s.circle}>◉</span><span><b>{item.type==="text"?(item.text.slice(0,35)||"Text status"):(item.caption||item.type)}</b><small>{timeLeft(item.expiresAt)}</small></span></button>
-          <button style={s.views} onClick={()=>showViewers(item._id)}>◉ {item.viewerCount||0} views</button>
-          <button style={s.delete} onClick={()=>deleteStatus(item._id)}>Delete</button>
+          <button style={s.itemMain} onClick={()=>openStatus(item)}><span style={s.circle}>◉</span><span style={s.itemText}><b>{item.type==="text"?(item.text.slice(0,35)||"Text status"):(item.caption||item.type)}</b><small>{timeLeft(item.expiresAt)}</small></span></button>
+          <div style={s.itemActions}><button style={s.views} onClick={()=>showViewers(item._id)}>◉ {item.viewerCount||0} views</button><button style={s.delete} onClick={()=>deleteStatus(item._id)}>Delete</button></div>
         </article>)}
         <h3 style={{marginTop:24}}>Recent updates</h3>
         {loading?<p style={s.empty}>Loading…</p>:data.contacts.length===0?<p style={s.empty}>No new updates yet.</p>:data.contacts.map(group=><article key={group.owner._id} style={s.item}>
-          <button style={s.itemMain} onClick={()=>openStatus(group.statuses[0])}><span style={s.circle}>{(group.owner.name||group.owner.username||"U")[0].toUpperCase()}</span><span><b>{group.owner.name||group.owner.username}</b><small>{group.statuses.length} update(s) · {timeLeft(group.statuses[group.statuses.length-1].expiresAt)}</small></span></button>
+          <button style={s.itemMain} onClick={()=>openStatus(group.statuses[0])}><span style={s.circle}>{(group.owner.name||group.owner.username||"U")[0].toUpperCase()}</span><span style={s.itemText}><b>{group.owner.name||group.owner.username}</b><small>{group.statuses.length} update(s) · {timeLeft(group.statuses[group.statuses.length-1].expiresAt)}</small></span></button>
+          <button style={s.views} onClick={()=>openStatus(group.statuses[0])}>View updates</button>
         </article>)}
       </section>
     </div>
@@ -115,17 +122,17 @@ const s={
  header:{height:70,display:"flex",alignItems:"center",gap:14,padding:"0 20px",borderBottom:"1px solid var(--border)",position:"sticky",top:0,background:"var(--surface)",zIndex:2},
  back:{border:0,background:"var(--chatSelected)",borderRadius:12,width:40,height:40,fontSize:25,color:"var(--textMain)",cursor:"pointer"},
  headerSmall:{}, refresh:{marginLeft:"auto",border:0,background:"var(--chatSelected)",borderRadius:10,padding:10,color:"var(--textMain)",cursor:"pointer"},
- body:{maxWidth:1050,margin:"auto",padding:20,display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1fr)",gap:20},
- composer:{background:"var(--surfaceAlt)",border:"1px solid var(--border)",borderRadius:18,padding:20,alignSelf:"start"},
- list:{background:"var(--surfaceAlt)",border:"1px solid var(--border)",borderRadius:18,padding:20},
- tabs:{display:"flex",gap:8,marginBottom:14}, selected:{background:"var(--primary)",color:"#fff"},
- pick:{width:"100%",padding:22,border:"1px dashed var(--border)",borderRadius:14,background:"var(--surface)",color:"var(--textMain)",cursor:"pointer"},
+ body:{width:"100%",maxWidth:1100,margin:"0 auto",display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",alignItems:"start",gap:16,boxSizing:"border-box"},
+ composer:{background:"var(--surfaceAlt)",border:"1px solid var(--border)",borderRadius:18,padding:"clamp(14px,2vw,22px)",alignSelf:"start",minWidth:0,boxSizing:"border-box"},
+ list:{background:"var(--surfaceAlt)",border:"1px solid var(--border)",borderRadius:18,padding:"clamp(14px,2vw,22px)",minWidth:0,boxSizing:"border-box"},
+ tabs:{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:8,marginBottom:14}, selected:{background:"var(--primary)",color:"#fff"},
+ pick:{width:"100%",minHeight:130,padding:22,border:"1px dashed var(--border)",borderRadius:14,background:"var(--surface)",color:"var(--textMain)",cursor:"pointer",boxSizing:"border-box"},
  textarea:{width:"100%",minHeight:150,padding:14,borderRadius:12,border:"1px solid var(--border)",background:"var(--surface)",color:"var(--textMain)",resize:"vertical",boxSizing:"border-box"},
- crop:{marginTop:12,overflow:"hidden",borderRadius:14,background:"#111"},cropLabel:{color:"#fff",fontSize:11,padding:8},media:{display:"block",width:"100%",maxHeight:340,objectFit:"cover"},
- input:{width:"100%",boxSizing:"border-box",padding:12,marginTop:10,borderRadius:10,border:"1px solid var(--border)",background:"var(--surface)",color:"var(--textMain)"},
+ crop:{marginTop:12,overflow:"hidden",borderRadius:14,background:"#111"},cropLabel:{color:"#fff",fontSize:11,padding:8},media:{display:"block",width:"100%",maxHeight:"min(48vh,420px)",objectFit:"contain",background:"#111"},
+ input:{width:"100%",boxSizing:"border-box",padding:12,marginTop:10,borderRadius:10,border:"1px solid var(--border)",background:"var(--surface)",color:"var(--textMain)",minWidth:0},
  label:{display:"block",marginTop:16,fontSize:13,fontWeight:700},hint:{fontSize:12,color:"var(--textLight)",lineHeight:1.5},
  post:{width:"100%",padding:13,border:0,borderRadius:12,background:"var(--primary)",color:"#fff",fontWeight:700,cursor:"pointer"},
- item:{display:"flex",alignItems:"center",gap:8,padding:"12px 0",borderBottom:"1px solid var(--border)"},itemMain:{display:"flex",alignItems:"center",gap:12,flex:1,minWidth:0,textAlign:"left",border:0,background:"transparent",color:"var(--textMain)",cursor:"pointer"},circle:{width:44,height:44,borderRadius:"50%",display:"grid",placeItems:"center",border:"3px solid var(--primary)",fontWeight:700},empty:{color:"var(--textLight)",fontSize:13},views:{border:0,background:"transparent",color:"var(--primary)",cursor:"pointer"},delete:{border:0,background:"transparent",color:"#e5484d",cursor:"pointer"},
+ item:{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",alignItems:"center",gap:10,padding:"13px 0",borderBottom:"1px solid var(--border)",minWidth:0},itemMain:{display:"grid",gridTemplateColumns:"44px minmax(0,1fr)",alignItems:"center",gap:12,minWidth:0,textAlign:"left",border:0,background:"transparent",color:"var(--textMain)",cursor:"pointer"},itemText:{display:"grid",gap:4,minWidth:0,overflowWrap:"anywhere"},itemActions:{display:"grid",gridTemplateColumns:"auto auto",alignItems:"center",gap:8},circle:{width:44,height:44,borderRadius:"50%",display:"grid",placeItems:"center",border:"3px solid var(--primary)",fontWeight:700,boxSizing:"border-box"},empty:{color:"var(--textLight)",fontSize:13},views:{border:0,background:"var(--chatSelected)",borderRadius:9,padding:"8px 10px",color:"var(--primary)",cursor:"pointer",whiteSpace:"nowrap"},delete:{border:0,background:"transparent",color:"#e5484d",cursor:"pointer",padding:"8px 6px",whiteSpace:"nowrap"},
  viewer:{position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.94)",display:"grid",placeItems:"center",padding:20},close:{position:"absolute",top:20,right:24,color:"#fff",background:"transparent",border:0,fontSize:34,cursor:"pointer"},viewerContent:{width:"min(520px,100%)",textAlign:"center",color:"#fff"},viewerMedia:{maxWidth:"100%",maxHeight:"78vh",objectFit:"contain"},textCard:{minHeight:"65vh",display:"grid",placeItems:"center",padding:25,color:"#fff",fontSize:30,fontWeight:700,borderRadius:16,overflowWrap:"anywhere"},
  modal:{position:"fixed",inset:0,zIndex:9100,background:"rgba(0,0,0,.5)",display:"grid",placeItems:"center",padding:20},modalCard:{background:"var(--surface)",color:"var(--textMain)",padding:20,borderRadius:16,width:"min(400px,100%)",maxHeight:"70vh",overflowY:"auto"},modalHead:{display:"flex",justifyContent:"space-between"}
 };
