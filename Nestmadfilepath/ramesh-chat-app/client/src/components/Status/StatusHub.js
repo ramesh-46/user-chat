@@ -104,7 +104,7 @@ export default function StatusHub({ onBack }) {
         <h3>My status <small>{data.mine.length}/unexpired</small></h3>
         {data.mine.length===0?<p style={s.empty}>Your status updates will appear here.</p>:data.mine.map(item=><article key={item._id} style={s.item}>
           <button style={s.itemMain} onClick={()=>openStatus(item)}><span style={s.circle}>◉</span><span style={s.itemText}><b>{item.type==="text"?(item.text.slice(0,35)||"Text status"):(item.caption||item.type)}</b><small>{timeLeft(item.expiresAt)}</small></span></button>
-          <div style={s.itemActions}><button style={s.views} onClick={()=>showViewers(item._id)}>◉ {item.viewerCount||0} views</button><button style={s.delete} onClick={()=>deleteStatus(item._id)}>Delete</button></div>
+          <div style={{ ...s.itemActions, gridTemplateColumns: isMobile ? "1fr" : "auto auto" }}><button style={s.views} onClick={()=>showViewers(item._id)}>◉ {item.viewerCount||0} views</button><button style={s.delete} onClick={()=>deleteStatus(item._id)}>Delete</button></div>
         </article>)}
         <h3 style={{marginTop:24}}>Recent updates</h3>
         {loading?<p style={s.empty}>Loading…</p>:data.contacts.length===0?<p style={s.empty}>No new updates yet.</p>:data.contacts.map(group=><article key={group.owner._id} style={s.item}>
@@ -119,6 +119,7 @@ export default function StatusHub({ onBack }) {
 }
 const s={
  page:{height:"100%",width:"100%",overflowY:"auto",background:"var(--surface)",color:"var(--textMain)",fontFamily:"var(--font-ui)"},
+ error:{margin:"12px 16px",padding:12,borderRadius:10,background:"#fff0f0",color:"#b42318",fontSize:13,border:"1px solid #ffd1d1"},
  header:{height:70,display:"flex",alignItems:"center",gap:14,padding:"0 20px",borderBottom:"1px solid var(--border)",position:"sticky",top:0,background:"var(--surface)",zIndex:2},
  back:{border:0,background:"var(--chatSelected)",borderRadius:12,width:40,height:40,fontSize:25,color:"var(--textMain)",cursor:"pointer"},
  headerSmall:{}, refresh:{marginLeft:"auto",border:0,background:"var(--chatSelected)",borderRadius:10,padding:10,color:"var(--textMain)",cursor:"pointer"},
