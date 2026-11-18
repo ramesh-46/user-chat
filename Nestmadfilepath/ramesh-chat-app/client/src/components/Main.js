@@ -237,7 +237,8 @@ export default function Main() {
                 style={{ ...S.navBtn, ...(active ? S.navBtnActive : {}) }}
                 onClick={() => {
                   if (item.key === "chats") openChats();
-                  else if (item.key === "status") { setCurrent(null); setSection("status"); }\n                  else if (item.key === "groups") openGroups();
+                  else if (item.key === "status") { setCurrent(null); setSection("status"); }
+                  else if (item.key === "groups") openGroups();
                   else if (item.key === "meetings") { setCurrent(null); setSection("meetings"); }
                   else if (item.key === "contacts") openFindPeople();
                   else { setSearchOpen(true); openChats(); }
