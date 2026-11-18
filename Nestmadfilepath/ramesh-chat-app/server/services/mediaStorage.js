@@ -52,7 +52,13 @@ async function uploadMedia(file, folder) {
   return { path: objectPath, bucket: BUCKET, size: file.size, mime: file.mimetype };
 }
 
-async function deleteMedia(objectPath) {\n  if (!objectPath || typeof objectPath !== "string") return;\n  const { error } = await getClient().storage.from(BUCKET).remove([objectPath]);\n  if (error) throw new Error(`Supabase media delete failed: ${error.message}`);\n}\n\nasync function createMediaUrl(objectPath, expiresIn = 300) {
+async function deleteMedia(objectPath) {
+  if (!objectPath || typeof objectPath !== "string") return;
+  const { error } = await getClient().storage.from(BUCKET).remove([objectPath]);
+  if (error) throw new Error(`Supabase media delete failed: ${error.message}`);
+}
+
+async function createMediaUrl(objectPath, expiresIn = 300) {
   if (!objectPath || typeof objectPath !== "string") throw new Error("Invalid media storage path.");
   const { data, error } = await getClient().storage.from(BUCKET).createSignedUrl(objectPath, expiresIn);
   if (error || !data?.signedUrl) throw new Error(`Unable to create media URL: ${error?.message || "No signed URL returned"}`);
