@@ -176,6 +176,7 @@ const groupMessageRoutes = require("./routes/groupMessageRoutes");
 const messageActionRoutes = require("./routes/messageActionRoutes");
 const authExtraRoutes = require("./routes/authExtraRoutes");
 const meetingRoutes = require("./routes/meetingRoutes");
+const statusRoutes = require("./routes/statusRoutes");
 const registerMeetingLive = require("./services/meetingLive");
 console.log("✅ [DEBUG] Models and routes loaded successfully");
 
@@ -261,6 +262,7 @@ app.use("/api/message-actions", messageActionRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/groups (Firebase-authenticated)");
 
 app.use("/api/meetings", meetingRoutes);
+app.use("/api/statuses", statusRoutes);
 console.log("✅ [DEBUG] Route mounted: /api/meetings (Google Meet-style meetings)");
 
 // Lightweight health endpoint for Render and uptime checks.
@@ -580,6 +582,7 @@ server.listen(PORT, () => {
   console.log(`   - GET/POST /api/settings/*`);
   console.log(`   - GET/POST/PATCH/DELETE /api/groups/* (Firebase-authenticated)`);
   console.log(`   - POST/GET /api/meetings/* (Google Meet-style meetings)`);
+  console.log(`   - GET/POST/DELETE /api/statuses/* (24-hour status updates)`);
   console.log(`✅ [DEBUG] Socket.IO ready for connections`);
 });
 
