@@ -160,6 +160,7 @@ const path = require("path");
 // Firebase Admin SDK: use one shared initializer for routes and middleware.
 const admin = require("./config/firebaseAdmin");
 const { sendPushToUser } = require("./services/pushNotifications");
+const { verifyStorageConnection } = require("./services/mediaStorage");
 console.log("✅ Firebase Admin SDK ready");
 
 // Models and Routes
@@ -558,6 +559,20 @@ console.log(`🚀 [DEBUG] Environment: ${process.env.NODE_ENV || 'development'}`
 
 server.listen(PORT, () => {
   console.log(`✅ [DEBUG] Server listening @ http://localhost:${PORT}`);
+
+  // Verify actual access to the configured private Supabase Storage bucket.
+  verifyStorageConnection()
+    .then(({ bucket }) => {
+      console.log(`✅ [SUPABASE] Connected successfully. Storage bucket "${bucket}" is accessible.`);
+    })
+    .catch((error) => {
+      console.error("❌ [SUPABASE] Connection check failed:", error.message);
+      if (error.code === "MEDIA_STORAGE_NOT_CONFIGURED") {
+        console.error("❌ [SUPABASE] Set SUPABASE_URL and SUPABASE_SECRET_KEY in Render environment variables.");
+      } else {
+        console.error("❌ [SUPABASE] Check the secret key permissions, project URL, and bucket name.");
+      }
+    });
   console.log(`✅ [DEBUG] API Routes available:`);
   console.log(`   - POST /api/auth/*`);
   console.log(`   - GET/PUT /api/profile/*`);
