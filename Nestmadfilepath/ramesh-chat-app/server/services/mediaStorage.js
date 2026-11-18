@@ -23,6 +23,18 @@ function safeSegment(value) {
   return String(value || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 100);
 }
 
+async function verifyStorageConnection() {
+  const supabase = getClient();
+  const { data, error } = await supabase.storage.getBucket(BUCKET);
+  if (error) {
+    const connectionError = new Error(error.message || "Unable to access the configured Supabase bucket.");
+    connectionError.code = error.statusCode || error.status || "SUPABASE_BUCKET_CHECK_FAILED";
+    throw connectionError;
+  }
+  if (!data?.id) throw new Error("Supabase responded, but the configured storage bucket was not found.");
+  return { connected: true, bucket: BUCKET };
+}
+
 async function uploadMedia(file, folder) {
   if (!file?.buffer || !file.mimetype) throw new Error("A valid media file is required.");
   if (file.size > MAX_FILE_SIZE) {
@@ -47,4 +59,4 @@ async function createMediaUrl(objectPath, expiresIn = 300) {
   return data.signedUrl;
 }
 
-module.exports = { uploadMedia, createMediaUrl };
+module.exports = { uploadMedia, createMediaUrl, verifyStorageConnection };
