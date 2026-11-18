@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const multer = require("multer");
 const User = require("../models/User");
 const Status = require("../models/Status");
+const Message = require("../models/Message");
 const admin = require("../config/firebaseAdmin");
 const { uploadMedia, createMediaUrl } = require("../services/mediaStorage");
 
@@ -48,8 +49,11 @@ router.get("/", async (req, res) => {
     const user = await User.findById(me).select("blockList").lean();
     const blocked = (user?.blockList || []).map(String);
     const rows = await Status.find({ expiresAt: { $gt: new Date() }, owner: { $nin: [me, ...blocked] } })
-      .populate("owner", "name username avatar").sort({ createdAt: 1 }).lean();
-    const visible = rows.filter(row => canSee(row, me) && !blocked.includes(String(row.owner?._id)));
+      .populate("owner", "name username avatar blockList").sort({ createdAt: 1 }).lean();
+    const contactIds = await Message.distinct("sender", { receiver: me });
+    const sentToIds = await Message.distinct("receiver", { sender: me });
+    const contacts = new Set([...contactIds, ...sentToIds].map(String));
+    const visible = rows.filter(row => canSee(row, me) && contacts.has(String(row.owner?._id)) && !blocked.includes(String(row.owner?._id)) && !(row.owner?.blockList || []).some(id => String(id) === String(me)));
     const own = await Status.find({ owner: me, expiresAt: { $gt: new Date() } }).sort({ createdAt: 1 }).lean();
     const grouped = new Map();
     for (const row of visible) {
