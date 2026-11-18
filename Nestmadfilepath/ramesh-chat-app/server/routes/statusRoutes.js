@@ -26,6 +26,7 @@ async function signedIn(req, res, next) {
     return res.status(401).json({ error: "Your session is invalid. Please sign in again." });
   }
 }
+router.get("/health", (_req, res) => res.json({ success: true, route: "statuses" }));
 router.use(signedIn);
 
 function canSee(status, viewerId) {
