@@ -306,7 +306,9 @@ export default function Main() {
       {/* RIGHT – active conversation (desktop) */}
       {!isMobile && (
         <main style={{ ...S.convCol, ...(section === "groups" || section === "meetings" || section === "findPeople" || section === "status" ? { gridColumn: "2 / 4", width: "100%", minWidth: 0 } : {}) }} aria-label={section === "groups" ? "Group conversations" : section === "meetings" ? "Meetings" : section === "findPeople" ? "Find people" : "Conversation"}>
-          {section === "status" ? (\n            <StatusHub onBack={openChats} />\n          ) : section === "findPeople" ? (
+          {section === "status" ? (
+            <StatusHub onBack={openChats} />
+          ) : section === "findPeople" ? (
             <FindPeople onPick={(person) => { setCurrent(person); setSection("chats"); }} onBack={openChats} />
           ) : section === "groups" ? (
             <GroupChat onBack={openChats} />
@@ -324,7 +326,9 @@ export default function Main() {
         </main>
       )}
 
-      {isMobile && section === "status" && <main style={S.convColMobile} aria-label="Status"><StatusHub onBack={openChats} /></main>}\n\n      {isMobile && section === "findPeople" && <main style={S.convColMobile} aria-label="Find people"><FindPeople onPick={(person) => { setCurrent(person); setSection("chats"); }} onBack={openChats} /></main>}
+      {isMobile && section === "status" && <main style={S.convColMobile} aria-label="Status"><StatusHub onBack={openChats} /></main>}
+
+      {isMobile && section === "findPeople" && <main style={S.convColMobile} aria-label="Find people"><FindPeople onPick={(person) => { setCurrent(person); setSection("chats"); }} onBack={openChats} /></main>}
 
       {/* Mobile: full-screen meetings */}
       {isMobile && section === "meetings" && (
