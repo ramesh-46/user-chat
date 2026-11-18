@@ -10,6 +10,7 @@ const userSchema = new Schema(
     about: { type: String },
     isPublic: { type: Boolean, default: true, index: true },
     avatar: { type: String },
+    avatarStoragePath: { type: String },
     fcmToken: { type: String },
     fcmTokens: { type: [String], default: [] },
     password: { type: String },
