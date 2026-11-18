@@ -5,7 +5,7 @@ const User = require("../models/User");
 const Status = require("../models/Status");
 const Message = require("../models/Message");
 const admin = require("../config/firebaseAdmin");
-const { uploadMedia, createMediaUrl } = require("../services/mediaStorage");
+const { uploadMedia, createMediaUrl, deleteMedia } = require("../services/mediaStorage");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -122,8 +122,10 @@ router.get("/:id/viewers", async (req, res) => {
 
 router.delete("/:id", async (req, res) => {
   try {
-    const deleted = await Status.findOneAndDelete({ _id: req.params.id, owner: req.statusUser._id });
-    if (!deleted) return res.status(404).json({ error: "Status not found." });
+    const status = await Status.findOne({ _id: req.params.id, owner: req.statusUser._id });
+    if (!status) return res.status(404).json({ error: "Status not found." });
+    if (status.mediaPath) await deleteMedia(status.mediaPath);
+    await Status.deleteOne({ _id: status._id });
     return res.json({ success: true });
   } catch (error) { return res.status(500).json({ error: "Unable to delete status." }); }
 });
