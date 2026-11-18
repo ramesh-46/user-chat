@@ -10,6 +10,7 @@ import ChatList from "./Chat/ChatList";
 import ChatWindow from "./Chat/ChatWindow";
 import GroupChat from "./Chat/GroupChat";
 import MeetingHub from "./Meetings/MeetingHub";
+import StatusHub from "./Status/StatusHub";
 import FindPeople from "./People/FindPeople";
 import ProfilePanel from "./Accounts/ProfilePanel";
 import socket from "../socket";
@@ -30,6 +31,7 @@ const useIsMobile = () => {
 
 const NAV_ITEMS = [
   { key: "chats", icon: "💬", label: "Chats" },
+  { key: "status", icon: "◉", label: "Status" },
   { key: "groups", icon: "👥", label: "Groups" },
   { key: "meetings", icon: "▣", label: "Meetings" },
   { key: "contacts", icon: "👤", label: "Find people" },
@@ -67,7 +69,7 @@ export default function Main() {
       else if (nav.showSettings) setShowSettings(false);
       else if (nav.searchOpen) setSearchOpen(false);
       else if (nav.current) setCurrent(null);
-      else if (nav.section === "groups" || nav.section === "meetings" || nav.section === "findPeople") setSection("chats");
+      else if (nav.section === "groups" || nav.section === "meetings" || nav.section === "findPeople" || nav.section === "status") setSection("chats");
       else return;
       window.history.pushState({ suraChat: true }, "", window.location.href);
     };
@@ -229,13 +231,13 @@ export default function Main() {
         <aside style={S.navbar} aria-label="Main navigation">
           <div style={S.logo} title="Black Pearl Chat">◆</div>
           {NAV_ITEMS.map((item) => {
-            const active = (item.key === "groups" && section === "groups") || (item.key === "chats" && section === "chats") || (item.key === "meetings" && section === "meetings") || (item.key === "contacts" && section === "findPeople");
+            const active = (item.key === "groups" && section === "groups") || (item.key === "chats" && section === "chats") || (item.key === "status" && section === "status") || (item.key === "meetings" && section === "meetings") || (item.key === "contacts" && section === "findPeople");
             return (
               <button key={item.key} type="button" title={item.label} aria-label={item.label}
                 style={{ ...S.navBtn, ...(active ? S.navBtnActive : {}) }}
                 onClick={() => {
                   if (item.key === "chats") openChats();
-                  else if (item.key === "groups") openGroups();
+                  else if (item.key === "status") { setCurrent(null); setSection("status"); }\n                  else if (item.key === "groups") openGroups();
                   else if (item.key === "meetings") { setCurrent(null); setSection("meetings"); }
                   else if (item.key === "contacts") openFindPeople();
                   else { setSearchOpen(true); openChats(); }
@@ -254,7 +256,7 @@ export default function Main() {
       )}
 
       {/* MIDDLE – conversation list column */}
-      {(!isMobile || !current) && section !== "groups" && section !== "meetings" && section !== "findPeople" && (
+      {(!isMobile || !current) && section !== "groups" && section !== "meetings" && section !== "findPeople" && section !== "status" && (
         <section style={{ ...S.listCol, display: (isMobile && current) ? "none" : "flex" }} aria-label="Conversations">
           <header style={S.listHeader}>
             <div>
@@ -302,8 +304,8 @@ export default function Main() {
 
       {/* RIGHT – active conversation (desktop) */}
       {!isMobile && (
-        <main style={{ ...S.convCol, ...(section === "groups" || section === "meetings" || section === "findPeople" ? { gridColumn: "2 / 4", width: "100%", minWidth: 0 } : {}) }} aria-label={section === "groups" ? "Group conversations" : section === "meetings" ? "Meetings" : section === "findPeople" ? "Find people" : "Conversation"}>
-          {section === "findPeople" ? (
+        <main style={{ ...S.convCol, ...(section === "groups" || section === "meetings" || section === "findPeople" || section === "status" ? { gridColumn: "2 / 4", width: "100%", minWidth: 0 } : {}) }} aria-label={section === "groups" ? "Group conversations" : section === "meetings" ? "Meetings" : section === "findPeople" ? "Find people" : "Conversation"}>
+          {section === "status" ? (\n            <StatusHub onBack={openChats} />\n          ) : section === "findPeople" ? (
             <FindPeople onPick={(person) => { setCurrent(person); setSection("chats"); }} onBack={openChats} />
           ) : section === "groups" ? (
             <GroupChat onBack={openChats} />
@@ -321,7 +323,7 @@ export default function Main() {
         </main>
       )}
 
-      {isMobile && section === "findPeople" && <main style={S.convColMobile} aria-label="Find people"><FindPeople onPick={(person) => { setCurrent(person); setSection("chats"); }} onBack={openChats} /></main>}
+      {isMobile && section === "status" && <main style={S.convColMobile} aria-label="Status"><StatusHub onBack={openChats} /></main>}\n\n      {isMobile && section === "findPeople" && <main style={S.convColMobile} aria-label="Find people"><FindPeople onPick={(person) => { setCurrent(person); setSection("chats"); }} onBack={openChats} /></main>}
 
       {/* Mobile: full-screen meetings */}
       {isMobile && section === "meetings" && (
